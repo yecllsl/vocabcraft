@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# MCP Server 运行时数据（保留 .gitkeep 占位）
+vocabcraft-mcp/data/vocabs/*.json
+vocabcraft-mcp/data/reviews/*.json
+vocabcraft-mcp/data/quizzes/*.json
+vocabcraft-mcp/data/exports/*.json
+vocabcraft-mcp/data/exports/*.md
+vocabcraft-mcp/data/images/*
+!vocabcraft-mcp/data/vocabs/.gitkeep
+!vocabcraft-mcp/data/reviews/.gitkeep
+!vocabcraft-mcp/data/quizzes/.gitkeep
+!vocabcraft-mcp/data/exports/.gitkeep
+!vocabcraft-mcp/data/images/.gitkeep
+
+# Logs
+*.log
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary
+*.tmp
+*.bak

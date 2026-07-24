@@ -1,0 +1,59 @@
+{# partials/batch_review_item.html — 批量复习单题片段 #}
+<div class="batch-item" data-index="{{ item.index }}">
+    {% if prev_result %}
+    <div class="quiz-result {{ 'correct' if prev_result.correct else ('wrong' if prev_result.correct is sameas false else 'needs-review') }}">
+        <div class="quiz-result-icon">
+            {% if prev_result.correct is sameas true %}✅{% elif prev_result.correct is sameas false %}❌{% else %}📝{% endif %}
+        </div>
+        <div class="quiz-result-title">
+            {% if prev_result.correct is sameas true %}回答正确{% elif prev_result.correct is sameas false %}回答错误{% else %}已记录{% endif %}
+        </div>
+        <div class="quiz-result-detail">
+            评分：{{ prev_result.grade }} · 难度系数：{{ "%.2f" | format(prev_result.updated_review_state.ease_factor) }}
+            · 下次复习：{{ prev_result.updated_review_state.next_review_date }}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="quiz-header">
+        <span class="tag tag-quiz-{{ item.quiz.quiz_type }}">{{ item.quiz.quiz_type }}</span>
+        <span class="batch-progress-text">第 {{ item.index + 1 }} / {{ item.total }} 题</span>
+    </div>
+
+    <div class="quiz-question">{{ item.quiz.question }}</div>
+
+    <form class="batch-quiz-form"
+          hx-post="/api/review/batch/{{ item.batch_id }}/item/{{ item.index }}/grade"
+          hx-target="#batch-item-container" hx-swap="innerHTML">
+        {% if item.quiz.options %}
+        <div class="quiz-options">
+            {% for option in item.quiz.options %}
+            <label class="quiz-option">
+                <input type="radio" name="response" value="{{ option }}" required>
+                <span>{{ option }}</span>
+            </label>
+            {% endfor %}
+        </div>
+        {% else %}
+        <input type="text" name="response" class="quiz-input" placeholder="请输入答案" required autofocus>
+        {% endif %}
+
+        <div class="quiz-actions">
+            <button type="submit" class="btn btn-primary">
+                {% if item.index + 1 == item.total %}完成{% else %}下一题{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // 更新顶部进度条
+    (function() {
+        const progress = document.getElementById('batch-progress');
+        if (progress) {
+            const index = parseInt('{{ item.index }}', 10);
+            const total = parseInt('{{ item.total }}', 10);
+            progress.style.width = ((index + 1) / total * 100) + '%';
+        }
+    })();
+</script>

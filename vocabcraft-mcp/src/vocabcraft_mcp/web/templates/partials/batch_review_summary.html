@@ -1,0 +1,54 @@
+{# partials/batch_review_summary.html — 批量复习汇总 #}
+<div class="batch-review">
+    <div class="chart-container">
+        <div class="chart-title">复习完成 🎉</div>
+
+        <div class="kpi-grid" style="margin-top: 16px;">
+            <div class="kpi-card">
+                <div class="kpi-label">完成题数</div>
+                <div class="kpi-value">{{ summary.total }}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">平均评分</div>
+                <div class="kpi-value">{{ summary.avg_grade }}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">薄弱词数</div>
+                <div class="kpi-value">{{ summary.weak_words | length }}</div>
+            </div>
+        </div>
+
+        {% if summary.weak_words %}
+        <div class="detail-section">
+            <div class="detail-label">薄弱词（grade < 3）</div>
+            <ul class="detail-list">
+                {% for w in summary.weak_words %}
+                <li>{{ w.word }} · 评分 {{ w.grade }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if summary.next_review_distribution %}
+        <div class="detail-section">
+            <div class="detail-label">下次复习日期分布</div>
+            <ul class="detail-list">
+                {% for date, count in summary.next_review_distribution.items() %}
+                <li>{{ date }}：{{ count }} 词</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="quiz-actions">
+            <button class="btn btn-primary"
+                    hx-get="/partials/review" hx-target="#content" hx-swap="innerHTML">
+                返回复习页
+            </button>
+            <button class="btn btn-secondary"
+                    hx-get="/partials/dashboard" hx-target="#content" hx-swap="innerHTML">
+                返回概览
+            </button>
+        </div>
+    </div>
+</div>

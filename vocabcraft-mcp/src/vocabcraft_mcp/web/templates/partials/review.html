@@ -1,0 +1,115 @@
+{# partials/review.html — 复习追踪页片段 #}
+<div>
+    <!-- 今日待复习 -->
+    <div class="chart-container" style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div class="chart-title" style="margin-bottom: 0;">今日待复习 ({{ upcoming | length }})</div>
+            {% if upcoming %}
+            <button class="btn btn-primary btn-sm"
+                    hx-post="/api/review/batch/start"
+                    hx-target="#content" hx-swap="innerHTML">
+                开始今日复习
+            </button>
+            {% endif %}
+        </div>
+        {% if batch_error %}
+        <div class="empty-state" style="padding: 12px;">
+            <div class="empty-text">{{ batch_error }}</div>
+        </div>
+        {% endif %}
+        {% if upcoming %}
+        <div class="review-list">
+            {% for item in upcoming %}
+            <div class="review-item {{ 'overdue' if item.is_overdue else '' }}">
+                <div class="review-info" style="flex: 1; cursor: pointer;"
+                     hx-post="/api/quiz/{{ item.vocab_id }}/generate?quiz_type="
+                     hx-target="#content" hx-swap="innerHTML">
+                    <div class="review-title">{{ item.word }}</div>
+                    <div class="review-meta">
+                        <span class="tag language-{{ item.language }}">{{ item.language }}</span>
+                        {% if item.is_overdue %}⚠ 逾期 {{ item.due_date }}{% else %}今日到期{% endif %}
+                        · 已连续答对 {{ item.repetitions }} 次
+                    </div>
+                </div>
+                <button class="btn btn-success btn-sm"
+                        hx-post="/api/quiz/{{ item.vocab_id }}/generate?quiz_type="
+                        hx-target="#content" hx-swap="innerHTML"
+                        onclick="showToast('开始复习', 'success')">
+                    ✓ 开始
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">🎉</div>
+            <div class="empty-text">今天没有需要复习的单词</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="chart-grid">
+        <!-- 复习日历 -->
+        <div class="chart-container">
+            <div class="chart-title">{{ current_month }} 复习日历</div>
+            <div class="review-calendar">
+                {% for day in calendar_days %}
+                <div class="calendar-day {{ 'has-review' if day.count > 0 else '' }} {{ 'today' if day.is_today else '' }}"
+                     title="{{ day.date }}: {{ day.count }} 个待复习">
+                    {{ day.day }}
+                    {% if day.count > 0 %}<sup>{{ day.count }}</sup>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 遗忘曲线 -->
+        <div class="chart-container">
+            <div class="chart-title">艾宾浩斯遗忘曲线</div>
+            <div class="chart-body" id="forgetting-chart"></div>
+        </div>
+    </div>
+
+    <!-- 语言复习完成率 -->
+    <div class="chart-container" style="margin-bottom: 24px;">
+        <div class="chart-title">各语言复习完成率</div>
+        {% for lp in language_progress %}
+        <div style="margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span class="tag language-{{ lp.language }}">{{ lp.language }}</span>
+                <span style="font-size: 13px; color: var(--text-muted);">
+                    {{ lp.reviewed }}/{{ lp.total }} ({{ lp.rate }}%)
+                </span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {{ lp.rate }}%"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        // 渲染遗忘曲线
+        (function() {
+            const container = document.getElementById('forgetting-chart');
+            if (!container) return;
+            const chart = echarts.init(container);
+            const curve = {{ forgetting_curve | tojson }};
+            chart.setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: '10%', right: '5%', top: '10%', bottom: '15%' },
+                xAxis: { type: 'category', data: curve.map(c => '第' + (c.review + 1) + '次'), name: '复习次数' },
+                yAxis: { type: 'value', min: 0, max: 100, name: '保留率(%)' },
+                series: [{
+                    type: 'line',
+                    data: curve.map(c => c.retention),
+                    smooth: true,
+                    areaStyle: { opacity: 0.2 },
+                    itemStyle: { color: '#4f46e5' },
+                    label: { show: true, formatter: '{c}%' }
+                }]
+            });
+            window.addEventListener('resize', () => chart.resize());
+        })();
+    </script>
+</div>

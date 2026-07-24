@@ -1,0 +1,42 @@
+{
+  "_comment": "艾宾浩斯遗忘曲线经典复习点参数。review_points 为标准复习节点列表，每个节点含 label/interval_minutes/description。算法层 algorithms.ebbinghaus_schedule 使用 interval_minutes 计算到期日期。",
+  "source": "Ebbinghaus forgetting curve (1885), commonly cited review schedule",
+  "review_points": [
+    {
+      "label": "20分钟",
+      "interval_minutes": 20,
+      "description": "首个复习点，记忆刚形成后立即巩固，保留率迅速下降的临界点"
+    },
+    {
+      "label": "1小时",
+      "interval_minutes": 60,
+      "description": "第二个复习点，短期记忆向中期记忆转化的关键节点"
+    },
+    {
+      "label": "9小时",
+      "interval_minutes": 540,
+      "description": "第三个复习点，当日睡前复习窗口，巩固白天所学"
+    },
+    {
+      "label": "1天",
+      "interval_minutes": 1440,
+      "description": "第四个复习点，次日复习，进入长期记忆巩固阶段"
+    },
+    {
+      "label": "2天",
+      "interval_minutes": 2880,
+      "description": "第五个复习点，间隔两天后回忆，强化记忆痕迹"
+    },
+    {
+      "label": "6天",
+      "interval_minutes": 8640,
+      "description": "第六个复习点，近一周后复习，记忆趋于稳定"
+    },
+    {
+      "label": "31天",
+      "interval_minutes": 44640,
+      "description": "第七个复习点，月度复习，长期记忆维持节点"
+    }
+  ],
+  "note": "SM-2 算法通过 ease_factor 动态调整间隔以维持目标保留率，本文件为艾宾浩斯固定复习点参考；新词初始排程可使用 review_points[0] 作为首次复习日。"
+}

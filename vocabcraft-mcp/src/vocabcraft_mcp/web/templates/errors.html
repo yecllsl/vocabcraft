@@ -1,0 +1,13 @@
+{# errors.html — 错误页面片段 #}
+<div class="empty-state">
+    <div class="empty-icon">⚠️</div>
+    {% if status_code == 404 %}
+    <div class="empty-text">内容不存在</div>
+    <div class="empty-hint">该词汇或考题可能已被删除</div>
+    {% else %}
+    <div class="empty-text">发生错误</div>
+    <div class="empty-hint">{{ detail | default("请稍后重试") }}</div>
+    {% endif %}
+    <button class="btn btn-primary" style="margin-top: 16px;"
+            hx-get="/partials/dashboard" hx-target="#content">返回概览</button>
+</div>

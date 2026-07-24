@@ -1,0 +1,23 @@
+{# partials/batch_review.html — 批量复习主页面 #}
+<div class="batch-review">
+    <div class="batch-review-header">
+        <div>
+            <div class="batch-review-title">今日批量复习</div>
+            <div class="batch-review-meta">共 {{ batch.total }} 题</div>
+        </div>
+        <button class="btn btn-secondary btn-sm"
+                hx-get="/partials/review" hx-target="#content" hx-swap="innerHTML">
+            退出
+        </button>
+    </div>
+
+    <!-- 进度条 -->
+    <div class="progress-bar" style="margin-bottom: 24px;">
+        <div class="progress-fill" id="batch-progress" style="width: {{ (1 / batch.total * 100) | int }}%;"></div>
+    </div>
+
+    <!-- 题目容器 -->
+    <div id="batch-item-container">
+        {% include "partials/batch_review_item.html" %}
+    </div>
+</div>

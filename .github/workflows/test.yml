@@ -1,0 +1,133 @@
+name: Tests
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  # ──────────────────────────────────────────
+  # 单元 + 集成测试
+  # 不安装 PaddleOCR，跑得最快
+  # ──────────────────────────────────────────
+  unit-tests:
+    name: Unit & Integration (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Cache uv
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/uv
+        key: ${{ runner.os }}-uv-${{ hashFiles('vocabcraft-mcp/uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-
+
+    - name: Install dependencies (no OCR)
+      # 仅安装 dev 依赖；paddleocr/paddlepaddle 已在 pyproject.toml 拆到 optional[ocr]
+      # 单元测试 OCR 用例通过 mock 验证，不会真正调用 paddle
+      run: |
+        cd vocabcraft-mcp
+        uv sync --extra dev
+
+    - name: Run unit & integration tests
+      run: |
+        cd vocabcraft-mcp
+        uv run pytest tests/ -v --cov=src --cov-report=xml -m "not e2e"
+
+    - name: Upload coverage
+      if: matrix.python-version == '3.12' && always()
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./vocabcraft-mcp/coverage.xml
+        fail_ci_if_error: false
+
+  # ──────────────────────────────────────────
+  # E2E 测试（可选，需要时取消注释启用）
+  # VocabCraft 首版不含 Web 层，E2E 主要验证 MCP 工具链路
+  # 默认关闭，避免 PR 上耗时过长
+  # ──────────────────────────────────────────
+  e2e-tests:
+    name: E2E (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: false  # 首版未启用 E2E，待 e2e 测试用例就绪后改为 github.event_name == 'push'
+    needs: unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Cache uv
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/uv
+        key: ${{ runner.os }}-uv-e2e-${{ hashFiles('vocabcraft-mcp/uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-e2e-
+
+    - name: Install dependencies
+      run: |
+        cd vocabcraft-mcp
+        uv sync --extra dev
+
+    - name: Install Playwright system deps
+      # GitHub Actions Ubuntu 24.04 runner 默认使用 Azure 镜像源，
+      # 同步延迟会导致 libnss3 / libxkbcommon0 / libgbm1 等基础包找不到。
+      # 切到 archive.ubuntu.com 主源后刷新索引即可。
+      run: |
+        set -e
+        for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+          [ -f "$f" ] || continue
+          sudo sed -i 's|azure\.archive\.ubuntu\.com|archive.ubuntu.com|g' "$f"
+        done
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+          libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+          libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libatspi2.0-0
+
+    - name: Install Playwright Chromium
+      run: |
+        cd vocabcraft-mcp
+        uv run playwright install chromium
+
+    - name: Run E2E tests
+      run: |
+        cd vocabcraft-mcp
+        uv run pytest tests/ -v -m e2e
+
+    - name: Upload Playwright traces on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-traces-${{ matrix.python-version }}
+        path: vocabcraft-mcp/test-results/
+        if-no-files-found: ignore

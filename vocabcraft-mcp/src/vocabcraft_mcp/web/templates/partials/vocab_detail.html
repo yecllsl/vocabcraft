@@ -1,0 +1,68 @@
+{# partials/vocab_detail.html — 词汇详情片段 #}
+<div class="vocab-detail">
+    <div class="chart-container">
+        <div class="vocab-detail-header">
+            <div>
+                <div class="vocab-detail-word">{{ vocab.word }}</div>
+                <div class="vocab-detail-phonetic">{{ vocab.phonetic or '暂无音标' }}</div>
+            </div>
+            <span class="tag language-{{ vocab.language }}">{{ vocab.language }}</span>
+        </div>
+
+        <div class="detail-section">
+            <div class="detail-label">词性</div>
+            <div class="detail-value">{{ vocab.part_of_speech or '—' }}</div>
+        </div>
+
+        <div class="detail-section">
+            <div class="detail-label">释义与例句</div>
+            {% if vocab.definitions %}
+            <ul class="detail-list detail-defs">
+                {% for d in vocab.definitions %}
+                <li class="def-item">
+                    <div class="def-text">{{ d.text }}</div>
+                    {% if d.examples %}
+                    <ul class="detail-examples">
+                        {% for e in d.examples %}
+                        <li>{{ e }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="detail-value">—</div>
+            {% endif %}
+        </div>
+
+        <div class="detail-section">
+            <div class="detail-label">复习状态</div>
+            <div class="detail-value">
+                已连续答对 {{ vocab.review_state.repetitions }} 次 ·
+                {% if vocab.review_state.next_review %}
+                下次复习 {{ vocab.review_state.next_review }}
+                {% else %}
+                尚未排程
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="quiz-actions">
+            <button class="btn btn-primary"
+                    hx-post="/api/quiz/{{ vocab.vocab_id }}/generate?quiz_type="
+                    hx-target="#content" hx-swap="innerHTML">
+                出题
+            </button>
+            <button class="btn btn-secondary"
+                    hx-get="/partials/vocab/{{ vocab.vocab_id }}/edit"
+                    hx-target="#content" hx-swap="innerHTML">
+                编辑
+            </button>
+            <button class="btn btn-secondary"
+                    hx-get="/partials/vocab" hx-target="#content" hx-swap="innerHTML">
+                返回列表
+            </button>
+        </div>
+    </div>
+</div>

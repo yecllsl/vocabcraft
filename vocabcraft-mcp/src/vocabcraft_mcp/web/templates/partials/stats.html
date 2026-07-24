@@ -1,0 +1,131 @@
+{# partials/stats.html — 统计图表页片段 #}
+<div>
+    {% if stats.total == 0 %}
+    <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <div class="empty-text">还没有词汇数据可以统计</div>
+        <div class="empty-hint">录入词汇后即可查看统计图表</div>
+    </div>
+    {% else %}
+    <!-- 维度切换器 -->
+    <div class="dimension-switcher" x-data="{ dim: 'language' }">
+        <button :class="{ active: dim === 'language' }" @click="dim = 'language'"
+                hx-get="/api/stats?group_by=language" hx-target="#dim-chart-data" hx-swap="innerHTML">按语言</button>
+        <button :class="{ active: dim === 'mastery' }" @click="dim = 'mastery'"
+                hx-get="/api/stats?group_by=mastery" hx-target="#dim-chart-data" hx-swap="innerHTML">按掌握度</button>
+        <button :class="{ active: dim === 'date' }" @click="dim = 'date'"
+                hx-get="/api/stats?group_by=date" hx-target="#dim-chart-data" hx-swap="innerHTML">按日期</button>
+        <button :class="{ active: dim === 'quiz_type' }" @click="dim = 'quiz_type'"
+                hx-get="/api/stats?group_by=quiz_type" hx-target="#dim-chart-data" hx-swap="innerHTML">按题型</button>
+    </div>
+
+    <!-- 图表矩阵 -->
+    <div class="chart-grid">
+        <!-- 主图：维度分布 -->
+        <div class="chart-container">
+            <div class="chart-title">分布统计</div>
+            <div class="chart-body" data-echart="renderMainBar"
+                 data-chart-url="/api/stats/multi-dim"></div>
+        </div>
+
+        <!-- 题型雷达 -->
+        <div class="chart-container">
+            <div class="chart-title">题型分布雷达</div>
+            <div class="chart-body" data-echart="renderQuizTypeRadar"
+                 data-chart-url="/api/stats/multi-dim"></div>
+        </div>
+
+        <!-- 掌握度堆叠 -->
+        <div class="chart-container">
+            <div class="chart-title">语言掌握度分布</div>
+            <div class="chart-body" data-echart="renderMasteryStack"
+                 data-chart-url="/api/stats/multi-dim"></div>
+        </div>
+
+        <!-- 时间趋势 -->
+        <div class="chart-container">
+            <div class="chart-title">30天词汇增长趋势</div>
+            <div class="chart-body" data-echart="renderTrendArea"
+                 data-chart-url="/api/stats/multi-dim"></div>
+        </div>
+    </div>
+
+    <!-- 隐藏的数据容器（维度切换时更新） -->
+    <div id="dim-chart-data" style="display: none;"></div>
+
+    <script>
+        // ─────────── 统计图表渲染函数 ───────────
+
+        // 主图：语言分布柱状图
+        function renderMainBar(container, data) {
+            const chart = echarts.init(container);
+            const items = data.language_distribution;
+            chart.setOption({
+                tooltip: { trigger: 'axis' },
+                xAxis: { type: 'category', data: items.map(i => i.key || i.name), axisLabel: { rotate: 30 } },
+                yAxis: { type: 'value', minInterval: 1 },
+                series: [{ type: 'bar', data: items.map(i => i.value || i.count), itemStyle: { color: '#4f46e5' } }]
+            });
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        // 题型雷达图
+        function renderQuizTypeRadar(container, data) {
+            const chart = echarts.init(container);
+            const radar = data.quiz_type_distribution;
+            const maxValue = Math.max(...radar.map(x => x.value), 1);
+            chart.setOption({
+                tooltip: {},
+                radar: {
+                    indicator: radar.map(r => ({ name: r.name || r.key, max: maxValue + 1 })),
+                    shape: 'polygon'
+                },
+                series: [{
+                    type: 'radar',
+                    data: [{ value: radar.map(r => r.value), name: '题型分布' }],
+                    areaStyle: { opacity: 0.2 }
+                }]
+            });
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        // 掌握度堆叠柱状图（按语言）
+        function renderMasteryStack(container, data) {
+            const chart = echarts.init(container);
+            // 此图表在 Web 层暂未按语言细分，用掌握度分布做简化展示
+            const items = data.mastery_distribution;
+            chart.setOption({
+                tooltip: { trigger: 'axis' },
+                legend: { bottom: 0, data: ['数量'] },
+                grid: { left: '8%', right: '5%', top: '10%', bottom: '20%' },
+                xAxis: { type: 'category', data: items.map(d => d.name || d.key) },
+                yAxis: { type: 'value', minInterval: 1 },
+                series: [
+                    { name: '数量', type: 'bar', stack: 'total', data: items.map(d => d.value || d.count), itemStyle: { color: '#4f46e5' } }
+                ]
+            });
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        // 时间趋势面积图
+        function renderTrendArea(container, data) {
+            const chart = echarts.init(container);
+            const trend = data.trend_data;
+            chart.setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: '5%', right: '5%', top: '10%', bottom: '15%' },
+                xAxis: { type: 'category', data: trend.map(t => t.date), axisLabel: { rotate: 45 } },
+                yAxis: { type: 'value', minInterval: 1 },
+                series: [{
+                    type: 'line',
+                    data: trend.map(t => t.count),
+                    smooth: true,
+                    areaStyle: { opacity: 0.3 },
+                    itemStyle: { color: '#4f46e5' }
+                }]
+            });
+            window.addEventListener('resize', () => chart.resize());
+        }
+    </script>
+    {% endif %}
+</div>

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vocabcraft-mcp": {
+      "command": "uv",
+      "args": ["run", "--directory", "${workspaceFolder}/vocabcraft-mcp", "vocabcraft-mcp"]
+    }
+  }
+}

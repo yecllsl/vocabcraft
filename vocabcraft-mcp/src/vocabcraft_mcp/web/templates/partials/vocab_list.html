@@ -1,0 +1,71 @@
+{# partials/vocab_list.html — 词汇列表片段 #}
+<div>
+    <div class="chart-container" style="margin-bottom: 24px;">
+        <div class="chart-title">词汇管理</div>
+
+        <!-- 筛选栏 -->
+        <form class="filter-bar" hx-get="/partials/vocab" hx-target="#content" hx-swap="innerHTML">
+            <select name="language" aria-label="语言">
+                <option value="" {% if not language %}selected{% endif %}>全部语言</option>
+                {% for code, name in language_options %}
+                <option value="{{ code }}" {% if language == code %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="keyword" placeholder="搜索词形..." value="{{ keyword }}">
+            <button type="submit" class="btn btn-primary btn-sm">筛选</button>
+            <button type="button" class="btn btn-secondary btn-sm"
+                    hx-get="/partials/vocab" hx-target="#content" hx-swap="innerHTML">
+                重置
+            </button>
+        </form>
+
+        {% if vocabs %}
+        <div class="vocab-list">
+            {% for v in vocabs %}
+            <div class="vocab-card">
+                <div class="vocab-card-main"
+                     hx-get="/partials/vocab/{{ v.vocab_id }}" hx-target="#content" hx-swap="innerHTML">
+                    <div class="vocab-card-header">
+                        <span class="vocab-word">{{ v.word }}</span>
+                        <span class="tag language-{{ v.language }}">{{ v.language }}</span>
+                    </div>
+                    <div class="vocab-card-meta">
+                        <span>{{ v.part_of_speech }}</span>
+                        {% if v.definitions %}
+                        <span>· {{ v.definitions[0] }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="vocab-card-actions">
+                    <button class="btn btn-primary btn-sm"
+                            hx-post="/api/quiz/{{ v.vocab_id }}/generate?quiz_type="
+                            hx-target="#content" hx-swap="innerHTML"
+                            onclick="event.stopPropagation();">
+                        出题
+                    </button>
+                    <button class="btn btn-secondary btn-sm"
+                            hx-get="/partials/vocab/{{ v.vocab_id }}/edit"
+                            hx-target="#content" hx-swap="innerHTML"
+                            onclick="event.stopPropagation();">
+                        编辑
+                    </button>
+                    <button class="btn btn-danger btn-sm"
+                            hx-delete="/api/vocab/{{ v.vocab_id }}"
+                            hx-target="#content" hx-swap="innerHTML"
+                            hx-confirm="确定删除该词汇吗？"
+                            onclick="event.stopPropagation();">
+                        删除
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📝</div>
+            <div class="empty-text">没有找到词汇</div>
+            <div class="empty-hint">通过 /capture 命令录入第一个单词</div>
+        </div>
+        {% endif %}
+    </div>
+</div>

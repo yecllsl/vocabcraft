@@ -1,0 +1,36 @@
+{# partials/quiz.html — 考题作答片段 #}
+<div class="quiz-container">
+    <div class="quiz-header">
+        <span class="tag tag-quiz-{{ quiz.quiz_type }}">{{ quiz.quiz_type }}题</span>
+        <span style="font-size: 13px; color: var(--text-muted);">请作答后点击提交</span>
+    </div>
+
+    <div class="quiz-question">{{ quiz.question }}</div>
+
+    <form hx-post="/api/quiz/{{ quiz.id }}/grade"
+          hx-target="#content" hx-swap="innerHTML">
+        {% if quiz.options %}
+        <div class="quiz-options">
+            {% for option in quiz.options %}
+            <label class="quiz-option">
+                <input type="radio" name="response" value="{{ option }}" required>
+                <span>{{ option }}</span>
+            </label>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="form-group">
+            <input type="text" name="response" class="quiz-input" placeholder="请输入答案" required
+                   autocomplete="off">
+        </div>
+        {% endif %}
+
+        <div class="quiz-actions">
+            <button type="submit" class="btn btn-primary">提交答案</button>
+            <button type="button" class="btn btn-secondary"
+                    hx-get="/partials/dashboard" hx-target="#content" hx-swap="innerHTML">
+                返回概览
+            </button>
+        </div>
+    </form>
+</div>

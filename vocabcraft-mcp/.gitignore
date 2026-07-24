@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+
+# Lock file（由 uv sync 生成）
+uv.lock
+
+# Data（保留目录结构，忽略运行时内容）
+data/vocabs/*.json
+data/reviews/*.json
+data/quizzes/*.json
+data/images/*
+!data/images/.gitkeep
+data/exports/*
+!data/exports/.gitkeep

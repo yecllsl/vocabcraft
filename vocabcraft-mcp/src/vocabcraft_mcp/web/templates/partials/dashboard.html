@@ -1,0 +1,144 @@
+{# partials/dashboard.html — 概览 Dashboard 片段 #}
+<div>
+    <!-- KPI 指标卡 -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-label">词汇总量</div>
+            <div class="kpi-value">{{ summary.total }}</div>
+        </div>
+        <div class="kpi-card review-pending">
+            <div class="kpi-label">今日待复习</div>
+            <div class="kpi-value">{{ summary.today_pending }}</div>
+        </div>
+        <div class="kpi-card week-new">
+            <div class="kpi-label">本周新增</div>
+            <div class="kpi-value">{{ summary.week_new }}</div>
+        </div>
+        <div class="kpi-card week-done">
+            <div class="kpi-label">已掌握</div>
+            <div class="kpi-value">{{ summary.mastered }}</div>
+        </div>
+    </div>
+
+    {% if summary.total == 0 %}
+    <!-- 空状态 -->
+    <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        <div class="empty-text">还没有词汇记录</div>
+        <div class="empty-hint">通过 /capture 命令录入第一个单词</div>
+    </div>
+    {% else %}
+    <!-- 图表网格 -->
+    <div class="chart-grid">
+        <div class="chart-container">
+            <div class="chart-title">语言分布</div>
+            <div class="chart-body" data-echart="renderLanguagePie"
+                 data-chart-url="/api/dashboard/summary"></div>
+        </div>
+        <div class="chart-container">
+            <div class="chart-title">掌握度分布</div>
+            <div class="chart-body" data-echart="renderMasteryBar"
+                 data-chart-url="/api/dashboard/summary"></div>
+        </div>
+    </div>
+
+    <!-- 30天趋势 -->
+    <div class="chart-container" style="margin-bottom: 24px;">
+        <div class="chart-title">最近30天词汇增长趋势</div>
+        <div class="chart-body tall" data-echart="renderTrendLine"
+             data-chart-url="/api/dashboard/summary"></div>
+    </div>
+
+    <!-- 今日待复习清单 -->
+    <div class="chart-container">
+        <div class="chart-title">今日待复习 ({{ upcoming | length }})</div>
+        {% if upcoming %}
+        <div class="review-list">
+            {% for item in upcoming %}
+            <div class="review-item {{ 'overdue' if item.is_overdue else '' }}">
+                <div class="review-info" style="flex: 1; cursor: pointer;"
+                     hx-post="/api/quiz/{{ item.vocab_id }}/generate?quiz_type="
+                     hx-target="#content" hx-swap="innerHTML">
+                    <div class="review-title">{{ item.word }}</div>
+                    <div class="review-meta">
+                        <span class="tag language-{{ item.language }}">{{ item.language }}</span>
+                        {% if item.is_overdue %}⚠ 逾期 {{ item.due_date }}{% else %}今日到期{% endif %}
+                        · 已连续答对 {{ item.repetitions }} 次
+                    </div>
+                </div>
+                <button class="btn btn-success btn-sm"
+                        hx-post="/api/quiz/{{ item.vocab_id }}/generate?quiz_type="
+                        hx-target="#content" hx-swap="innerHTML">
+                    开始复习
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-text">今天没有需要复习的单词 🎉</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // ─────────── Dashboard 图表渲染函数 ───────────
+
+        // 语言分布饼图
+        function renderLanguagePie(container, data) {
+            const chart = echarts.init(container);
+            chart.setOption({
+                tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                legend: { bottom: 0, type: 'scroll' },
+                series: [{
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: true,
+                    label: { show: false },
+                    data: data.language_distribution
+                }]
+            });
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        // 掌握度分布柱状图
+        function renderMasteryBar(container, data) {
+            const chart = echarts.init(container);
+            const items = data.mastery_distribution;
+            chart.setOption({
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                grid: { left: '10%', right: '10%', top: '10%', bottom: '15%' },
+                xAxis: { type: 'category', data: items.map(i => i.name) },
+                yAxis: { type: 'value', minInterval: 1 },
+                series: [{
+                    type: 'bar',
+                    data: items.map(i => i.value),
+                    itemStyle: { color: '#4f46e5' }
+                }]
+            });
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        // 30天趋势折线图
+        function renderTrendLine(container, data) {
+            const chart = echarts.init(container);
+            const dates = Object.keys(data.trends).sort();
+            const values = dates.map(d => data.trends[d]);
+            chart.setOption({
+                tooltip: { trigger: 'axis' },
+                grid: { left: '5%', right: '5%', top: '10%', bottom: '15%' },
+                xAxis: { type: 'category', data: dates, axisLabel: { rotate: 45 } },
+                yAxis: { type: 'value', minInterval: 1 },
+                series: [{
+                    type: 'line',
+                    data: values,
+                    smooth: true,
+                    areaStyle: { opacity: 0.2 },
+                    itemStyle: { color: '#4f46e5' }
+                }]
+            });
+            window.addEventListener('resize', () => chart.resize());
+        }
+    </script>
+    {% endif %}
+</div>

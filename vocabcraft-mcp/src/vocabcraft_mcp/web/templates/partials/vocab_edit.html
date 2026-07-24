@@ -1,0 +1,52 @@
+{# partials/vocab_edit.html — 词汇编辑片段 #}
+<div class="vocab-edit">
+    <div class="chart-container">
+        <div class="chart-title">编辑词汇</div>
+
+        <form hx-post="/api/vocab/{{ vocab.vocab_id }}/update"
+              hx-target="#content" hx-swap="innerHTML">
+            <div class="form-group">
+                <label for="word">词形</label>
+                <input type="text" id="word" name="word" value="{{ vocab.word }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="phonetic">音标</label>
+                <input type="text" id="phonetic" name="phonetic" value="{{ vocab.phonetic }}">
+            </div>
+
+            <div class="form-group">
+                <label for="part_of_speech">词性</label>
+                <input type="text" id="part_of_speech" name="part_of_speech"
+                       value="{{ vocab.part_of_speech }}">
+            </div>
+
+            <div class="form-group">
+                <label for="language">语言</label>
+                <select id="language" name="language" required>
+                    {% for code, name in language_options %}
+                    <option value="{{ code }}" {% if vocab.language == code %}selected{% endif %}>
+                        {{ name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="definitions">释义与例句（每行一条，格式：<code>释义文本|例句1;例句2</code>）</label>
+                <textarea id="definitions" name="definitions" rows="6"
+                          placeholder="每行一条释义，可附例句（格式：释义|例句1;例句2）&#10;例：&#10;兵器|收天下之兵，聚之咸阳;此所谓藉寇兵而赍盗粮&#10;士兵，军队|项羽兵四十万，在新丰鸿门">{% for d in vocab.definitions %}{{ d.text }}{% if d.examples %}|{{ d.examples | join(';') }}{% endif %}
+{% endfor %}</textarea>
+            </div>
+
+            <div class="quiz-actions">
+                <button type="submit" class="btn btn-primary">保存</button>
+                <button type="button" class="btn btn-secondary"
+                        hx-get="/partials/vocab/{{ vocab.vocab_id }}"
+                        hx-target="#content" hx-swap="innerHTML">
+                    取消
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
