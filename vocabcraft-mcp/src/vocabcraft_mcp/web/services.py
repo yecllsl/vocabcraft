@@ -12,7 +12,7 @@ from typing import Optional
 from uuid import uuid4
 
 from vocabcraft_mcp.algorithms import _INITIAL_INTERVALS_DAYS
-from vocabcraft_mcp.models import Quiz, VocabRecord
+from vocabcraft_mcp.models import Quiz, ReviewRecord, VocabRecord
 from vocabcraft_mcp.storage import Storage
 from vocabcraft_mcp.tools.crud import get_storage as _default_get_storage
 from vocabcraft_mcp.tools.quiz import generate_quiz as _generate_quiz_tool, grade_quiz as _grade_quiz_tool
@@ -624,3 +624,223 @@ def update_vocab_from_web(vocab_id: str, form: dict) -> Optional[dict]:
 def get_language_options() -> list[tuple[str, str]]:
     """返回 Web 表单可用的语言选项"""
     return list(_SUPPORTED_LANGUAGES)
+
+
+# ──────────────────────────────────────────
+# N-05 语种洞察：遗忘曲线
+# ──────────────────────────────────────────
+
+# 对数桶定义：[下界, 上界, 代表 days, 标签]
+# ponytail: 对数桶而非逐日，因为逐日数据稀疏；x 轴用「距首次复习天数」
+#           而非「距上次复习天数」，避免逐 vocab 排序 ReviewRecord 的复杂度。
+#           升级路径：数据量大后改「距上次复习天数」+ 逐日滑动窗口
+_RETENTION_BUCKETS = [
+    (0, 0, 0, "0天"),
+    (1, 1, 1, "1天"),
+    (2, 3, 3, "2-3天"),
+    (4, 7, 7, "4-7天"),
+    (8, 15, 15, "8-15天"),
+    (16, 30, 30, "16-30天"),
+    (31, 10**9, 31, "31+天"),
+]
+_MIN_BUCKET_SAMPLE = 3  # 桶内少于 3 条样本则丢弃，避免单点噪声
+
+
+def _bucket_of(days: int) -> Optional[tuple[int, int, int, str]]:
+    """返回 days 所属的桶元组 (low, high, rep_days, label)；无匹配返回 None"""
+    for b in _RETENTION_BUCKETS:
+        if b[0] <= days <= b[1]:
+            return b
+    return None
+
+
+def _theoretical_curve() -> list[dict]:
+    """理论遗忘曲线（参考线）
+
+    复用 _INITIAL_INTERVALS_DAYS 与现有简化公式。
+    ponytail: 简化模型，非真实艾宾浩斯公式，仅作参考线。
+    """
+    curve = []
+    for i, interval in enumerate(_INITIAL_INTERVALS_DAYS):
+        retention = max(35, 100 - (i + 1) * 12)
+        curve.append({"days": interval, "retention": retention})
+    return curve
+
+
+def _real_retention_curve(language: str) -> list[dict]:
+    """基于 ReviewRecord 计算真实保留率散点（按语言过滤）
+
+    算法：
+        1. 取所有 ReviewRecord，按 vocab_id 关联 vocab 拿语言与首次复习时间
+        2. 首次复习时间 = 该 vocab 所有 ReviewRecord 的 min(review_time)
+        3. 每条记录 x = (review_time - 首次复习时间).days
+        4. 按 x 落入对数桶
+        5. 桶内 grade>=3 百分比 = 保留率；sample_size < _MIN_BUCKET_SAMPLE 丢弃
+
+    返回：[{bucket_label, days, retention, sample_size}]，按 days 升序
+          retention 为百分比 [0, 100]，与 _theoretical_curve 刻度一致。
+
+    ponytail: 对数桶而非逐日，因为逐日数据稀疏；x 轴用「距首次复习天数」
+              而非「距上次复习天数」，避免逐 vocab 排序 ReviewRecord 的复杂度。
+              升级路径：数据量大后改「距上次复习天数」+ 逐日滑动窗口，
+              并将 N+1 load_vocab 换成 get_all_vocabs_for_statistics 一次性加载内存 join。
+    """
+    storage = _get_storage()
+    records = storage.list_all_review_records()
+    if not records:
+        return []
+
+    # 按 vocab_id 分组，过滤到目标语言
+    by_vocab: dict[str, list[ReviewRecord]] = {}
+    for r in records:
+        v = storage.load_vocab(r.vocab_id)
+        if v is None or v.structured.language != language:
+            continue
+        by_vocab.setdefault(r.vocab_id, []).append(r)
+
+    if not by_vocab:
+        return []
+
+    # 桶聚合
+    bucket_stats: dict[int, list[int]] = {}  # rep_days -> [grades]
+    for vid, recs in by_vocab.items():
+        first_review = min(r.review_time for r in recs)
+        for r in recs:
+            x = (r.review_time - first_review).days
+            b = _bucket_of(x)
+            if b is None:
+                continue
+            rep_days = b[2]
+            bucket_stats.setdefault(rep_days, []).append(r.grade)
+
+    curve = []
+    for rep_days in sorted(bucket_stats.keys()):
+        grades = bucket_stats[rep_days]
+        if len(grades) < _MIN_BUCKET_SAMPLE:
+            continue
+        retention = sum(1 for g in grades if g >= 3) / len(grades) * 100
+        label = next(b[3] for b in _RETENTION_BUCKETS if b[2] == rep_days)
+        curve.append({
+            "bucket_label": label,
+            "days": rep_days,
+            "retention": round(retention, 1),
+            "sample_size": len(grades),
+        })
+    return curve
+
+
+# ──────────────────────────────────────────
+# N-05 语种洞察：薄弱词 + 掌握度分布
+# ──────────────────────────────────────────
+
+def _weak_words_by_language(language: str) -> list[dict]:
+    """该语言下最近一次 ReviewRecord.grade < 3 的词
+
+    依据：复习规则第 10 条「grade<3 薄弱词列表」
+
+    返回：[{vocab_id, word, last_grade, last_review_time, repetitions, ease_factor}]
+    排序：last_grade 升序（最差在前），grade 相同按 last_review_time 降序（最近复习的在前）
+    """
+    storage = _get_storage()
+    records = storage.list_all_review_records()
+    if not records:
+        return []
+
+    # 按 vocab_id 分组，取每词最近一条记录
+    latest_by_vocab: dict[str, ReviewRecord] = {}
+    for r in records:
+        existing = latest_by_vocab.get(r.vocab_id)
+        if existing is None or r.review_time > existing.review_time:
+            latest_by_vocab[r.vocab_id] = r
+
+    weak = []
+    for vid, latest in latest_by_vocab.items():
+        if latest.grade >= 3:
+            continue
+        v = storage.load_vocab(vid)
+        if v is None or v.structured.language != language:
+            continue
+        weak.append({
+            "vocab_id": vid,
+            "word": v.structured.word,
+            "last_grade": latest.grade,
+            "last_review_time": latest.review_time.isoformat(),
+            "repetitions": v.review_state.repetitions,
+            "ease_factor": v.review_state.ease_factor,
+        })
+
+    # grade 升序（最差在前）；grade 相同按时间倒序（最近在前）
+    # 用稳定排序分两步：先按时间倒序，再按 grade 升序（保持时间倒序关系）
+    from operator import itemgetter
+    weak.sort(key=itemgetter("last_review_time"), reverse=True)  # 先按时间倒序
+    weak.sort(key=itemgetter("last_grade"))  # 再按 grade 升序（稳定排序保持时间倒序）
+    return weak
+
+
+def _mastery_distribution_by_language(language: str) -> list[dict]:
+    """该语言掌握度分布（新词/生疏/熟悉/掌握）
+
+    复用 _mastery_level，固定顺序保证图表颜色稳定。
+    """
+    storage = _get_storage()
+    mastery_counter: dict[str, int] = {"新词": 0, "生疏": 0, "熟悉": 0, "掌握": 0}
+    for v in storage.get_all_vocabs_for_statistics():
+        if v.structured.language != language:
+            continue
+        level = _mastery_level(v.review_state.repetitions)
+        mastery_counter[level] += 1
+    return [{"name": k, "value": v} for k, v in mastery_counter.items()]
+
+
+# ──────────────────────────────────────────
+# N-05 语种洞察：汇总入口
+# ──────────────────────────────────────────
+
+_SMALL_SAMPLE_THRESHOLD = 10  # total < 10 触发小样本降级
+
+
+def get_insights_summary(language: str) -> dict:
+    """语种洞察汇总：KPI + 遗忘曲线 + 薄弱词 + 掌握度分布
+
+    Args:
+        language: 语言代码（de / zh_classical）
+
+    Returns:
+        {
+            "language": str,
+            "kpi": {total, today_pending, mastered, avg_ease},
+            "forgetting_curve": {"theoretical": [...], "real": [...]},
+            "weak_words": [...],
+            "mastery_distribution": [...],
+            "sample_size_flag": "small" | "normal"
+        }
+    """
+    storage = _get_storage()
+    today = _today_utc_iso()
+    vocabs = [v for v in storage.get_all_vocabs_for_statistics()
+              if v.structured.language == language]
+
+    total = len(vocabs)
+    today_pending = sum(
+        1 for v in vocabs
+        if v.review_state.next_review and v.review_state.next_review <= today
+    )
+    mastered = sum(1 for v in vocabs if _mastery_level(v.review_state.repetitions) == "掌握")
+    avg_ease = (sum(v.review_state.ease_factor for v in vocabs) / total) if total > 0 else 0.0
+
+    return {
+        "language": language,
+        "kpi": {
+            "total": total,
+            "today_pending": today_pending,
+            "mastered": mastered,
+            "avg_ease": round(avg_ease, 2),
+        },
+        "forgetting_curve": {
+            "theoretical": _theoretical_curve(),
+            "real": _real_retention_curve(language),
+        },
+        "weak_words": _weak_words_by_language(language),
+        "mastery_distribution": _mastery_distribution_by_language(language),
+        "sample_size_flag": "small" if total < _SMALL_SAMPLE_THRESHOLD else "normal",
+    }

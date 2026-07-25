@@ -10,6 +10,7 @@
     - grade_quiz 客观题（选择/填空/拼写）工具内精确匹配；
       释义题（主观）返回 grade_prompt 交宿主 LLM 评分，骨架阶段默认 grade=3
 """
+import random
 from datetime import datetime, timezone
 
 from vocabcraft_mcp.models import Quiz, ReviewRecord
@@ -64,14 +65,18 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
         qtype = "释义" if v.structured.language.startswith("zh") else "拼写"
 
     # 渲染命题 prompt 交宿主 LLM（含语言上下文，命题语言与词汇匹配）
-    # definitions_block 按义项分组展示释义与关联例句
+    # ponytail: 多义词随机选一个义项考查并记录 definition_index，
+    #           为 Phase 2 义项级掌握度可视化采集数据；不调度"优先未考查义项"，升级路径见设计文档 §9
     defs = v.structured.definitions
     if defs:
-        defs_block = "\n".join(
-            f"{i + 1}. {d.text}" + "".join(f"\n   - {e}" for e in d.examples)
-            for i, d in enumerate(defs)
-        )
+        if len(defs) > 1:
+            definition_index = random.randrange(len(defs))
+        else:
+            definition_index = 0
+        selected = defs[definition_index]
+        defs_block = f"1. {selected.text}" + "".join(f"\n   - {e}" for e in selected.examples)
     else:
+        definition_index = None
         defs_block = "（无）"
     prompt = GENERATE_PROMPT.format(
         word=v.structured.word,
@@ -81,8 +86,8 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
         language=v.structured.language,
     )
 
-    # 占位 Quiz：answer 取词形（拼写题）或首条释义文本，宿主 LLM 输出后可回写
-    answer = v.structured.word if qtype == "拼写" else (defs[0].text if defs else "")
+    # 占位 Quiz：answer 取词形（拼写题）或选中释义文本，宿主 LLM 输出后可回写
+    answer = v.structured.word if qtype == "拼写" else (defs[definition_index].text if defs else "")
     quiz = Quiz(
         id=_generate_quiz_id(storage),
         vocab_id=vocab_id,
@@ -90,6 +95,7 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
         question=f"（占位题干，请用 generate_prompt 调用 LLM 生成真实题干）",
         answer=answer,
         generated_at=_now_utc(),
+        definition_index=definition_index,
     )
     storage.save_quiz(quiz)
 
@@ -166,7 +172,7 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
     if "error" in update_result:
         return {**result, "error": update_result["error"], "grade": grade}
 
-    # 写复习记录（评分前后 EF）
+    # 写复习记录（评分前后 EF；透传 definition_index 为 Phase 2 采集数据）
     record = ReviewRecord(
         record_id=_generate_record_id(storage),
         vocab_id=quiz.vocab_id,
@@ -174,6 +180,7 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
         grade=grade,
         prev_ease=prev_ease,
         new_ease=new_state["ease_factor"],
+        definition_index=quiz.definition_index,
     )
     storage.save_review_record(record)
 

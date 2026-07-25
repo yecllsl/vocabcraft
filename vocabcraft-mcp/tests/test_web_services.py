@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from vocabcraft_mcp.models import Definition, ReviewState, StructuredVocab, VocabRecord
+from vocabcraft_mcp.models import Definition, ReviewRecord, ReviewState, StructuredVocab, VocabRecord
 from vocabcraft_mcp.storage import Storage
 from vocabcraft_mcp.web import services
 
@@ -300,3 +300,241 @@ def test_get_batch_review_summary(temp_storage):
     assert len(summary["weak_words"]) == 1
     assert summary["weak_words"][0]["word"] == "hello"
     assert summary["next_review_distribution"] != {}
+
+
+# ──────────────────────────────────────────
+# N-05 insights 服务层测试
+# ──────────────────────────────────────────
+
+
+def _make_review_record(rid, vid, review_time, grade, prev_ease=2.5, new_ease=2.5, definition_index=None):
+    """构造复习记录"""
+    return ReviewRecord(
+        record_id=rid,
+        vocab_id=vid,
+        review_time=review_time,
+        grade=grade,
+        prev_ease=prev_ease,
+        new_ease=new_ease,
+        definition_index=definition_index,
+    )
+
+
+def test_theoretical_curve_returns_intervals(temp_storage):
+    """理论曲线返回 _INITIAL_INTERVALS_DAYS 对应的天数与保留率"""
+    from vocabcraft_mcp.web.services import _theoretical_curve
+    curve = _theoretical_curve()
+    assert len(curve) == 5  # _INITIAL_INTERVALS_DAYS 5 个节点
+    assert all("days" in c and "retention" in c for c in curve)
+    # 保留率应在 [35, 100] 范围内（现有公式 max(35, 100-(i+1)*12)）
+    assert all(35 <= c["retention"] <= 100 for c in curve)
+
+
+def test_real_retention_curve_empty_when_no_records(temp_storage):
+    """无复习记录时返回空列表"""
+    from vocabcraft_mcp.web.services import _real_retention_curve
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
+    curve = _real_retention_curve("de")
+    assert curve == []
+
+
+def test_real_retention_curve_buckets_by_days_since_first_review(temp_storage):
+    """按距首次复习天数分桶，桶内 grade>=3 比例 = 保留率"""
+    from vocabcraft_mcp.web.services import _real_retention_curve
+    base = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
+
+    # 5 条记录：第 0 天 2 条（grade 5, 2），第 3 天 2 条（grade 4, 1），第 10 天 1 条（grade 5）
+    # 第 0 天桶：保留率 = 1/2 = 50%（sample_size=2 >= 3? 不，<3，丢弃）
+    # 改为：第 0 天 3 条（grade 5, 4, 2）→ 保留率 2/3，sample_size=3 保留
+    records = [
+        _make_review_record("rec_001", "vocab_001", base, grade=5),                       # 第 0 天
+        _make_review_record("rec_002", "vocab_001", base + timedelta(days=0), grade=4),   # 第 0 天
+        _make_review_record("rec_003", "vocab_001", base + timedelta(days=0), grade=2),   # 第 0 天
+        _make_review_record("rec_004", "vocab_001", base + timedelta(days=3), grade=5),   # 第 3 天 → 桶 2-3
+        _make_review_record("rec_005", "vocab_001", base + timedelta(days=10), grade=1),  # 第 10 天 → 桶 8-15
+    ]
+    for r in records:
+        temp_storage.save_review_record(r)
+
+    curve = _real_retention_curve("de")
+    # 找到第 0 天桶（days=0）
+    bucket_0 = next((c for c in curve if c["days"] == 0), None)
+    assert bucket_0 is not None
+    assert bucket_0["sample_size"] == 3
+    assert bucket_0["retention"] == pytest.approx(100 * 2 / 3, abs=0.1)  # grade 5,4 通过，2 失败 → 66.7%
+
+    # 第 2-3 天桶（days=3）sample_size=1 < 3，应被丢弃
+    bucket_3 = next((c for c in curve if c["days"] == 3), None)
+    assert bucket_3 is None
+
+
+def test_real_retention_curve_filters_by_language(temp_storage):
+    """只统计指定语言的复习记录"""
+    from vocabcraft_mcp.web.services import _real_retention_curve
+    base = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_de", language="de"))
+    temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical"))
+
+    # de 与 zh_classical 各 3 条第 0 天记录
+    for i, grade in enumerate([5, 4, 3]):
+        temp_storage.save_review_record(_make_review_record(f"rec_de_{i}", "vocab_de", base, grade=grade))
+    for i, grade in enumerate([2, 1, 0]):
+        temp_storage.save_review_record(_make_review_record(f"rec_zh_{i}", "vocab_zh", base, grade=grade))
+
+    de_curve = _real_retention_curve("de")
+    zh_curve = _real_retention_curve("zh_classical")
+    # de 桶 0：3 条全 >=3，保留率 100%
+    assert de_curve[0]["retention"] == pytest.approx(100.0, abs=0.1)
+    # zh_classical 桶 0：3 条全 <3，保留率 0%
+    assert zh_curve[0]["retention"] == pytest.approx(0.0, abs=0.1)
+
+
+# ──────────────────────────────────────────
+# N-05 Task 5: 薄弱词分布 + 掌握度分布
+# ──────────────────────────────────────────
+
+
+def test_weak_words_by_language_filters_grade_below_3(temp_storage):
+    """薄弱词 = 该语言下最近一次 ReviewRecord.grade < 3"""
+    from vocabcraft_mcp.web.services import _weak_words_by_language
+    base = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
+    temp_storage.save_vocab(_make_vocab("welt", "vocab_002", language="de", repetitions=2))
+
+    # vocab_001 最近一次 grade=2（薄弱）
+    temp_storage.save_review_record(_make_review_record("rec_001", "vocab_001", base, grade=5))
+    temp_storage.save_review_record(_make_review_record("rec_002", "vocab_001", base + timedelta(days=1), grade=2))
+    # vocab_002 最近一次 grade=4（不薄弱）
+    temp_storage.save_review_record(_make_review_record("rec_003", "vocab_002", base, grade=4))
+
+    weak = _weak_words_by_language("de")
+    assert len(weak) == 1
+    assert weak[0]["vocab_id"] == "vocab_001"
+    assert weak[0]["last_grade"] == 2
+    assert weak[0]["word"] == "hallo"
+
+
+def test_weak_words_by_language_excludes_other_languages(temp_storage):
+    """薄弱词只统计指定语言"""
+    from vocabcraft_mcp.web.services import _weak_words_by_language
+    base = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_de", language="de"))
+    temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical"))
+    temp_storage.save_review_record(_make_review_record("rec_de", "vocab_de", base, grade=1))
+    temp_storage.save_review_record(_make_review_record("rec_zh", "vocab_zh", base, grade=1))
+
+    weak_de = _weak_words_by_language("de")
+    assert len(weak_de) == 1
+    assert weak_de[0]["vocab_id"] == "vocab_de"
+
+
+def test_weak_words_by_language_empty_when_no_records(temp_storage):
+    """无复习记录时返回空列表"""
+    from vocabcraft_mcp.web.services import _weak_words_by_language
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
+    assert _weak_words_by_language("de") == []
+
+
+def test_mastery_distribution_by_language(temp_storage):
+    """按语言统计掌握度分布"""
+    from vocabcraft_mcp.web.services import _mastery_distribution_by_language
+    # de: 1 新词(rep=0), 1 生疏(rep=2), 1 熟悉(rep=4), 1 掌握(rep=6)
+    temp_storage.save_vocab(_make_vocab("w1", "vocab_001", language="de", repetitions=0))
+    temp_storage.save_vocab(_make_vocab("w2", "vocab_002", language="de", repetitions=2))
+    temp_storage.save_vocab(_make_vocab("w3", "vocab_003", language="de", repetitions=4))
+    temp_storage.save_vocab(_make_vocab("w4", "vocab_004", language="de", repetitions=6))
+    # zh_classical: 1 新词（不应出现在 de 分布中）
+    temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical", repetitions=0))
+
+    dist = _mastery_distribution_by_language("de")
+    assert dist == [
+        {"name": "新词", "value": 1},
+        {"name": "生疏", "value": 1},
+        {"name": "熟悉", "value": 1},
+        {"name": "掌握", "value": 1},
+    ]
+
+
+def test_mastery_distribution_by_language_empty(temp_storage):
+    """无该语言词汇时全 0"""
+    from vocabcraft_mcp.web.services import _mastery_distribution_by_language
+    dist = _mastery_distribution_by_language("de")
+    assert dist == [
+        {"name": "新词", "value": 0},
+        {"name": "生疏", "value": 0},
+        {"name": "熟悉", "value": 0},
+        {"name": "掌握", "value": 0},
+    ]
+
+
+# ──────────────────────────────────────────
+# N-05 Task 6: get_insights_summary 汇总 + 小样本降级
+# ──────────────────────────────────────────
+
+
+def test_insights_summary_normal_sample(temp_storage):
+    """total >= 10 时 sample_size_flag = 'normal'"""
+    from vocabcraft_mcp.web.services import get_insights_summary
+    # 造 10 个 de 词
+    for i in range(10):
+        temp_storage.save_vocab(_make_vocab(f"w{i}", f"vocab_{i:03d}", language="de", repetitions=i % 6))
+
+    summary = get_insights_summary("de")
+    assert summary["language"] == "de"
+    assert summary["kpi"]["total"] == 10
+    assert summary["sample_size_flag"] == "normal"
+    assert "theoretical" in summary["forgetting_curve"]
+    assert "real" in summary["forgetting_curve"]
+    assert isinstance(summary["weak_words"], list)
+    assert len(summary["mastery_distribution"]) == 4
+
+
+def test_insights_summary_small_sample(temp_storage):
+    """total < 10 时 sample_size_flag = 'small'（zh_classical 4 词场景）"""
+    from vocabcraft_mcp.web.services import get_insights_summary
+    for i in range(4):
+        temp_storage.save_vocab(_make_vocab(f"字{i}", f"vocab_zh_{i}", language="zh_classical"))
+
+    summary = get_insights_summary("zh_classical")
+    assert summary["kpi"]["total"] == 4
+    assert summary["sample_size_flag"] == "small"
+
+
+def test_insights_summary_kpi_today_pending(temp_storage):
+    """KPI today_pending 统计该语言今日到期词汇"""
+    from vocabcraft_mcp.web.services import get_insights_summary
+    today = datetime.now(timezone.utc).date().isoformat()
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de", next_review=today))
+    temp_storage.save_vocab(_make_vocab("welt", "vocab_002", language="de", next_review="2099-01-01"))
+    temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical", next_review=today))
+
+    summary = get_insights_summary("de")
+    assert summary["kpi"]["today_pending"] == 1  # 只算 de
+
+
+def test_insights_summary_kpi_avg_ease(temp_storage):
+    """KPI avg_ease = 该语言所有词 EF 平均值"""
+    from vocabcraft_mcp.web.services import get_insights_summary
+    from vocabcraft_mcp.models import ReviewState
+    v1 = _make_vocab("w1", "vocab_001", language="de")
+    v1.review_state = ReviewState(ease_factor=2.5)
+    v2 = _make_vocab("w2", "vocab_002", language="de")
+    v2.review_state = ReviewState(ease_factor=3.0)
+    temp_storage.save_vocab(v1)
+    temp_storage.save_vocab(v2)
+
+    summary = get_insights_summary("de")
+    assert summary["kpi"]["avg_ease"] == pytest.approx(2.75, abs=0.01)
+
+
+def test_insights_summary_empty_language(temp_storage):
+    """无该语言词汇时返回零值 KPI"""
+    from vocabcraft_mcp.web.services import get_insights_summary
+    summary = get_insights_summary("de")
+    assert summary["kpi"]["total"] == 0
+    assert summary["kpi"]["today_pending"] == 0
+    assert summary["kpi"]["mastered"] == 0
+    assert summary["kpi"]["avg_ease"] == 0
+    assert summary["sample_size_flag"] == "small"
+    assert summary["weak_words"] == []

@@ -1,0 +1,162 @@
+{# partials/insights.html — N-05 语种洞察片段 #}
+<div id="insights-body">
+    <!-- 顶部标题与语种切换器 -->
+    <div class="insights-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 style="margin:0;">语种洞察</h2>
+        <div class="language-switcher">
+            <button class="btn {% if current_language == 'de' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm"
+                    hx-get="/partials/insights?language=de"
+                    hx-target="#insights-body"
+                    hx-swap="outerHTML">
+                德语
+            </button>
+            <button class="btn {% if current_language == 'zh_classical' %}btn-primary{% else %}btn-secondary{% endif %} btn-sm"
+                    hx-get="/partials/insights?language=zh_classical"
+                    hx-target="#insights-body"
+                    hx-swap="outerHTML">
+                文言文
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI 卡片 -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-label">总数</div>
+            <div class="kpi-value">{{ summary.kpi.total }}</div>
+        </div>
+        <div class="kpi-card review-pending">
+            <div class="kpi-label">今日待复习</div>
+            <div class="kpi-value">{{ summary.kpi.today_pending }}</div>
+        </div>
+        <div class="kpi-card week-done">
+            <div class="kpi-label">已掌握</div>
+            <div class="kpi-value">{{ summary.kpi.mastered }}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">平均 EF</div>
+            <div class="kpi-value">{{ summary.kpi.avg_ease }}</div>
+        </div>
+    </div>
+
+    {% if summary.kpi.total == 0 %}
+    <!-- 空状态 -->
+    <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <div class="empty-text">该语种暂无词汇</div>
+    </div>
+    {% else %}
+
+    <!-- 遗忘曲线 + 掌握度分布 -->
+    <div class="chart-grid">
+        <div class="chart-container">
+            <div class="chart-title">遗忘曲线（理论 + 真实）</div>
+            <div class="chart-body tall" data-echart="renderForgettingCurve"
+                 data-chart-url="/api/insights?language={{ current_language }}"></div>
+        </div>
+        <div class="chart-container">
+            <div class="chart-title">掌握度分布</div>
+            {% if summary.sample_size_flag == "small" %}
+            {# 小样本降级：表格而非图表 #}
+            <table class="vocab-table" style="width:100%; margin-top:8px;">
+                <thead><tr><th>掌握度</th><th>词数</th></tr></thead>
+                <tbody>
+                {% for item in summary.mastery_distribution %}
+                    <tr><td>{{ item.name }}</td><td>{{ item.value }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="chart-body" data-echart="renderMasteryBarByLang"
+                 data-chart-url="/api/insights?language={{ current_language }}"></div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 薄弱词分布 -->
+    <div class="chart-container" style="margin-top:24px;">
+        <div class="chart-title">薄弱词（grade &lt; 3，共 {{ summary.weak_words | length }} 个）</div>
+        {% if summary.weak_words %}
+        <table class="vocab-table" style="width:100%; margin-top:8px;">
+            <thead>
+                <tr><th>词形</th><th>最近评分</th><th>复习次数</th><th>EF</th><th>最近复习时间</th></tr>
+            </thead>
+            <tbody>
+            {% for w in summary.weak_words %}
+            <tr>
+                <td>{{ w.word }}</td>
+                <td><span class="tag grade-{{ w.last_grade }}">grade {{ w.last_grade }}</span></td>
+                <td>{{ w.repetitions }}</td>
+                <td>{{ w.ease_factor }}</td>
+                <td>{{ w.last_review_time[:10] if w.last_review_time else '-' }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-text">没有薄弱词 🎉</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // ─────────── insights 图表渲染函数 ───────────
+
+        // 遗忘曲线：理论折线 + 真实散点
+        function renderForgettingCurve(container, data) {
+            const chart = echarts.init(container);
+            const theoretical = data.forgetting_curve.theoretical;
+            const real = data.forgetting_curve.real;
+            chart.setOption({
+                tooltip: { trigger: 'item' },
+                legend: { bottom: 0, data: ['理论曲线', '真实保留率'] },
+                grid: { left: '8%', right: '5%', top: '10%', bottom: '15%' },
+                xAxis: { type: 'value', name: '天数', nameLocation: 'middle', nameGap: 25 },
+                yAxis: { type: 'value', name: '保留率%', min: 0, max: 100 },
+                series: [
+                    {
+                        name: '理论曲线',
+                        type: 'line',
+                        smooth: true,
+                        data: theoretical.map(p => [p.days, p.retention]),
+                        itemStyle: { color: '#9ca3af' },
+                        lineStyle: { type: 'dashed' }
+                    },
+                    {
+                        name: '真实保留率',
+                        type: 'scatter',
+                        data: real.map(p => [p.days, p.retention]),
+                        symbolSize: function(p) { return 10; },
+                        itemStyle: { color: '#4f46e5' },
+                        label: {
+                            show: true,
+                            position: 'top',
+                            formatter: function(p) { return p.data[1] + '%'; }
+                        }
+                    }
+                ]
+            });
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        // 掌握度分布柱状图（按语种）
+        function renderMasteryBarByLang(container, data) {
+            const chart = echarts.init(container);
+            const items = data.mastery_distribution;
+            chart.setOption({
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                grid: { left: '10%', right: '10%', top: '10%', bottom: '15%' },
+                xAxis: { type: 'category', data: items.map(i => i.name) },
+                yAxis: { type: 'value', minInterval: 1 },
+                series: [{
+                    type: 'bar',
+                    data: items.map(i => i.value),
+                    itemStyle: { color: '#4f46e5' }
+                }]
+            });
+            window.addEventListener('resize', () => chart.resize());
+        }
+    </script>
+    {% endif %}
+</div>

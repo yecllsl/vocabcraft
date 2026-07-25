@@ -186,6 +186,10 @@ class Quiz(BaseModel):
     answer: str = Field(description="正确答案")
     generated_at: datetime = Field(description="生成时间")
     graded: bool = Field(default=False, description="是否已评分")
+    definition_index: Optional[int] = Field(
+        default=None,
+        description="考查的义项索引（definitions 列表下标），单词义词为 0"
+    )
 
     @field_validator("quiz_type")
     @classmethod
@@ -215,6 +219,10 @@ class ReviewRecord(BaseModel):
     grade: int = Field(description="评分 0-5，参考 SM-2")
     prev_ease: float = Field(description="评分前 EF")
     new_ease: float = Field(description="评分后 EF")
+    definition_index: Optional[int] = Field(
+        default=None,
+        description="本次复习考查的义项索引，透传自 Quiz"
+    )
 
     @field_validator("grade")
     @classmethod

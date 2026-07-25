@@ -329,3 +329,38 @@ async def test_batch_review_flow(page: Page, server_url: str):
     summary_text = await page.text_content(".batch-review")
     assert "复习完成" in summary_text
     assert "完成题数" in summary_text
+
+
+@pytest.mark.asyncio
+async def test_insights_page_render_and_switch(page: Page, server_url: str):
+    """E2E: /insights 页面渲染 + 语种切换 + 遗忘曲线图表容器可见
+
+    N-05 验收：通过 SPA 导航访问 /insights（HTMX 加载到 #content），
+    验证 de（默认）渲染 KPI 卡片与遗忘曲线图表容器，
+    再切换到 zh_classical（测试数据为空）触发空状态，
+    确认 HTMX 局部交换工作正常。
+    """
+    # 1. 加载 base.html 外壳（含 htmx.js / echarts.js / 导航栏 / #content）
+    await page.goto(server_url)
+    await page.wait_for_selector(".navbar-tab", timeout=10000)
+
+    # 2. 点击"语种洞察"导航 tab（HTMX 将 /insights 加载到 #content）
+    await page.click('button[data-tab="insights"]')
+
+    # 3. 验证 de 默认语种内容渲染：KPI"总数"卡片 + 遗忘曲线图表容器
+    #    de 测试数据 3 词 → total > 0 → chart-grid 渲染
+    await page.wait_for_selector("text=总数", timeout=10000)
+    await page.wait_for_selector("[data-echart='renderForgettingCurve']", timeout=10000)
+
+    # 4. 点击"文言文"切换语种（HTMX 触发 /partials/insights?language=zh_classical）
+    #    用 predicate 形式匹配响应 URL（字符串形式对含 query string 的 URL 匹配不稳定）
+    async with page.expect_response(
+        lambda r: "/partials/insights" in r.url and "zh_classical" in r.url
+    ):
+        await page.click('.language-switcher button:has-text("文言文")')
+
+    # 5. 验证切换成功：zh_classical 测试数据为 0 → 显示空状态
+    #    空状态仅在 total==0 时渲染，是切换生效的强证据
+    await page.wait_for_selector("text=该语种暂无词汇", timeout=10000)
+    # 标题仍存在（确认 HTMX outerHTML 替换 #insights-body 成功）
+    await page.wait_for_selector("h2:has-text('语种洞察')")
