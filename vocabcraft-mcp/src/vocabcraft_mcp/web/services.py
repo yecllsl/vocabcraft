@@ -12,7 +12,7 @@ from typing import Optional
 from uuid import uuid4
 
 from vocabcraft_mcp.algorithms import _INITIAL_INTERVALS_DAYS
-from vocabcraft_mcp.models import Quiz, VocabRecord
+from vocabcraft_mcp.models import Quiz, ReviewRecord, VocabRecord
 from vocabcraft_mcp.storage import Storage
 from vocabcraft_mcp.tools.crud import get_storage as _default_get_storage
 from vocabcraft_mcp.tools.quiz import generate_quiz as _generate_quiz_tool, grade_quiz as _grade_quiz_tool
@@ -624,3 +624,105 @@ def update_vocab_from_web(vocab_id: str, form: dict) -> Optional[dict]:
 def get_language_options() -> list[tuple[str, str]]:
     """返回 Web 表单可用的语言选项"""
     return list(_SUPPORTED_LANGUAGES)
+
+
+# ──────────────────────────────────────────
+# N-05 语种洞察：遗忘曲线
+# ──────────────────────────────────────────
+
+# 对数桶定义：[下界, 上界, 代表 days, 标签]
+# ponytail: 对数桶而非逐日，因为逐日数据稀疏；x 轴用「距首次复习天数」
+#           而非「距上次复习天数」，避免逐 vocab 排序 ReviewRecord 的复杂度。
+#           升级路径：数据量大后改「距上次复习天数」+ 逐日滑动窗口
+_RETENTION_BUCKETS = [
+    (0, 0, 0, "0天"),
+    (1, 1, 1, "1天"),
+    (2, 3, 3, "2-3天"),
+    (4, 7, 7, "4-7天"),
+    (8, 15, 15, "8-15天"),
+    (16, 30, 30, "16-30天"),
+    (31, 10**9, 31, "31+天"),
+]
+_MIN_BUCKET_SAMPLE = 3  # 桶内少于 3 条样本则丢弃，避免单点噪声
+
+
+def _bucket_of(days: int) -> Optional[tuple[int, int, int, str]]:
+    """返回 days 所属的桶元组 (low, high, rep_days, label)；无匹配返回 None"""
+    for b in _RETENTION_BUCKETS:
+        if b[0] <= days <= b[1]:
+            return b
+    return None
+
+
+def _theoretical_curve() -> list[dict]:
+    """理论遗忘曲线（参考线）
+
+    复用 _INITIAL_INTERVALS_DAYS 与现有简化公式。
+    ponytail: 简化模型，非真实艾宾浩斯公式，仅作参考线。
+    """
+    curve = []
+    for i, interval in enumerate(_INITIAL_INTERVALS_DAYS):
+        retention = max(35, 100 - (i + 1) * 12)
+        curve.append({"days": interval, "retention": retention})
+    return curve
+
+
+def _real_retention_curve(language: str) -> list[dict]:
+    """基于 ReviewRecord 计算真实保留率散点（按语言过滤）
+
+    算法：
+        1. 取所有 ReviewRecord，按 vocab_id 关联 vocab 拿语言与首次复习时间
+        2. 首次复习时间 = 该 vocab 所有 ReviewRecord 的 min(review_time)
+        3. 每条记录 x = (review_time - 首次复习时间).days
+        4. 按 x 落入对数桶
+        5. 桶内 grade>=3 比例 = 保留率；sample_size < _MIN_BUCKET_SAMPLE 丢弃
+
+    返回：[{bucket_label, days, retention, sample_size}]，按 days 升序
+
+    ponytail: retention 为 [0,1] 比例（非百分比），与 docstring「比例」一致；
+              不做 round，因测试容差 abs=0.01 已足够，浮点全精度更准确。
+              注意：_theoretical_curve 用百分比 [0,100]，与本函数刻度不同——
+              前端绘制时需统一刻度（Task 7 路由层处理）。
+    """
+    storage = _get_storage()
+    records = storage.list_all_review_records()
+    if not records:
+        return []
+
+    # 按 vocab_id 分组，过滤到目标语言
+    by_vocab: dict[str, list[ReviewRecord]] = {}
+    for r in records:
+        v = storage.load_vocab(r.vocab_id)
+        if v is None or v.structured.language != language:
+            continue
+        by_vocab.setdefault(r.vocab_id, []).append(r)
+
+    if not by_vocab:
+        return []
+
+    # 桶聚合
+    bucket_stats: dict[int, list[int]] = {}  # rep_days -> [grades]
+    for vid, recs in by_vocab.items():
+        first_review = min(r.review_time for r in recs)
+        for r in recs:
+            x = (r.review_time - first_review).days
+            b = _bucket_of(x)
+            if b is None:
+                continue
+            rep_days = b[2]
+            bucket_stats.setdefault(rep_days, []).append(r.grade)
+
+    curve = []
+    for rep_days in sorted(bucket_stats.keys()):
+        grades = bucket_stats[rep_days]
+        if len(grades) < _MIN_BUCKET_SAMPLE:
+            continue
+        retention = sum(1 for g in grades if g >= 3) / len(grades)
+        label = next(b[3] for b in _RETENTION_BUCKETS if b[2] == rep_days)
+        curve.append({
+            "bucket_label": label,
+            "days": rep_days,
+            "retention": retention,
+            "sample_size": len(grades),
+        })
+    return curve

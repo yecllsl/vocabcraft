@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from vocabcraft_mcp.models import Definition, ReviewState, StructuredVocab, VocabRecord
+from vocabcraft_mcp.models import Definition, ReviewRecord, ReviewState, StructuredVocab, VocabRecord
 from vocabcraft_mcp.storage import Storage
 from vocabcraft_mcp.web import services
 
@@ -300,3 +300,91 @@ def test_get_batch_review_summary(temp_storage):
     assert len(summary["weak_words"]) == 1
     assert summary["weak_words"][0]["word"] == "hello"
     assert summary["next_review_distribution"] != {}
+
+
+# ──────────────────────────────────────────
+# N-05 insights 服务层测试
+# ──────────────────────────────────────────
+
+
+def _make_review_record(rid, vid, review_time, grade, prev_ease=2.5, new_ease=2.5, definition_index=None):
+    """构造复习记录"""
+    return ReviewRecord(
+        record_id=rid,
+        vocab_id=vid,
+        review_time=review_time,
+        grade=grade,
+        prev_ease=prev_ease,
+        new_ease=new_ease,
+        definition_index=definition_index,
+    )
+
+
+def test_theoretical_curve_returns_intervals(temp_storage):
+    """理论曲线返回 _INITIAL_INTERVALS_DAYS 对应的天数与保留率"""
+    from vocabcraft_mcp.web.services import _theoretical_curve
+    curve = _theoretical_curve()
+    assert len(curve) == 5  # _INITIAL_INTERVALS_DAYS 5 个节点
+    assert all("days" in c and "retention" in c for c in curve)
+    # 保留率应在 [35, 100] 范围内（现有公式 max(35, 100-(i+1)*12)）
+    assert all(35 <= c["retention"] <= 100 for c in curve)
+
+
+def test_real_retention_curve_empty_when_no_records(temp_storage):
+    """无复习记录时返回空列表"""
+    from vocabcraft_mcp.web.services import _real_retention_curve
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
+    curve = _real_retention_curve("de")
+    assert curve == []
+
+
+def test_real_retention_curve_buckets_by_days_since_first_review(temp_storage):
+    """按距首次复习天数分桶，桶内 grade>=3 比例 = 保留率"""
+    from vocabcraft_mcp.web.services import _real_retention_curve
+    base = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
+
+    # 5 条记录：第 0 天 2 条（grade 5, 2），第 3 天 2 条（grade 4, 1），第 10 天 1 条（grade 5）
+    # 第 0 天桶：保留率 = 1/2 = 50%（sample_size=2 >= 3? 不，<3，丢弃）
+    # 改为：第 0 天 3 条（grade 5, 4, 2）→ 保留率 2/3，sample_size=3 保留
+    records = [
+        _make_review_record("rec_001", "vocab_001", base, grade=5),                       # 第 0 天
+        _make_review_record("rec_002", "vocab_001", base + timedelta(days=0), grade=4),   # 第 0 天
+        _make_review_record("rec_003", "vocab_001", base + timedelta(days=0), grade=2),   # 第 0 天
+        _make_review_record("rec_004", "vocab_001", base + timedelta(days=3), grade=5),   # 第 3 天 → 桶 2-3
+        _make_review_record("rec_005", "vocab_001", base + timedelta(days=10), grade=1),  # 第 10 天 → 桶 8-15
+    ]
+    for r in records:
+        temp_storage.save_review_record(r)
+
+    curve = _real_retention_curve("de")
+    # 找到第 0 天桶（days=0）
+    bucket_0 = next((c for c in curve if c["days"] == 0), None)
+    assert bucket_0 is not None
+    assert bucket_0["sample_size"] == 3
+    assert bucket_0["retention"] == pytest.approx(2.0 / 3.0, abs=0.01)  # grade 5,4 通过，2 失败
+
+    # 第 2-3 天桶（days=3）sample_size=1 < 3，应被丢弃
+    bucket_3 = next((c for c in curve if c["days"] == 3), None)
+    assert bucket_3 is None
+
+
+def test_real_retention_curve_filters_by_language(temp_storage):
+    """只统计指定语言的复习记录"""
+    from vocabcraft_mcp.web.services import _real_retention_curve
+    base = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_de", language="de"))
+    temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical"))
+
+    # de 与 zh_classical 各 3 条第 0 天记录
+    for i, grade in enumerate([5, 4, 3]):
+        temp_storage.save_review_record(_make_review_record(f"rec_de_{i}", "vocab_de", base, grade=grade))
+    for i, grade in enumerate([2, 1, 0]):
+        temp_storage.save_review_record(_make_review_record(f"rec_zh_{i}", "vocab_zh", base, grade=grade))
+
+    de_curve = _real_retention_curve("de")
+    zh_curve = _real_retention_curve("zh_classical")
+    # de 桶 0：3 条全 >=3，保留率 100%
+    assert de_curve[0]["retention"] == pytest.approx(1.0, abs=0.01)
+    # zh_classical 桶 0：3 条全 <3，保留率 0%
+    assert zh_curve[0]["retention"] == pytest.approx(0.0, abs=0.01)
