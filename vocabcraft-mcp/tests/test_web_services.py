@@ -388,3 +388,81 @@ def test_real_retention_curve_filters_by_language(temp_storage):
     assert de_curve[0]["retention"] == pytest.approx(100.0, abs=0.1)
     # zh_classical 桶 0：3 条全 <3，保留率 0%
     assert zh_curve[0]["retention"] == pytest.approx(0.0, abs=0.1)
+
+
+# ──────────────────────────────────────────
+# N-05 Task 5: 薄弱词分布 + 掌握度分布
+# ──────────────────────────────────────────
+
+
+def test_weak_words_by_language_filters_grade_below_3(temp_storage):
+    """薄弱词 = 该语言下最近一次 ReviewRecord.grade < 3"""
+    from vocabcraft_mcp.web.services import _weak_words_by_language
+    base = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
+    temp_storage.save_vocab(_make_vocab("welt", "vocab_002", language="de", repetitions=2))
+
+    # vocab_001 最近一次 grade=2（薄弱）
+    temp_storage.save_review_record(_make_review_record("rec_001", "vocab_001", base, grade=5))
+    temp_storage.save_review_record(_make_review_record("rec_002", "vocab_001", base + timedelta(days=1), grade=2))
+    # vocab_002 最近一次 grade=4（不薄弱）
+    temp_storage.save_review_record(_make_review_record("rec_003", "vocab_002", base, grade=4))
+
+    weak = _weak_words_by_language("de")
+    assert len(weak) == 1
+    assert weak[0]["vocab_id"] == "vocab_001"
+    assert weak[0]["last_grade"] == 2
+    assert weak[0]["word"] == "hallo"
+
+
+def test_weak_words_by_language_excludes_other_languages(temp_storage):
+    """薄弱词只统计指定语言"""
+    from vocabcraft_mcp.web.services import _weak_words_by_language
+    base = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_de", language="de"))
+    temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical"))
+    temp_storage.save_review_record(_make_review_record("rec_de", "vocab_de", base, grade=1))
+    temp_storage.save_review_record(_make_review_record("rec_zh", "vocab_zh", base, grade=1))
+
+    weak_de = _weak_words_by_language("de")
+    assert len(weak_de) == 1
+    assert weak_de[0]["vocab_id"] == "vocab_de"
+
+
+def test_weak_words_by_language_empty_when_no_records(temp_storage):
+    """无复习记录时返回空列表"""
+    from vocabcraft_mcp.web.services import _weak_words_by_language
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
+    assert _weak_words_by_language("de") == []
+
+
+def test_mastery_distribution_by_language(temp_storage):
+    """按语言统计掌握度分布"""
+    from vocabcraft_mcp.web.services import _mastery_distribution_by_language
+    # de: 1 新词(rep=0), 1 生疏(rep=2), 1 熟悉(rep=4), 1 掌握(rep=6)
+    temp_storage.save_vocab(_make_vocab("w1", "vocab_001", language="de", repetitions=0))
+    temp_storage.save_vocab(_make_vocab("w2", "vocab_002", language="de", repetitions=2))
+    temp_storage.save_vocab(_make_vocab("w3", "vocab_003", language="de", repetitions=4))
+    temp_storage.save_vocab(_make_vocab("w4", "vocab_004", language="de", repetitions=6))
+    # zh_classical: 1 新词（不应出现在 de 分布中）
+    temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical", repetitions=0))
+
+    dist = _mastery_distribution_by_language("de")
+    assert dist == [
+        {"name": "新词", "value": 1},
+        {"name": "生疏", "value": 1},
+        {"name": "熟悉", "value": 1},
+        {"name": "掌握", "value": 1},
+    ]
+
+
+def test_mastery_distribution_by_language_empty(temp_storage):
+    """无该语言词汇时全 0"""
+    from vocabcraft_mcp.web.services import _mastery_distribution_by_language
+    dist = _mastery_distribution_by_language("de")
+    assert dist == [
+        {"name": "新词", "value": 0},
+        {"name": "生疏", "value": 0},
+        {"name": "熟悉", "value": 0},
+        {"name": "掌握", "value": 0},
+    ]

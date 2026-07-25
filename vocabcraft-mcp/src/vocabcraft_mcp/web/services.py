@@ -727,3 +727,66 @@ def _real_retention_curve(language: str) -> list[dict]:
             "sample_size": len(grades),
         })
     return curve
+
+
+# ──────────────────────────────────────────
+# N-05 语种洞察：薄弱词 + 掌握度分布
+# ──────────────────────────────────────────
+
+def _weak_words_by_language(language: str) -> list[dict]:
+    """该语言下最近一次 ReviewRecord.grade < 3 的词
+
+    依据：复习规则第 10 条「grade<3 薄弱词列表」
+
+    返回：[{vocab_id, word, last_grade, last_review_time, repetitions, ease_factor}]
+    排序：last_grade 升序（最差在前），grade 相同按 last_review_time 降序（最近复习的在前）
+    """
+    storage = _get_storage()
+    records = storage.list_all_review_records()
+    if not records:
+        return []
+
+    # 按 vocab_id 分组，取每词最近一条记录
+    latest_by_vocab: dict[str, ReviewRecord] = {}
+    for r in records:
+        existing = latest_by_vocab.get(r.vocab_id)
+        if existing is None or r.review_time > existing.review_time:
+            latest_by_vocab[r.vocab_id] = r
+
+    weak = []
+    for vid, latest in latest_by_vocab.items():
+        if latest.grade >= 3:
+            continue
+        v = storage.load_vocab(vid)
+        if v is None or v.structured.language != language:
+            continue
+        weak.append({
+            "vocab_id": vid,
+            "word": v.structured.word,
+            "last_grade": latest.grade,
+            "last_review_time": latest.review_time.isoformat(),
+            "repetitions": v.review_state.repetitions,
+            "ease_factor": v.review_state.ease_factor,
+        })
+
+    # grade 升序（最差在前）；grade 相同按时间倒序（最近在前）
+    # 用稳定排序分两步：先按时间倒序，再按 grade 升序（保持时间倒序关系）
+    from operator import itemgetter
+    weak.sort(key=itemgetter("last_review_time"), reverse=True)  # 先按时间倒序
+    weak.sort(key=itemgetter("last_grade"))  # 再按 grade 升序（稳定排序保持时间倒序）
+    return weak
+
+
+def _mastery_distribution_by_language(language: str) -> list[dict]:
+    """该语言掌握度分布（新词/生疏/熟悉/掌握）
+
+    复用 _mastery_level，固定顺序保证图表颜色稳定。
+    """
+    storage = _get_storage()
+    mastery_counter: dict[str, int] = {"新词": 0, "生疏": 0, "熟悉": 0, "掌握": 0}
+    for v in storage.get_all_vocabs_for_statistics():
+        if v.structured.language != language:
+            continue
+        level = _mastery_level(v.review_state.repetitions)
+        mastery_counter[level] += 1
+    return [{"name": k, "value": v} for k, v in mastery_counter.items()]
