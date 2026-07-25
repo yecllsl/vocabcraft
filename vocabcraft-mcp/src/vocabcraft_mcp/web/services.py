@@ -11,7 +11,7 @@ from random import sample
 from typing import Optional
 from uuid import uuid4
 
-from vocabcraft_mcp.algorithms import _INITIAL_INTERVALS_DAYS
+from vocabcraft_mcp.algorithms import INITIAL_INTERVALS_DAYS
 from vocabcraft_mcp.models import Quiz, ReviewRecord, VocabRecord
 from vocabcraft_mcp.storage import Storage
 from vocabcraft_mcp.tools.crud import get_storage as _default_get_storage
@@ -116,11 +116,6 @@ def get_multi_dim_stats() -> dict:
         "trend_data": language_stats.get("trends", []),
         "total": language_stats.get("total", 0),
     }
-
-
-def get_stats_by_dimension(group_by: str) -> dict:
-    """按维度获取统计（复用 statistics.get_statistics）"""
-    return get_statistics(group_by=group_by)
 
 
 # ──────────────────────────────────────────
@@ -231,16 +226,20 @@ def get_language_progress() -> list[dict]:
 # ──────────────────────────────────────────
 
 def get_forgetting_curve() -> list[dict]:
-    """获取简化遗忘曲线数据
+    """获取简化遗忘曲线数据（理论参考线）
 
     基于初始复习间隔节点，展示理论保留率变化。
+    返回统一字段 {days, retention, review}：
+        - review.html 用 review（复习次数索引）+ retention
+        - insights.html 用 days（天数）+ retention
     ponytail: 简化模型，非真实艾宾浩斯公式，仅用于可视化参考。
+    ponytail: 合并原 _theoretical_curve，公式完全相同，仅键名不同。
     """
     curve = []
-    for i, interval in enumerate(_INITIAL_INTERVALS_DAYS):
+    for i, interval in enumerate(INITIAL_INTERVALS_DAYS):
         # 简化保留率：随复习次数递增，第一次后约 60%，之后逐步提升
         retention = max(35, 100 - (i + 1) * 12)
-        curve.append({"review": i, "interval": interval, "retention": retention})
+        curve.append({"days": interval, "retention": retention, "review": i})
     return curve
 
 
@@ -654,19 +653,6 @@ def _bucket_of(days: int) -> Optional[tuple[int, int, int, str]]:
     return None
 
 
-def _theoretical_curve() -> list[dict]:
-    """理论遗忘曲线（参考线）
-
-    复用 _INITIAL_INTERVALS_DAYS 与现有简化公式。
-    ponytail: 简化模型，非真实艾宾浩斯公式，仅作参考线。
-    """
-    curve = []
-    for i, interval in enumerate(_INITIAL_INTERVALS_DAYS):
-        retention = max(35, 100 - (i + 1) * 12)
-        curve.append({"days": interval, "retention": retention})
-    return curve
-
-
 def _real_retention_curve(language: str) -> list[dict]:
     """基于 ReviewRecord 计算真实保留率散点（按语言过滤）
 
@@ -678,7 +664,7 @@ def _real_retention_curve(language: str) -> list[dict]:
         5. 桶内 grade>=3 百分比 = 保留率；sample_size < _MIN_BUCKET_SAMPLE 丢弃
 
     返回：[{bucket_label, days, retention, sample_size}]，按 days 升序
-          retention 为百分比 [0, 100]，与 _theoretical_curve 刻度一致。
+          retention 为百分比 [0, 100]，与 get_forgetting_curve 刻度一致。
 
     ponytail: 对数桶而非逐日，因为逐日数据稀疏；x 轴用「距首次复习天数」
               而非「距上次复习天数」，避免逐 vocab 排序 ReviewRecord 的复杂度。
@@ -837,7 +823,7 @@ def get_insights_summary(language: str) -> dict:
             "avg_ease": round(avg_ease, 2),
         },
         "forgetting_curve": {
-            "theoretical": _theoretical_curve(),
+            "theoretical": get_forgetting_curve(),
             "real": _real_retention_curve(language),
         },
         "weak_words": _weak_words_by_language(language),

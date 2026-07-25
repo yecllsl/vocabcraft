@@ -94,8 +94,15 @@ def save_vocab(vocab_data: dict) -> dict:
             "existing_vocab_id": existing_id,
         }
 
-    # ID: 用户提供 or 自动生成
-    vocab_id = vocab_data.get("id") or _generate_vocab_id(storage)
+    # ID: 用户提供 or 自动生成（带重试，防止并发撞号）
+    vocab_id = vocab_data.get("id")
+    if not vocab_id:
+        for _ in range(3):  # ponytail: 最多重试 3 次，单用户场景极低概率需重试
+            vocab_id = _generate_vocab_id(storage)
+            if not (storage.vocabs_dir / f"{vocab_id}.json").exists():
+                break
+        else:
+            return {"error": "无法生成唯一 vocab_id，请稍后重试"}
 
     # review_state: 用户提供 or 初始化（注入首次排程）
     review_state_data = vocab_data.get("review_state")

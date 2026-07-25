@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 
 from vocabcraft_mcp.web.app import templates
 from vocabcraft_mcp.web import services
+from vocabcraft_mcp.tools.statistics import get_statistics
 
 router = APIRouter()
 
@@ -26,7 +27,7 @@ async def stats_partial(request: Request):
 @router.get("/api/stats")
 async def stats_api(group_by: str = "language"):
     """返回按维度分组的统计数据"""
-    return services.get_stats_by_dimension(group_by=group_by)
+    return get_statistics(group_by=group_by)
 
 
 @router.get("/api/stats/multi-dim")

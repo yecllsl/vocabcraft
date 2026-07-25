@@ -321,10 +321,10 @@ def _make_review_record(rid, vid, review_time, grade, prev_ease=2.5, new_ease=2.
 
 
 def test_theoretical_curve_returns_intervals(temp_storage):
-    """理论曲线返回 _INITIAL_INTERVALS_DAYS 对应的天数与保留率"""
-    from vocabcraft_mcp.web.services import _theoretical_curve
-    curve = _theoretical_curve()
-    assert len(curve) == 5  # _INITIAL_INTERVALS_DAYS 5 个节点
+    """理论曲线返回 INITIAL_INTERVALS_DAYS 对应的天数与保留率"""
+    from vocabcraft_mcp.web.services import get_forgetting_curve
+    curve = get_forgetting_curve()
+    assert len(curve) == 5  # INITIAL_INTERVALS_DAYS 5 个节点
     assert all("days" in c and "retention" in c for c in curve)
     # 保留率应在 [35, 100] 范围内（现有公式 max(35, 100-(i+1)*12)）
     assert all(35 <= c["retention"] <= 100 for c in curve)

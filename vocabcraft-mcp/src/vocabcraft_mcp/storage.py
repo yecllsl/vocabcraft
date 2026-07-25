@@ -60,13 +60,19 @@ class Storage:
     # 词汇 CRUD
     # ──────────────────────────────────────────
 
-    def save_vocab(self, vocab: VocabRecord) -> dict:
+    def save_vocab(self, vocab: VocabRecord, overwrite: bool = False) -> dict:
         """保存词汇记录到 JSON 文件（原子写入）
 
+        Args:
+            vocab: 词汇记录
+            overwrite: 是否允许覆盖已有文件（update/patch 传 True，新建传 False）
+
         Returns:
-            包含 vocab_id 和 saved_path 的字典
+            包含 vocab_id 和 saved_path 的字典；文件已存在且不允许覆盖时返回 error
         """
         fp = self.vocabs_dir / f"{vocab.id}.json"
+        if fp.exists() and not overwrite:
+            return {"error": f"词汇文件已存在，禁止覆盖: {vocab.id}"}
         self._atomic_write(fp, vocab.model_dump_json(indent=2, ensure_ascii=False))
         return {"vocab_id": vocab.id, "saved_path": str(fp)}
 
@@ -79,7 +85,7 @@ class Storage:
 
     def update_vocab(self, vocab: VocabRecord) -> dict:
         """更新词汇（覆盖写入），语义等同于 save"""
-        return self.save_vocab(vocab)
+        return self.save_vocab(vocab, overwrite=True)
 
     def patch_vocab(self, vocab_id: str, patch: dict) -> Optional[VocabRecord]:
         """部分更新词汇，仅修改 patch 中包含的字段
@@ -96,7 +102,7 @@ class Storage:
             return None
         merged = _deep_merge(existing.model_dump(), patch)
         updated = VocabRecord.model_validate(merged)
-        self.save_vocab(updated)
+        self.save_vocab(updated, overwrite=True)
         return updated
 
     def delete_vocab(self, vocab_id: str) -> bool:

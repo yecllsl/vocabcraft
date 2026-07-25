@@ -23,7 +23,8 @@ DEFAULT_EASE_FACTOR = 2.5  # 新词初始 EF
 
 # 初始复习计划间隔（天）：简化 5 节点，覆盖短期到中期复习
 # ponytail: 不用经典艾宾浩斯 7 节点（含 sub-day），date 粒度下 5 节点已够用
-_INITIAL_INTERVALS_DAYS = [1, 2, 4, 7, 15]
+# 公开常量：services.py 跨模块复用，故去下划线前缀
+INITIAL_INTERVALS_DAYS = [1, 2, 4, 7, 15]
 
 
 def _today_utc() -> date:
@@ -105,9 +106,9 @@ def get_initial_schedule(today: date | None = None) -> dict:
         - next_review: 首个到期日，等于 due_dates[0]
     """
     base = today if today is not None else _today_utc()
-    due_dates = [(base + timedelta(days=d)).isoformat() for d in _INITIAL_INTERVALS_DAYS]
+    due_dates = [(base + timedelta(days=d)).isoformat() for d in INITIAL_INTERVALS_DAYS]
     return {
-        "intervals_days": list(_INITIAL_INTERVALS_DAYS),
+        "intervals_days": list(INITIAL_INTERVALS_DAYS),
         "due_dates": due_dates,
         "next_review": due_dates[0],
     }

@@ -57,7 +57,7 @@ def ocr_recognize(image_path: str, language: str = "") -> dict:
 
 
 @mcp.tool()
-def parse_vocab(image_path: str = "", ocr_text: str = "", language: str = "") -> dict:
+def parse_vocab(image_path: str = "", ocr_text: str = "", language: str = "en") -> dict:
     """AI 结构化解析词汇（词形/音标/词性/释义/例句）"""
     from vocabcraft_mcp.tools.parse_vocab import parse_vocab as _parse
     return _parse(image_path, ocr_text, language)
