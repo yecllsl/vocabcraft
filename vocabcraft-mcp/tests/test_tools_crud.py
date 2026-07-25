@@ -92,6 +92,23 @@ def test_save_missing_structured_word_returns_error():
     assert "error" in result
 
 
+def test_save_duplicate_word_language_returns_error(isolated_storage):
+    """相同 (word, language) 重复保存应被拒，并返回已有 vocab_id"""
+    first = save_vocab(_make_vocab_data("hello", "vocab_001"))
+    assert first["vocab_id"] == "vocab_001"
+
+    # 同 word 同 language 必拒
+    result = save_vocab(_make_vocab_data("hello", "vocab_002"))
+    assert "error" in result
+    assert result.get("existing_vocab_id") == "vocab_001"
+
+    # 同 word 不同 language 允许
+    other_lang = _make_vocab_data("hello", "vocab_003")
+    other_lang["structured"]["language"] = "fr"
+    second = save_vocab(other_lang)
+    assert second["vocab_id"] == "vocab_003"
+
+
 def test_query_by_language(isolated_storage):
     """按 language 过滤"""
     save_vocab(_make_vocab_data("hello", "vocab_001"))

@@ -49,6 +49,19 @@ def _generate_vocab_id(storage: Storage) -> str:
     return f"{prefix}{nnn:03d}"
 
 
+def _find_existing_vocab_id(storage: Storage, word: str, language: str) -> str | None:
+    """查找相同 (word, language) 的已有 vocab_id，不存在返回 None
+
+    当前实现为全量扫描（数据规模小，O(n) 可接受）。若未来词数显著增长，
+    可在 Storage 层维护 word -> vocab_id 索引以加速。
+    """
+    for vocab_id in storage.list_all_vocab_ids():
+        record = storage.load_vocab(vocab_id)
+        if record and record.structured.word == word and record.structured.language == language:
+            return vocab_id
+    return None
+
+
 def save_vocab(vocab_data: dict) -> dict:
     """保存词汇记录
 
@@ -63,7 +76,7 @@ def save_vocab(vocab_data: dict) -> dict:
             - review_state: 可选，默认初始化（EF=2.5, next_review=今天+1天）
 
     Returns:
-        包含 vocab_id 和 saved_path 的字典；structured 缺失时返回 error
+        包含 vocab_id 和 saved_path 的字典；structured 缺失或重复时返回 error
     """
     storage = get_storage()
 
@@ -72,6 +85,14 @@ def save_vocab(vocab_data: dict) -> dict:
     if not structured_data or "word" not in structured_data:
         return {"error": "vocab_data.structured.word 为必填项"}
     structured = StructuredVocab(**structured_data)
+
+    # 校验 (word, language) 唯一性，防止同一词重复入库
+    existing_id = _find_existing_vocab_id(storage, structured.word, structured.language)
+    if existing_id:
+        return {
+            "error": f"词汇已存在: {structured.word} ({structured.language})",
+            "existing_vocab_id": existing_id,
+        }
 
     # ID: 用户提供 or 自动生成
     vocab_id = vocab_data.get("id") or _generate_vocab_id(storage)
