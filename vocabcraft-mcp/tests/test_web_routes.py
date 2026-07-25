@@ -346,3 +346,12 @@ def test_insights_api_returns_json(client):
     assert "weak_words" in data
     assert "mastery_distribution" in data
     assert "sample_size_flag" in data
+
+
+def test_base_page_has_insights_nav_tab(client):
+    """base.html 导航栏含'语种洞察' tab，指向 /insights"""
+    test_client, _ = client
+    response = test_client.get("/")
+    assert response.status_code == 200
+    assert "语种洞察" in response.text
+    assert 'hx-get="/insights"' in response.text
