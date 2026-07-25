@@ -362,7 +362,7 @@ def test_real_retention_curve_buckets_by_days_since_first_review(temp_storage):
     bucket_0 = next((c for c in curve if c["days"] == 0), None)
     assert bucket_0 is not None
     assert bucket_0["sample_size"] == 3
-    assert bucket_0["retention"] == pytest.approx(2.0 / 3.0, abs=0.01)  # grade 5,4 通过，2 失败
+    assert bucket_0["retention"] == pytest.approx(100 * 2 / 3, abs=0.1)  # grade 5,4 通过，2 失败 → 66.7%
 
     # 第 2-3 天桶（days=3）sample_size=1 < 3，应被丢弃
     bucket_3 = next((c for c in curve if c["days"] == 3), None)
@@ -385,6 +385,6 @@ def test_real_retention_curve_filters_by_language(temp_storage):
     de_curve = _real_retention_curve("de")
     zh_curve = _real_retention_curve("zh_classical")
     # de 桶 0：3 条全 >=3，保留率 100%
-    assert de_curve[0]["retention"] == pytest.approx(1.0, abs=0.01)
+    assert de_curve[0]["retention"] == pytest.approx(100.0, abs=0.1)
     # zh_classical 桶 0：3 条全 <3，保留率 0%
-    assert zh_curve[0]["retention"] == pytest.approx(0.0, abs=0.01)
+    assert zh_curve[0]["retention"] == pytest.approx(0.0, abs=0.1)

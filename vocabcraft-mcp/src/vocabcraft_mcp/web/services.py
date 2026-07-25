@@ -675,14 +675,15 @@ def _real_retention_curve(language: str) -> list[dict]:
         2. 首次复习时间 = 该 vocab 所有 ReviewRecord 的 min(review_time)
         3. 每条记录 x = (review_time - 首次复习时间).days
         4. 按 x 落入对数桶
-        5. 桶内 grade>=3 比例 = 保留率；sample_size < _MIN_BUCKET_SAMPLE 丢弃
+        5. 桶内 grade>=3 百分比 = 保留率；sample_size < _MIN_BUCKET_SAMPLE 丢弃
 
     返回：[{bucket_label, days, retention, sample_size}]，按 days 升序
+          retention 为百分比 [0, 100]，与 _theoretical_curve 刻度一致。
 
-    ponytail: retention 为 [0,1] 比例（非百分比），与 docstring「比例」一致；
-              不做 round，因测试容差 abs=0.01 已足够，浮点全精度更准确。
-              注意：_theoretical_curve 用百分比 [0,100]，与本函数刻度不同——
-              前端绘制时需统一刻度（Task 7 路由层处理）。
+    ponytail: 对数桶而非逐日，因为逐日数据稀疏；x 轴用「距首次复习天数」
+              而非「距上次复习天数」，避免逐 vocab 排序 ReviewRecord 的复杂度。
+              升级路径：数据量大后改「距上次复习天数」+ 逐日滑动窗口，
+              并将 N+1 load_vocab 换成 get_all_vocabs_for_statistics 一次性加载内存 join。
     """
     storage = _get_storage()
     records = storage.list_all_review_records()
@@ -717,12 +718,12 @@ def _real_retention_curve(language: str) -> list[dict]:
         grades = bucket_stats[rep_days]
         if len(grades) < _MIN_BUCKET_SAMPLE:
             continue
-        retention = sum(1 for g in grades if g >= 3) / len(grades)
+        retention = sum(1 for g in grades if g >= 3) / len(grades) * 100
         label = next(b[3] for b in _RETENTION_BUCKETS if b[2] == rep_days)
         curve.append({
             "bucket_label": label,
             "days": rep_days,
-            "retention": retention,
+            "retention": round(retention, 1),
             "sample_size": len(grades),
         })
     return curve
