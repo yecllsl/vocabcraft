@@ -243,3 +243,70 @@ def test_review_schedule_status_validation():
     """status 必须为 待复习/已完成/已跳过"""
     with pytest.raises(ValueError):
         ReviewSchedule(vocab_id="vocab_001", due_date="2026-07-24", status="无效")
+
+
+# ──────────────────────────────────────────
+# definition_index（N-05 多义词义项追踪）
+# ──────────────────────────────────────────
+
+def test_quiz_definition_index_default_none():
+    """Quiz 新字段 definition_index 默认 None"""
+    from datetime import datetime
+    from vocabcraft_mcp.models import Quiz
+    q = Quiz(
+        id="quiz_20260725_001",
+        vocab_id="vocab_20260725_001",
+        quiz_type="拼写",
+        question="题干",
+        answer="hello",
+        generated_at=datetime.now(),
+    )
+    assert q.definition_index is None
+
+
+def test_review_record_definition_index_default_none():
+    """ReviewRecord 新字段 definition_index 默认 None"""
+    from datetime import datetime
+    from vocabcraft_mcp.models import ReviewRecord
+    r = ReviewRecord(
+        record_id="rec_20260725_001",
+        vocab_id="vocab_20260725_001",
+        review_time=datetime.now(),
+        grade=5,
+        prev_ease=2.5,
+        new_ease=2.6,
+    )
+    assert r.definition_index is None
+
+
+def test_quiz_legacy_json_without_definition_index():
+    """旧 Quiz JSON（无 definition_index）反序列化为 None"""
+    import json
+    from vocabcraft_mcp.models import Quiz
+    legacy = {
+        "id": "quiz_20260725_001",
+        "vocab_id": "vocab_20260725_001",
+        "quiz_type": "拼写",
+        "question": "题干",
+        "answer": "hello",
+        "generated_at": "2026-07-25T00:00:00Z",
+        "graded": False,
+    }
+    q = Quiz.model_validate(json.loads(json.dumps(legacy)))
+    assert q.definition_index is None
+
+
+def test_review_record_legacy_json_without_definition_index():
+    """旧 ReviewRecord JSON（无 definition_index）反序列化为 None"""
+    import json
+    from vocabcraft_mcp.models import ReviewRecord
+    legacy = {
+        "record_id": "rec_20260725_001",
+        "vocab_id": "vocab_20260725_001",
+        "review_time": "2026-07-25T00:00:00Z",
+        "grade": 5,
+        "prev_ease": 2.5,
+        "new_ease": 2.6,
+    }
+    r = ReviewRecord.model_validate(json.loads(json.dumps(legacy)))
+    assert r.definition_index is None
