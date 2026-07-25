@@ -790,3 +790,57 @@ def _mastery_distribution_by_language(language: str) -> list[dict]:
         level = _mastery_level(v.review_state.repetitions)
         mastery_counter[level] += 1
     return [{"name": k, "value": v} for k, v in mastery_counter.items()]
+
+
+# ──────────────────────────────────────────
+# N-05 语种洞察：汇总入口
+# ──────────────────────────────────────────
+
+_SMALL_SAMPLE_THRESHOLD = 10  # total < 10 触发小样本降级
+
+
+def get_insights_summary(language: str) -> dict:
+    """语种洞察汇总：KPI + 遗忘曲线 + 薄弱词 + 掌握度分布
+
+    Args:
+        language: 语言代码（de / zh_classical）
+
+    Returns:
+        {
+            "language": str,
+            "kpi": {total, today_pending, mastered, avg_ease},
+            "forgetting_curve": {"theoretical": [...], "real": [...]},
+            "weak_words": [...],
+            "mastery_distribution": [...],
+            "sample_size_flag": "small" | "normal"
+        }
+    """
+    storage = _get_storage()
+    today = _today_utc_iso()
+    vocabs = [v for v in storage.get_all_vocabs_for_statistics()
+              if v.structured.language == language]
+
+    total = len(vocabs)
+    today_pending = sum(
+        1 for v in vocabs
+        if v.review_state.next_review and v.review_state.next_review <= today
+    )
+    mastered = sum(1 for v in vocabs if _mastery_level(v.review_state.repetitions) == "掌握")
+    avg_ease = (sum(v.review_state.ease_factor for v in vocabs) / total) if total > 0 else 0.0
+
+    return {
+        "language": language,
+        "kpi": {
+            "total": total,
+            "today_pending": today_pending,
+            "mastered": mastered,
+            "avg_ease": round(avg_ease, 2),
+        },
+        "forgetting_curve": {
+            "theoretical": _theoretical_curve(),
+            "real": _real_retention_curve(language),
+        },
+        "weak_words": _weak_words_by_language(language),
+        "mastery_distribution": _mastery_distribution_by_language(language),
+        "sample_size_flag": "small" if total < _SMALL_SAMPLE_THRESHOLD else "normal",
+    }

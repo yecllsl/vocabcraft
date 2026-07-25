@@ -466,3 +466,75 @@ def test_mastery_distribution_by_language_empty(temp_storage):
         {"name": "熟悉", "value": 0},
         {"name": "掌握", "value": 0},
     ]
+
+
+# ──────────────────────────────────────────
+# N-05 Task 6: get_insights_summary 汇总 + 小样本降级
+# ──────────────────────────────────────────
+
+
+def test_insights_summary_normal_sample(temp_storage):
+    """total >= 10 时 sample_size_flag = 'normal'"""
+    from vocabcraft_mcp.web.services import get_insights_summary
+    # 造 10 个 de 词
+    for i in range(10):
+        temp_storage.save_vocab(_make_vocab(f"w{i}", f"vocab_{i:03d}", language="de", repetitions=i % 6))
+
+    summary = get_insights_summary("de")
+    assert summary["language"] == "de"
+    assert summary["kpi"]["total"] == 10
+    assert summary["sample_size_flag"] == "normal"
+    assert "theoretical" in summary["forgetting_curve"]
+    assert "real" in summary["forgetting_curve"]
+    assert isinstance(summary["weak_words"], list)
+    assert len(summary["mastery_distribution"]) == 4
+
+
+def test_insights_summary_small_sample(temp_storage):
+    """total < 10 时 sample_size_flag = 'small'（zh_classical 4 词场景）"""
+    from vocabcraft_mcp.web.services import get_insights_summary
+    for i in range(4):
+        temp_storage.save_vocab(_make_vocab(f"字{i}", f"vocab_zh_{i}", language="zh_classical"))
+
+    summary = get_insights_summary("zh_classical")
+    assert summary["kpi"]["total"] == 4
+    assert summary["sample_size_flag"] == "small"
+
+
+def test_insights_summary_kpi_today_pending(temp_storage):
+    """KPI today_pending 统计该语言今日到期词汇"""
+    from vocabcraft_mcp.web.services import get_insights_summary
+    today = datetime.now(timezone.utc).date().isoformat()
+    temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de", next_review=today))
+    temp_storage.save_vocab(_make_vocab("welt", "vocab_002", language="de", next_review="2099-01-01"))
+    temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical", next_review=today))
+
+    summary = get_insights_summary("de")
+    assert summary["kpi"]["today_pending"] == 1  # 只算 de
+
+
+def test_insights_summary_kpi_avg_ease(temp_storage):
+    """KPI avg_ease = 该语言所有词 EF 平均值"""
+    from vocabcraft_mcp.web.services import get_insights_summary
+    from vocabcraft_mcp.models import ReviewState
+    v1 = _make_vocab("w1", "vocab_001", language="de")
+    v1.review_state = ReviewState(ease_factor=2.5)
+    v2 = _make_vocab("w2", "vocab_002", language="de")
+    v2.review_state = ReviewState(ease_factor=3.0)
+    temp_storage.save_vocab(v1)
+    temp_storage.save_vocab(v2)
+
+    summary = get_insights_summary("de")
+    assert summary["kpi"]["avg_ease"] == pytest.approx(2.75, abs=0.01)
+
+
+def test_insights_summary_empty_language(temp_storage):
+    """无该语言词汇时返回零值 KPI"""
+    from vocabcraft_mcp.web.services import get_insights_summary
+    summary = get_insights_summary("de")
+    assert summary["kpi"]["total"] == 0
+    assert summary["kpi"]["today_pending"] == 0
+    assert summary["kpi"]["mastered"] == 0
+    assert summary["kpi"]["avg_ease"] == 0
+    assert summary["sample_size_flag"] == "small"
+    assert summary["weak_words"] == []
