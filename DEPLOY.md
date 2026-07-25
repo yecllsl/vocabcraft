@@ -342,15 +342,15 @@ vocabcraft/
 
 ```powershell
 # Windows (PowerShell 5.1+)
-.\scripts\build-release.ps1 -Version 0.1.0
+.\scripts\build-release.ps1 -Version 0.2.0
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.1.0
+bash scripts/build-release.sh 0.2.0
 ```
 
-产物：`dist/VocabCraft-v0.1.0.{zip,tar.zst,tar.gz}`，结构与 GitHub Release 资产一致。
+产物：`dist/VocabCraft-v0.2.0.{zip,tar.zst,tar.gz}`，结构与 GitHub Release 资产一致。
 
 构建脚本采用**白名单复制策略**，只打包必要文件：
 

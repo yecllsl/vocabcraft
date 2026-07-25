@@ -1,4 +1,4 @@
 {
-  "_comment": "TRAE 钩子配置，目前预留。vocabcraft v0.1.0 暂未启用 hooks，后续可在此配置工具调用前后的拦截器（如 save_vocab 前校验必填字段、grade_quiz 后触发统计更新）",
+  "_comment": "TRAE 钩子配置，目前预留。当前暂未启用 hooks，后续可在此配置工具调用前后的拦截器（如 save_vocab 前校验必填字段、grade_quiz 后触发统计更新）",
   "hooks": []
 }

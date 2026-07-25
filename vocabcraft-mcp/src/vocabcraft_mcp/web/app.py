@@ -30,7 +30,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="VocabCraft 可视化",
         description="词汇学习数据本地可视化应用",
-        version="0.1.0",
+        version="0.2.0",
     )
 
     # 挂载静态文件（JS库、CSS）

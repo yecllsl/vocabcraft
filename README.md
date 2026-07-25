@@ -52,7 +52,7 @@ Rules 约束层 (.trae/rules/vocabcraft-* 业务规则，与 BMAD 工作流规�
 
 #### 1. 下载并解压
 
-下载 `VocabCraft-v0.1.0.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
+下载 `VocabCraft-v0.2.0.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
 
 #### 2. 运行安装脚本
 
@@ -322,15 +322,15 @@ uv run pytest tests/ -m "not e2e"
 
 ```powershell
 # Windows
-pwsh .\scripts\build-release.ps1 -Version 0.1.0
+pwsh .\scripts\build-release.ps1 -Version 0.2.0
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.1.0
+bash scripts/build-release.sh 0.2.0
 ```
 
-产物：`dist/VocabCraft-v0.1.0.{zip,tar.zst,tar.gz}`。
+产物：`dist/VocabCraft-v0.2.0.{zip,tar.zst,tar.gz}`。
 
 ### CI/CD
 
