@@ -67,3 +67,6 @@ htmlcov/
 
 # Superpowers SDD 工作区（task briefs / reports / review packages / ledger）
 .superpowers/sdd/
+
+#docs/
+docs/
