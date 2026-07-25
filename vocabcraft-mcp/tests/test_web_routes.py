@@ -297,3 +297,52 @@ def test_batch_review_unknown_item(client):
     test_client, _ = client
     response = test_client.get("/api/review/batch/not_exist/item/0")
     assert response.status_code == 404
+
+
+# ──────────────────────────────────────────
+# N-05 insights 路由测试
+# ──────────────────────────────────────────
+
+def test_insights_page_default_language(client):
+    """/insights 返回 200，包含语种切换器与 insights-body"""
+    test_client, _ = client
+    response = test_client.get("/insights")
+    assert response.status_code == 200
+    assert "语种洞察" in response.text
+    assert "language=de" in response.text
+    assert "language=zh_classical" in response.text
+    assert 'id="insights-body"' in response.text
+
+
+def test_insights_partial_with_language(client):
+    """/partials/insights?language=de 返回 partial HTML"""
+    test_client, storage = client
+    storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
+    response = test_client.get("/partials/insights", params={"language": "de"})
+    assert response.status_code == 200
+    assert "hallo" in response.text or "词汇总量" in response.text or "总数" in response.text
+
+
+def test_insights_partial_invalid_language_falls_back_to_de(client):
+    """非法 language 参数回退到 de"""
+    test_client, storage = client
+    storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
+    response = test_client.get("/partials/insights", params={"language": "fr"})
+    assert response.status_code == 200
+    # 不应崩溃，应回退到 de 并正常渲染
+    assert "总数" in response.text or "词汇" in response.text
+
+
+def test_insights_api_returns_json(client):
+    """/api/insights?language=de 返回 JSON"""
+    test_client, storage = client
+    storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
+    response = test_client.get("/api/insights", params={"language": "de"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["language"] == "de"
+    assert "kpi" in data
+    assert "forgetting_curve" in data
+    assert "weak_words" in data
+    assert "mastery_distribution" in data
+    assert "sample_size_flag" in data

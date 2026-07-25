@@ -46,13 +46,14 @@ def create_app() -> FastAPI:
         return templates.TemplateResponse(request, "base.html", {})
 
     # 注册路由模块
-    from vocabcraft_mcp.web.routes import dashboard, stats, review, quiz, vocab
+    from vocabcraft_mcp.web.routes import dashboard, stats, review, quiz, vocab, insights
 
     app.include_router(dashboard.router)
     app.include_router(stats.router)
     app.include_router(review.router)
     app.include_router(quiz.router)
     app.include_router(vocab.router)
+    app.include_router(insights.router)
 
     return app
 
