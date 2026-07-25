@@ -217,3 +217,54 @@ def test_generate_quiz_multi_sense_answer_is_selected_def(isolated_storage):
     result = generate_quiz("vocab_001", "释义")
     idx = result["quiz"]["definition_index"]
     assert result["quiz"]["answer"] == ["疾病", "生病"][idx]
+
+
+def test_grade_quiz_propagates_definition_index(isolated_storage):
+    """评分后 ReviewRecord.definition_index 透传自 Quiz"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+    data = {
+        "id": "vocab_001",
+        "structured": {
+            "word": "病",
+            "phonetic": "",
+            "part_of_speech": "n.",
+            "definitions": [
+                {"text": "疾病", "examples": []},
+                {"text": "生病", "examples": []},
+            ],
+            "language": "zh_classical",
+        },
+    }
+    save_vocab(data)
+    gen = generate_quiz("vocab_001", "释义")
+    expected_idx = gen["quiz"]["definition_index"]
+
+    grade_quiz(gen["quiz_id"], "疾病")
+    records = get_storage().list_all_review_records()
+    assert len(records) == 1
+    assert records[0].definition_index == expected_idx
+
+
+def test_grade_quiz_definition_index_none_for_legacy_quiz(isolated_storage, make_vocab_data):
+    """旧 Quiz（definition_index=None）评分后 ReviewRecord.definition_index=None"""
+    from datetime import datetime
+    from vocabcraft_mcp.models import Quiz
+    from vocabcraft_mcp.tools.crud import save_vocab, get_storage
+
+    save_vocab(make_vocab_data("hello", "vocab_001"))
+    # 手动构造一个无 definition_index 的旧式 Quiz
+    storage = get_storage()
+    legacy_quiz = Quiz(
+        id="quiz_20260725_001",
+        vocab_id="vocab_001",
+        quiz_type="拼写",
+        question="题干",
+        answer="hello",
+        generated_at=datetime.now(),
+    )
+    storage.save_quiz(legacy_quiz)
+
+    grade_quiz("quiz_20260725_001", "hello")
+    records = get_storage().list_all_review_records()
+    assert len(records) == 1
+    assert records[0].definition_index is None

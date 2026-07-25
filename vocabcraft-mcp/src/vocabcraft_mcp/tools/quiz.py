@@ -172,7 +172,7 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
     if "error" in update_result:
         return {**result, "error": update_result["error"], "grade": grade}
 
-    # 写复习记录（评分前后 EF）
+    # 写复习记录（评分前后 EF；透传 definition_index 为 Phase 2 采集数据）
     record = ReviewRecord(
         record_id=_generate_record_id(storage),
         vocab_id=quiz.vocab_id,
@@ -180,6 +180,7 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
         grade=grade,
         prev_ease=prev_ease,
         new_ease=new_state["ease_factor"],
+        definition_index=quiz.definition_index,
     )
     storage.save_review_record(record)
 
