@@ -61,3 +61,9 @@ htmlcov/
 # Temporary
 *.tmp
 *.bak
+
+# Git worktrees (SDD 隔离工作区)
+.worktrees/
+
+# Superpowers SDD 工作区（task briefs / reports / review packages / ledger）
+.superpowers/sdd/
