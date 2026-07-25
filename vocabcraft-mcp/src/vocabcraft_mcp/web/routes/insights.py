@@ -4,7 +4,7 @@
 按语种（de / zh_classical）展示遗忘曲线、薄弱词分布、掌握度分布。
 """
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 
 from vocabcraft_mcp.web.app import templates
 from vocabcraft_mcp.web import services
