@@ -136,6 +136,60 @@ def test_grade_quiz_route(client):
     assert "回答正确" in response.text or "评分" in response.text
 
 
+def _make_classical_vocab(word, vid):
+    """构造文言文测试词汇（带释义与例句）"""
+    return VocabRecord(
+        id=vid,
+        structured=StructuredVocab(
+            word=word,
+            phonetic="",
+            part_of_speech="n.",
+            definitions=[Definition(text="兵器", examples=[f"收天下之{word}，聚之咸阳。"])],
+            language="zh_classical",
+        ),
+        review_state=ReviewState(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+
+
+def test_grade_quiz_route_classical_pos_definition(client):
+    """文言文释义题可通过 pos + definition 表单字段评分"""
+    test_client, storage = client
+    storage.save_vocab(_make_classical_vocab("兵", "vocab_001"))
+
+    response = test_client.post("/api/quiz/vocab_001/generate?quiz_type=释义")
+    assert response.status_code == 200
+
+    quizzes = [storage.load_quiz(qid) for qid in storage.list_all_quiz_ids()]
+    assert len(quizzes) == 1
+    quiz_id = quizzes[0].id
+
+    # 分别提交词性与释义，路由应拼接为 "n.|兵器"
+    response = test_client.post(
+        f"/api/quiz/{quiz_id}/grade",
+        data={"pos": "n.", "definition": "兵器"},
+    )
+    assert response.status_code == 200
+    assert "回答正确" in response.text
+
+
+def test_grade_quiz_route_falls_back_to_response(client):
+    """未提供 pos/definition 时仍回退到单字段 response"""
+    test_client, storage = client
+    storage.save_vocab(_make_classical_vocab("兵", "vocab_001"))
+
+    response = test_client.post("/api/quiz/vocab_001/generate?quiz_type=释义")
+    assert response.status_code == 200
+
+    quizzes = [storage.load_quiz(qid) for qid in storage.list_all_quiz_ids()]
+    quiz_id = quizzes[0].id
+
+    response = test_client.post(f"/api/quiz/{quiz_id}/grade?response=n.|兵器")
+    assert response.status_code == 200
+    assert "回答正确" in response.text
+
+
 def test_generate_quiz_route_unknown_vocab(client):
     """词汇不存在返回 404"""
     test_client, _ = client

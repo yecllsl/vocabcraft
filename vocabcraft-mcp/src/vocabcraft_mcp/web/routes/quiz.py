@@ -51,9 +51,14 @@ async def grade_quiz_partial(request: Request, quiz_id: str):
         raise HTTPException(status_code=404, detail="考题不存在")
 
     form = await request.form()
-    response = form.get("response", "")
-    if not response:
-        response = request.query_params.get("response", "")
+    pos = form.get("pos", "")
+    definition = form.get("definition", "")
+    if pos and definition:
+        response = f"{pos}|{definition}"
+    else:
+        response = form.get("response", "")
+        if not response:
+            response = request.query_params.get("response", "")
 
     result = services.grade_web_quiz(quiz_id, response)
     return templates.TemplateResponse(
