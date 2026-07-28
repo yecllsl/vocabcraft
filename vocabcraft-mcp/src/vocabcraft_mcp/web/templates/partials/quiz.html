@@ -9,7 +9,19 @@
 
     <form hx-post="/api/quiz/{{ quiz.id }}/grade"
           hx-target="#content" hx-swap="innerHTML">
-        {% if quiz.options %}
+        {% if quiz.options and quiz.language == "zh_classical" %}
+        <div class="quiz-options">
+            {% for option in quiz.options %}
+            <label class="quiz-option">
+                <input type="radio" name="pos" value="{{ option }}" required>
+                <span>{{ option }}</span>
+            </label>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            <input type="text" name="definition" class="quiz-input" placeholder="请填写释义" required autocomplete="off">
+        </div>
+        {% elif quiz.options %}
         <div class="quiz-options">
             {% for option in quiz.options %}
             <label class="quiz-option">
@@ -20,8 +32,7 @@
         </div>
         {% else %}
         <div class="form-group">
-            <input type="text" name="response" class="quiz-input" placeholder="请输入答案" required
-                   autocomplete="off">
+            <input type="text" name="response" class="quiz-input" placeholder="请输入答案" required autocomplete="off">
         </div>
         {% endif %}
 

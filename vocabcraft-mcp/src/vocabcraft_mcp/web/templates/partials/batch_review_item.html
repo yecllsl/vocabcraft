@@ -25,7 +25,17 @@
     <form class="batch-quiz-form"
           hx-post="/api/review/batch/{{ item.batch_id }}/item/{{ item.index }}/grade"
           hx-target="#batch-item-container" hx-swap="innerHTML">
-        {% if item.quiz.options %}
+        {% if item.quiz.options and item.quiz.language == "zh_classical" %}
+        <div class="quiz-options">
+            {% for option in item.quiz.options %}
+            <label class="quiz-option">
+                <input type="radio" name="pos" value="{{ option }}" required>
+                <span>{{ option }}</span>
+            </label>
+            {% endfor %}
+        </div>
+        <input type="text" name="definition" class="quiz-input" placeholder="请填写释义" required autofocus autocomplete="off">
+        {% elif item.quiz.options %}
         <div class="quiz-options">
             {% for option in item.quiz.options %}
             <label class="quiz-option">
@@ -35,7 +45,7 @@
             {% endfor %}
         </div>
         {% else %}
-        <input type="text" name="response" class="quiz-input" placeholder="请输入答案" required autofocus>
+        <input type="text" name="response" class="quiz-input" placeholder="请输入答案" required autofocus autocomplete="off">
         {% endif %}
 
         <div class="quiz-actions">
