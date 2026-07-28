@@ -198,7 +198,7 @@ def test_generate_quiz_multi_sense_prompt_only_contains_selected_def(isolated_st
 
 
 def test_generate_quiz_multi_sense_answer_is_selected_def(isolated_storage):
-    """多义词占位 answer = 选中义项的 text"""
+    """多义词占位 answer：zh_classical 编码为 '词性|释义'，其他语言为选中义项 text"""
     from vocabcraft_mcp.tools.crud import save_vocab
     data = {
         "id": "vocab_001",
@@ -216,7 +216,7 @@ def test_generate_quiz_multi_sense_answer_is_selected_def(isolated_storage):
     save_vocab(data)
     result = generate_quiz("vocab_001", "释义")
     idx = result["quiz"]["definition_index"]
-    assert result["quiz"]["answer"] == ["疾病", "生病"][idx]
+    assert result["quiz"]["answer"] == f"n.|{['疾病', '生病'][idx]}"
 
 
 def test_grade_quiz_propagates_definition_index(isolated_storage):
@@ -268,3 +268,42 @@ def test_grade_quiz_definition_index_none_for_legacy_quiz(isolated_storage, make
     records = get_storage().list_all_review_records()
     assert len(records) == 1
     assert records[0].definition_index is None
+
+
+def test_generate_classical_quiz_uses_round_robin_definition(isolated_storage):
+    """多次生成 zh_classical 释义题应轮询不同义项"""
+    save_vocab({
+        "id": "vocab_test_001",
+        "structured": {
+            "word": "兵",
+            "phonetic": "",
+            "part_of_speech": "n.",
+            "language": "zh_classical",
+            "definitions": [
+                {"text": "兵器", "examples": ["收天下之兵"]},
+                {"text": "士兵，军队", "examples": ["赵兵果败"]},
+            ],
+        },
+    })
+
+    # 第一次：无复习记录，应选 definition_index=0
+    r1 = generate_quiz("vocab_test_001", "释义")
+    assert r1["quiz"]["definition_index"] == 0
+
+    # 模拟 definition_index=0 已复习一次
+    from datetime import datetime, timezone
+    from vocabcraft_mcp.models import ReviewRecord
+    rec = ReviewRecord(
+        record_id="rec_test_001",
+        vocab_id="vocab_test_001",
+        review_time=datetime.now(timezone.utc),
+        grade=5,
+        prev_ease=2.5,
+        new_ease=2.6,
+        definition_index=0,
+    )
+    get_storage().save_review_record(rec)
+
+    # 第二次：应选复习次数更少的 definition_index=1
+    r2 = generate_quiz("vocab_test_001", "释义")
+    assert r2["quiz"]["definition_index"] == 1

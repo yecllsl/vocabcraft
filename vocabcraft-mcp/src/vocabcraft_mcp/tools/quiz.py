@@ -39,6 +39,18 @@ def _generate_record_id(storage) -> str:
     return f"{prefix}{len(existing) + 1:03d}"
 
 
+_CLASSICAL_POS_POOL = ["n.", "v.", "adj.", "adv.", "pron.", "num.", "量", "连", "介", "助", "叹"]
+
+
+def _least_reviewed_definition_index(vocab_id: str, defs: list, storage) -> int:
+    """返回复习次数最少的义项下标；次数相同按下标升序取第一个"""
+    counts = {i: 0 for i in range(len(defs))}
+    for r in storage.list_all_review_records():
+        if r.vocab_id == vocab_id and r.definition_index is not None:
+            counts[r.definition_index] = counts.get(r.definition_index, 0) + 1
+    return min(counts, key=lambda i: (counts[i], i))
+
+
 def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
     """为指定词汇生成考题
 
@@ -66,10 +78,13 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
 
     # 渲染命题 prompt 交宿主 LLM（含语言上下文，命题语言与词汇匹配）
     # ponytail: 多义词随机选一个义项考查并记录 definition_index，
-    #           为 Phase 2 义项级掌握度可视化采集数据；不调度"优先未考查义项"，升级路径见设计文档 §9
+    #           为 Phase 2 义项级掌握度可视化采集数据；
+    #           zh_classical 释义题改为按复习次数轮询，保证义项覆盖。
     defs = v.structured.definitions
     if defs:
-        if len(defs) > 1:
+        if qtype == "释义" and v.structured.language == "zh_classical":
+            definition_index = _least_reviewed_definition_index(vocab_id, defs, storage)
+        elif len(defs) > 1:
             definition_index = random.randrange(len(defs))
         else:
             definition_index = 0
@@ -87,7 +102,12 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
     )
 
     # 占位 Quiz：answer 取词形（拼写题）或选中释义文本，宿主 LLM 输出后可回写
-    answer = v.structured.word if qtype == "拼写" else (defs[definition_index].text if defs else "")
+    if qtype == "拼写":
+        answer = v.structured.word
+    elif qtype == "释义" and v.structured.language == "zh_classical":
+        answer = f"{v.structured.part_of_speech.strip()}|{defs[definition_index].text.strip()}" if defs else ""
+    else:
+        answer = defs[definition_index].text if defs else ""
     quiz = Quiz(
         id=_generate_quiz_id(storage),
         vocab_id=vocab_id,
