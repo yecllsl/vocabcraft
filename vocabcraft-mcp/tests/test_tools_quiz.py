@@ -12,6 +12,7 @@ import pytest
 
 from vocabcraft_mcp.tools.quiz import generate_quiz, grade_quiz
 from vocabcraft_mcp.tools.crud import save_vocab, get_storage
+from vocabcraft_mcp.prompts.quiz_generate_prompt import CLASSICAL_GENERATE_PROMPT
 
 
 def test_quiz_importable():
@@ -475,3 +476,47 @@ def test_generate_classical_quiz_uses_round_robin_definition(isolated_storage):
     # 第二次：应选复习次数更少的 definition_index=1
     r2 = generate_quiz("vocab_test_001", "释义")
     assert r2["quiz"]["definition_index"] == 1
+
+
+def test_classical_generate_prompt_exists():
+    """文言文专用生成 prompt 存在且包含关键要求"""
+    assert "词性" in CLASSICAL_GENERATE_PROMPT
+    assert "释义" in CLASSICAL_GENERATE_PROMPT
+    assert "<mark>{word}</mark>" in CLASSICAL_GENERATE_PROMPT
+    assert "词性|释义文本" in CLASSICAL_GENERATE_PROMPT
+
+
+def test_generate_classical_quiz_uses_classical_prompt(isolated_storage):
+    """zh_classical 释义题返回 CLASSICAL_GENERATE_PROMPT"""
+    save_vocab({
+        "id": "vocab_prompt_001",
+        "structured": {
+            "word": "兵",
+            "phonetic": "",
+            "part_of_speech": "n.",
+            "language": "zh_classical",
+            "definitions": [
+                {"text": "兵器", "examples": ["收天下之兵"]},
+            ],
+        },
+    })
+
+    result = generate_quiz("vocab_prompt_001", "释义")
+    prompt = result["generate_prompt"]
+    # 专用 prompt 的占位符应已被渲染
+    assert "词汇：兵" in prompt
+    assert "词性：n." in prompt
+    assert "兵器" in prompt
+    assert "收天下之兵" in prompt
+    # 不应包含默认 prompt 的「音标」字段
+    assert "音标：" not in prompt
+
+
+def test_generate_non_classical_definition_uses_default_prompt(isolated_storage, make_vocab_data):
+    """非 zh_classical 释义题仍使用默认 GENERATE_PROMPT"""
+    save_vocab(make_vocab_data("hello", "vocab_001"))
+    result = generate_quiz("vocab_001", "释义")
+    prompt = result["generate_prompt"]
+    # 默认 prompt 包含音标与题型说明
+    assert "音标：" in prompt
+    assert "题型：释义" in prompt

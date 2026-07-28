@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from vocabcraft_mcp.models import Definition, Quiz, ReviewRecord
 from vocabcraft_mcp.algorithms import compute_next_review
-from vocabcraft_mcp.prompts.quiz_generate_prompt import GENERATE_PROMPT
+from vocabcraft_mcp.prompts.quiz_generate_prompt import CLASSICAL_GENERATE_PROMPT, GENERATE_PROMPT
 from vocabcraft_mcp.prompts.quiz_grade_prompt import GRADE_PROMPT
 from vocabcraft_mcp.tools.crud import get_storage, update_vocab, _now_utc
 
@@ -108,13 +108,21 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
     else:
         definition_index = None
         defs_block = "（无）"
-    prompt = GENERATE_PROMPT.format(
-        word=v.structured.word,
-        phonetic=v.structured.phonetic,
-        definitions_block=defs_block,
-        quiz_type=qtype,
-        language=v.structured.language,
-    )
+    # zh_classical 释义题使用专用 prompt，要求 LLM 输出「例句 + 词性选项 + 词性|释义」格式
+    if qtype == "释义" and v.structured.language == "zh_classical":
+        prompt = CLASSICAL_GENERATE_PROMPT.format(
+            word=v.structured.word,
+            part_of_speech=v.structured.part_of_speech,
+            definitions_block=defs_block,
+        )
+    else:
+        prompt = GENERATE_PROMPT.format(
+            word=v.structured.word,
+            phonetic=v.structured.phonetic,
+            definitions_block=defs_block,
+            quiz_type=qtype,
+            language=v.structured.language,
+        )
 
     # 占位 Quiz：answer 取词形（拼写题）或选中释义文本，宿主 LLM 输出后可回写
     # zh_classical 释义题编码为 "词性|释义"，词性缺失时用 "?" 占位
