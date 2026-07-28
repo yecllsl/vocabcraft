@@ -219,6 +219,51 @@ def test_generate_quiz_multi_sense_answer_is_selected_def(isolated_storage):
     assert result["quiz"]["answer"] == f"n.|{['疾病', '生病'][idx]}"
 
 
+def test_generate_quiz_non_classical_multi_sense_answer_is_plain_text(isolated_storage):
+    """非 zh_classical 多义词的释义题 answer 仍为纯释义文本"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+    data = {
+        "id": "vocab_001",
+        "structured": {
+            "word": "run",
+            "phonetic": "/rʌn/",
+            "part_of_speech": "v.",
+            "definitions": [
+                {"text": "跑", "examples": ["I run every morning."]},
+                {"text": "经营", "examples": ["She runs a company."]},
+            ],
+            "language": "en",
+        },
+    }
+    save_vocab(data)
+    result = generate_quiz("vocab_001", "释义")
+    idx = result["quiz"]["definition_index"]
+    assert result["quiz"]["answer"] == ["跑", "经营"][idx]
+    assert "|" not in result["quiz"]["answer"]
+
+
+def test_generate_quiz_classical_empty_pos_uses_placeholder(isolated_storage):
+    """zh_classical 释义题词性为空时，answer 用 '?' 占位"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+    data = {
+        "id": "vocab_001",
+        "structured": {
+            "word": "兵",
+            "phonetic": "",
+            "part_of_speech": "",
+            "definitions": [
+                {"text": "兵器", "examples": []},
+                {"text": "士兵", "examples": []},
+            ],
+            "language": "zh_classical",
+        },
+    }
+    save_vocab(data)
+    result = generate_quiz("vocab_001", "释义")
+    idx = result["quiz"]["definition_index"]
+    assert result["quiz"]["answer"] == f"?|{['兵器', '士兵'][idx]}"
+
+
 def test_grade_quiz_propagates_definition_index(isolated_storage):
     """评分后 ReviewRecord.definition_index 透传自 Quiz"""
     from vocabcraft_mcp.tools.crud import save_vocab

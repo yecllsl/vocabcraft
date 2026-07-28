@@ -13,7 +13,7 @@
 import random
 from datetime import datetime, timezone
 
-from vocabcraft_mcp.models import Quiz, ReviewRecord
+from vocabcraft_mcp.models import Definition, Quiz, ReviewRecord
 from vocabcraft_mcp.algorithms import compute_next_review
 from vocabcraft_mcp.prompts.quiz_generate_prompt import GENERATE_PROMPT
 from vocabcraft_mcp.prompts.quiz_grade_prompt import GRADE_PROMPT
@@ -42,12 +42,16 @@ def _generate_record_id(storage) -> str:
 _CLASSICAL_POS_POOL = ["n.", "v.", "adj.", "adv.", "pron.", "num.", "量", "连", "介", "助", "叹"]
 
 
-def _least_reviewed_definition_index(vocab_id: str, defs: list, storage) -> int:
-    """返回复习次数最少的义项下标；次数相同按下标升序取第一个"""
+def _least_reviewed_definition_index(vocab_id: str, defs: list[Definition], storage) -> int:
+    """返回复习次数最少的义项下标；次数相同按下标升序取第一个。
+
+    注意：由于 ReviewRecord 未记录 quiz_type，统计口径覆盖该词汇所有题型的复习记录；
+    跨题型复习会共同参与释义题的义项轮询。
+    """
     counts = {i: 0 for i in range(len(defs))}
     for r in storage.list_all_review_records():
-        if r.vocab_id == vocab_id and r.definition_index is not None:
-            counts[r.definition_index] = counts.get(r.definition_index, 0) + 1
+        if r.vocab_id == vocab_id and r.definition_index is not None and r.definition_index in counts:
+            counts[r.definition_index] += 1
     return min(counts, key=lambda i: (counts[i], i))
 
 
@@ -102,10 +106,13 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
     )
 
     # 占位 Quiz：answer 取词形（拼写题）或选中释义文本，宿主 LLM 输出后可回写
+    # zh_classical 释义题编码为 "词性|释义"，词性缺失时用 "?" 占位
     if qtype == "拼写":
         answer = v.structured.word
     elif qtype == "释义" and v.structured.language == "zh_classical":
-        answer = f"{v.structured.part_of_speech.strip()}|{defs[definition_index].text.strip()}" if defs else ""
+        pos = v.structured.part_of_speech.strip()
+        pos = pos if pos else "?"
+        answer = f"{pos}|{defs[definition_index].text.strip()}" if defs else ""
     else:
         answer = defs[definition_index].text if defs else ""
     quiz = Quiz(
