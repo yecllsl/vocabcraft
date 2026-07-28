@@ -19,8 +19,19 @@ from vocabcraft_mcp.prompts.quiz_generate_prompt import GENERATE_PROMPT
 from vocabcraft_mcp.prompts.quiz_grade_prompt import GRADE_PROMPT
 from vocabcraft_mcp.tools.crud import get_storage, update_vocab, _now_utc
 
-# 客观题：工具内精确匹配评分；释义题为主观题交 LLM
+# 客观题：工具内精确匹配评分；zh_classical 释义题按 "词性|释义" 客观评分；
+# 其他释义题为主观题交 LLM
 _OBJECTIVE_TYPES = {"选择", "填空", "拼写"}
+
+
+def _parse_classical_definition_answer(answer: str) -> tuple[str, str]:
+    """解析 zh_classical 释义题 answer/response 为 (词性, 释义)。
+
+    使用 str.partition("|") 拆分，允许释义中包含额外的 "|"；
+    词性转小写以便大小写不敏感比较，释义保留原样仅去首尾空白。
+    """
+    pos, _, meaning = answer.strip().partition("|")
+    return pos.strip().lower(), meaning.strip()
 
 
 def _generate_quiz_id(storage) -> str:
@@ -138,7 +149,8 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
     """评分并按 SM-2 更新词汇记忆状态
 
     客观题（选择/填空/拼写）: 精确匹配（忽略大小写与空白），答对 grade=5/答错 grade=0
-    释义题（主观）: 返回 grade_prompt 交宿主 LLM 评分，骨架阶段默认 grade=3 推进 SM-2
+    zh_classical 释义题: 按 "词性|释义" 客观精确评分，词性大小写不敏感，释义严格一致
+    其他释义题（主观）: 返回 grade_prompt 交宿主 LLM 评分，骨架阶段默认 grade=3 推进 SM-2
 
     评分后:
         1. 调用 compute_next_review 计算新记忆状态
@@ -152,7 +164,7 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
 
     Returns:
         包含 grade/correct/updated_review_state 的字典；
-        释义题额外返回 grade_prompt；考题不存在返回 error
+        主观释义题额外返回 grade_prompt；考题不存在返回 error
     """
     storage = get_storage()
     quiz = storage.load_quiz(quiz_id)
@@ -166,13 +178,20 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
     rs = vocab.review_state
     result: dict = {"quiz_id": quiz_id, "vocab_id": quiz.vocab_id}
 
-    # 评分：客观题精确匹配，释义题交 LLM
+    # 评分：客观题精确匹配；zh_classical 释义题按 "词性|释义" 客观评分；其他释义题交 LLM
     if quiz.quiz_type in _OBJECTIVE_TYPES:
         correct = response.strip().lower() == quiz.answer.strip().lower()
         grade = 5 if correct else 0
         result["correct"] = correct
+    elif quiz.quiz_type == "释义" and vocab.structured.language == "zh_classical":
+        # zh_classical 释义题：answer 编码为 "词性|释义"，按词性（大小写不敏感）+ 释义（严格一致）评分
+        expected_pos, expected_meaning = _parse_classical_definition_answer(quiz.answer)
+        actual_pos, actual_meaning = _parse_classical_definition_answer(response)
+        correct = expected_pos == actual_pos and expected_meaning == actual_meaning
+        grade = 5 if correct else 0
+        result["correct"] = correct
     else:
-        # 释义题主观题：渲染 grade_prompt 交宿主 LLM，骨架阶段用 grade=3 推进
+        # 其他释义题主观题：渲染 grade_prompt 交宿主 LLM，骨架阶段用 grade=3 推进
         result["grade_prompt"] = GRADE_PROMPT.format(
             question=quiz.question,
             reference_answer=quiz.answer,

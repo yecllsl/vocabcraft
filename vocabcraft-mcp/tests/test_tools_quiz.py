@@ -315,6 +315,129 @@ def test_grade_quiz_definition_index_none_for_legacy_quiz(isolated_storage, make
     assert records[0].definition_index is None
 
 
+def _make_classical_vocab(vocab_id: str = "vocab_001", pos: str = "n."):
+    """构造 zh_classical 测试词汇数据"""
+    return {
+        "id": vocab_id,
+        "structured": {
+            "word": "兵",
+            "phonetic": "",
+            "part_of_speech": pos,
+            "definitions": [
+                {"text": "兵器", "examples": ["收天下之兵"]},
+                {"text": "士兵，军队", "examples": ["赵兵果败"]},
+            ],
+            "language": "zh_classical",
+        },
+    }
+
+
+def test_grade_quiz_classical_definition_correct(isolated_storage):
+    """zh_classical 释义题答对：grade=5, correct=True"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+
+    save_vocab(_make_classical_vocab())
+    gen = generate_quiz("vocab_001", "释义")
+
+    result = grade_quiz(gen["quiz_id"], gen["quiz"]["answer"])
+    assert result["grade"] == 5
+    assert result["correct"] is True
+    assert "grade_prompt" not in result
+
+
+def test_grade_quiz_classical_definition_wrong(isolated_storage):
+    """zh_classical 释义题答错：grade=0, correct=False"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+
+    save_vocab(_make_classical_vocab())
+    gen = generate_quiz("vocab_001", "释义")
+
+    result = grade_quiz(gen["quiz_id"], "兵器")
+    assert result["grade"] == 0
+    assert result["correct"] is False
+
+
+def test_grade_quiz_classical_definition_case_insensitive_pos(isolated_storage):
+    """zh_classical 释义题词性大小写不敏感"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+
+    save_vocab(_make_classical_vocab(pos="N."))
+    gen = generate_quiz("vocab_001", "释义")
+    # answer 编码为 "N.|兵器"，用户小写输入仍应判对
+    result = grade_quiz(gen["quiz_id"], "n.|兵器")
+    assert result["grade"] == 5
+    assert result["correct"] is True
+
+
+def test_grade_quiz_classical_definition_strict_meaning(isolated_storage):
+    """zh_classical 释义题释义严格一致"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+
+    save_vocab(_make_classical_vocab())
+    gen = generate_quiz("vocab_001", "释义")
+
+    # 释义不同则判错
+    result = grade_quiz(gen["quiz_id"], "n.|武器")
+    assert result["grade"] == 0
+    assert result["correct"] is False
+
+
+def test_grade_quiz_classical_definition_empty_pos_placeholder(isolated_storage):
+    """zh_classical 释义题词性为空时，按 '?|释义' 格式评分"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+
+    save_vocab(_make_classical_vocab(pos=""))
+    gen = generate_quiz("vocab_001", "释义")
+    assert gen["quiz"]["answer"].startswith("?|")
+
+    result = grade_quiz(gen["quiz_id"], gen["quiz"]["answer"])
+    assert result["grade"] == 5
+    assert result["correct"] is True
+
+
+def test_grade_quiz_classical_definition_pipe_in_meaning(isolated_storage):
+    """zh_classical 释义题释义中可含 '|'"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+
+    save_vocab({
+        "id": "vocab_001",
+        "structured": {
+            "word": "test",
+            "phonetic": "",
+            "part_of_speech": "n.",
+            "definitions": [
+                {"text": "a|b|c", "examples": []},
+            ],
+            "language": "zh_classical",
+        },
+    })
+    gen = generate_quiz("vocab_001", "释义")
+    assert gen["quiz"]["answer"] == "n.|a|b|c"
+
+    result = grade_quiz(gen["quiz_id"], "n.|a|b|c")
+    assert result["grade"] == 5
+    assert result["correct"] is True
+
+
+def test_grade_quiz_classical_definition_updates_sm2(isolated_storage):
+    """zh_classical 释义题评分后仍更新 SM-2 状态与复习记录"""
+    from vocabcraft_mcp.tools.crud import save_vocab, get_storage
+
+    save_vocab(_make_classical_vocab())
+    gen = generate_quiz("vocab_001", "释义")
+
+    result = grade_quiz(gen["quiz_id"], gen["quiz"]["answer"])
+    assert result["grade"] == 5
+
+    v = get_storage().load_vocab("vocab_001")
+    assert v.review_state.repetitions == 1
+    assert v.review_state.ease_factor == pytest.approx(2.6, abs=1e-3)
+
+    records = get_storage().list_all_review_records()
+    assert len(records) == 1
+    assert records[0].definition_index == gen["quiz"]["definition_index"]
+
+
 def test_generate_classical_quiz_uses_round_robin_definition(isolated_storage):
     """多次生成 zh_classical 释义题应轮询不同义项"""
     save_vocab({
