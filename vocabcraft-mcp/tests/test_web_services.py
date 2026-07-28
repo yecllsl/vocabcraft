@@ -322,6 +322,7 @@ def test_start_batch_review_with_due_words(temp_storage):
     assert item is not None
     assert item["index"] == 0
     assert item["total"] == 2
+    assert item["quiz"]["language"] == "en"
 
 
 def test_start_batch_review_no_due_words(temp_storage):

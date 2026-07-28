@@ -117,6 +117,34 @@ def test_generate_quiz_route(client):
     assert "提交答案" in response.text
 
 
+def test_quiz_partial_includes_language(client, monkeypatch):
+    """quiz_partial 路由应在模板上下文中注入 language"""
+    from vocabcraft_mcp.web.routes import quiz as quiz_module
+
+    test_client, storage = client
+    storage.save_vocab(_make_vocab("hello", "vocab_001", language="de"))
+
+    response = test_client.post("/api/quiz/vocab_001/generate?quiz_type=拼写")
+    assert response.status_code == 200
+
+    quizzes = [storage.load_quiz(qid) for qid in storage.list_all_quiz_ids()]
+    assert len(quizzes) == 1
+    quiz_id = quizzes[0].id
+
+    captured_context = {}
+    original = quiz_module.templates.TemplateResponse
+
+    def _capture(request, name, context):
+        captured_context["context"] = context
+        return original(request, name, context)
+
+    monkeypatch.setattr(quiz_module.templates, "TemplateResponse", _capture)
+
+    response = test_client.get(f"/partials/quiz/{quiz_id}")
+    assert response.status_code == 200
+    assert captured_context["context"]["quiz"]["language"] == "de"
+
+
 def test_grade_quiz_route(client):
     """评分端点返回结果片段"""
     test_client, storage = client

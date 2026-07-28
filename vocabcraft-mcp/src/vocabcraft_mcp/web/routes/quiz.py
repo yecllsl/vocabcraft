@@ -32,10 +32,14 @@ async def quiz_partial(request: Request, quiz_id: str):
     quiz = storage.load_quiz(quiz_id)
     if quiz is None:
         raise HTTPException(status_code=404, detail="考题不存在")
+    quiz_dict = quiz.model_dump()
+    vocab = storage.load_vocab(quiz.vocab_id)
+    if vocab is not None:
+        quiz_dict["language"] = vocab.structured.language
     return templates.TemplateResponse(
         request,
         "partials/quiz.html",
-        {"quiz": quiz.model_dump(), "result": None},
+        {"quiz": quiz_dict, "result": None},
     )
 
 

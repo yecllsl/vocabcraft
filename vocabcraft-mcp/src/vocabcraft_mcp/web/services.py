@@ -440,11 +440,16 @@ def get_batch_review_item(batch_id: str, index: int) -> Optional[dict]:
     if quiz is None:
         return None
 
+    quiz_dict = quiz.model_dump()
+    vocab = storage.load_vocab(quiz.vocab_id)
+    if vocab is not None:
+        quiz_dict["language"] = vocab.structured.language
+
     return {
         "batch_id": batch_id,
         "index": index,
         "total": len(session.quiz_ids),
-        "quiz": quiz.model_dump(),
+        "quiz": quiz_dict,
     }
 
 
