@@ -136,7 +136,7 @@ def test_grade_quiz_route(client):
     assert "回答正确" in response.text or "评分" in response.text
 
 
-def _make_classical_vocab(word, vid):
+def _make_classical_vocab(word, vid, next_review=""):
     """构造文言文测试词汇（带释义与例句）"""
     return VocabRecord(
         id=vid,
@@ -147,7 +147,7 @@ def _make_classical_vocab(word, vid):
             definitions=[Definition(text="兵器", examples=[f"收天下之{word}，聚之咸阳。"])],
             language="zh_classical",
         ),
-        review_state=ReviewState(),
+        review_state=ReviewState(next_review=next_review),
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
@@ -351,6 +351,56 @@ def test_batch_review_unknown_item(client):
     test_client, _ = client
     response = test_client.get("/api/review/batch/not_exist/item/0")
     assert response.status_code == 404
+
+
+def test_grade_batch_review_item_classical_pos_definition(client):
+    """批量复习中 zh_classical 释义题可通过 pos + definition 表单字段评分"""
+    test_client, storage = client
+    today = _today_iso()
+    # 两题才能保证评分后返回下一题片段（含上一题结果）
+    storage.save_vocab(_make_classical_vocab("兵", "vocab_001", next_review=today))
+    storage.save_vocab(_make_classical_vocab("车", "vocab_002", next_review=today))
+
+    response = test_client.post("/api/review/batch/start")
+    assert response.status_code == 200
+
+    import re
+
+    batch_match = re.search(r"/api/review/batch/(batch_[a-f0-9]+)/item/0/grade", response.text)
+    assert batch_match is not None
+    batch_id = batch_match.group(1)
+
+    # 分别提交词性与释义，路由应拼接为 "n.|兵器"
+    response = test_client.post(
+        f"/api/review/batch/{batch_id}/item/0/grade",
+        data={"pos": "n.", "definition": "兵器"},
+    )
+    assert response.status_code == 200
+    assert "回答正确" in response.text
+
+
+def test_grade_batch_review_item_falls_back_to_response(client):
+    """批量复习评分未提供 pos/definition 时仍回退到单字段 response"""
+    test_client, storage = client
+    today = _today_iso()
+    storage.save_vocab(_make_classical_vocab("兵", "vocab_001", next_review=today))
+    storage.save_vocab(_make_classical_vocab("车", "vocab_002", next_review=today))
+
+    response = test_client.post("/api/review/batch/start")
+    assert response.status_code == 200
+
+    import re
+
+    batch_match = re.search(r"/api/review/batch/(batch_[a-f0-9]+)/item/0/grade", response.text)
+    assert batch_match is not None
+    batch_id = batch_match.group(1)
+
+    response = test_client.post(
+        f"/api/review/batch/{batch_id}/item/0/grade",
+        data={"response": "n.|兵器"},
+    )
+    assert response.status_code == 200
+    assert "回答正确" in response.text
 
 
 # ──────────────────────────────────────────

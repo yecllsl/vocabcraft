@@ -89,11 +89,20 @@ async def batch_review_item_partial(request: Request, batch_id: str, index: int)
 
 @router.post("/api/review/batch/{batch_id}/item/{index}/grade", response_class=HTMLResponse)
 async def grade_batch_review_item_partial(request: Request, batch_id: str, index: int):
-    """提交批量复习当前题答案，返回下一题或汇总"""
+    """提交批量复习当前题答案，返回下一题或汇总
+
+    同时兼容 HTMX 表单提交（form data）与测试中的 query param。
+    优先读取 pos + definition 字段并拼接为 "pos|definition"。
+    """
     form = await request.form()
-    response = form.get("response", "")
-    if not response:
-        response = request.query_params.get("response", "")
+    pos = form.get("pos", "")
+    definition = form.get("definition", "")
+    if pos and definition:
+        response = f"{pos}|{definition}"
+    else:
+        response = form.get("response", "")
+        if not response:
+            response = request.query_params.get("response", "")
 
     graded = services.grade_batch_review_item(batch_id, index, response)
     if graded is None:
