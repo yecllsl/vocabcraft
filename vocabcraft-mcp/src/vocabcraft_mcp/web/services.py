@@ -7,7 +7,7 @@
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
-from random import sample
+from random import sample, shuffle
 from typing import Optional
 from uuid import uuid4
 
@@ -15,7 +15,7 @@ from vocabcraft_mcp.algorithms import INITIAL_INTERVALS_DAYS
 from vocabcraft_mcp.models import Quiz, ReviewRecord, VocabRecord
 from vocabcraft_mcp.storage import Storage
 from vocabcraft_mcp.tools.crud import get_storage as _default_get_storage
-from vocabcraft_mcp.tools.quiz import generate_quiz as _generate_quiz_tool, grade_quiz as _grade_quiz_tool
+from vocabcraft_mcp.tools.quiz import _CLASSICAL_POS_POOL, generate_quiz as _generate_quiz_tool, grade_quiz as _grade_quiz_tool
 from vocabcraft_mcp.tools.statistics import _mastery_level, get_statistics
 
 
@@ -268,6 +268,25 @@ def _pick_distractors(correct_vocab: VocabRecord, count: int = _MAX_DISTRACTORS)
     return candidates + [f"选项{i + 1}" for i in range(count - len(candidates))]
 
 
+def _build_classical_pos_options(correct_pos: str) -> list[str]:
+    """构造文言文释义题的词性选项：1 正确 + 3 干扰项，顺序随机打乱。
+
+    复用 tools.quiz 中的文言词性池，移除与正确词性大小写相同的项避免重复。
+    干扰项不足时返回全部候选，仍保证 4 个选项。
+    """
+    correct = (correct_pos or "?").strip()
+    # 候选池：去掉与正确词性大小写相同的项
+    pool = [p for p in _CLASSICAL_POS_POOL if p.lower() != correct.lower()]
+    # 随机取 3 个干扰项
+    distractors = sample(pool, min(3, len(pool))) if pool else []
+    options = [correct] + distractors
+    # 不足 4 个时用占位符补齐
+    while len(options) < 4:
+        options.append(f"选项{len(options)}")
+    shuffle(options)
+    return options
+
+
 def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> Optional[dict]:
     """生成可在 Web 上直接作答的考题
 
@@ -321,6 +340,20 @@ def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> Optional[dict]:
         prompt = f"释义：{first_def_text if defs else '（请根据例句拼写）'}"
         answer = word
         options = None
+    elif qtype == "释义" and vocab.structured.language == "zh_classical":
+        # 文言文释义题：题干高亮目标词，选项为 4 个词性，答案编码为 "词性|释义"
+        definition_index = quiz.definition_index if quiz.definition_index is not None else 0
+        selected_def = defs[definition_index] if 0 <= definition_index < len(defs) else (defs[0] if defs else None)
+        if selected_def and selected_def.examples:
+            sentence = selected_def.examples[0]
+            highlighted = sentence.replace(word, f"<mark>{word}</mark>")
+            # 若例句中未出现目标词，降级为释义文本提示
+            prompt = highlighted if highlighted != sentence else f"请写出「{word}」的词性与释义"
+        else:
+            prompt = f"请写出「{word}」的词性与释义"
+        # 工具层已将 answer 编码为 "词性|释义"
+        answer = quiz.answer
+        options = _build_classical_pos_options(vocab.structured.part_of_speech)
     else:  # 释义
         prompt = f"请写出单词「{word}」的释义"
         answer = first_def_text if defs else word
@@ -333,7 +366,9 @@ def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> Optional[dict]:
     })
     storage.save_quiz(updated_quiz)
 
-    return {"quiz_id": quiz_id, "quiz": updated_quiz.model_dump()}
+    quiz_dict = updated_quiz.model_dump()
+    quiz_dict["language"] = vocab.structured.language
+    return {"quiz_id": quiz_id, "quiz": quiz_dict}
 
 
 def grade_web_quiz(quiz_id: str, response: str) -> dict:

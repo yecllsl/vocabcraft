@@ -40,6 +40,28 @@ def _make_vocab(word, vid, language="en", repetitions=0, next_review=""):
     )
 
 
+def _make_classical_vocab(word, vid, part_of_speech="n.", definitions=None, next_review=""):
+    """构造文言文测试词汇（用于 zh_classical 释义题）"""
+    if definitions is None:
+        definitions = [Definition(text=f"{word} 的释义", examples=[f"此{word}乃测试例句。"])]
+    return VocabRecord(
+        id=vid,
+        structured=StructuredVocab(
+            word=word,
+            phonetic="",
+            part_of_speech=part_of_speech,
+            definitions=definitions,
+            language="zh_classical",
+        ),
+        review_state=ReviewState(
+            repetitions=0,
+            next_review=next_review,
+        ),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+
+
 # ──────────────────────────────────────────
 # Dashboard summary 测试
 # ──────────────────────────────────────────
@@ -153,6 +175,55 @@ def test_grade_web_quiz(temp_storage):
     assert result["grade"] == 5
     assert result["correct"] is True
     assert "updated_review_state" in result
+
+
+# ──────────────────────────────────────────
+# 文言释义题测试（Task 4）
+# ──────────────────────────────────────────
+
+def test_generate_web_classical_quiz_with_example(temp_storage):
+    """zh_classical 释义题有例句时，题干高亮目标词并含 4 个词性选项"""
+    definitions = [Definition(text="兵器", examples=["收天下之兵，聚之咸阳。"])]
+    temp_storage.save_vocab(_make_classical_vocab("兵", "vocab_001", part_of_speech="n.", definitions=definitions))
+
+    result = services.generate_web_quiz("vocab_001", "释义")
+    assert result is not None
+    quiz = result["quiz"]
+    assert quiz["quiz_type"] == "释义"
+    assert "<mark>兵</mark>" in quiz["question"]
+    assert quiz["options"] is not None
+    assert len(quiz["options"]) == 4
+    assert "n." in quiz["options"]
+    assert quiz["answer"] == "n.|兵器"
+    assert quiz["language"] == "zh_classical"
+
+
+def test_generate_web_classical_quiz_without_example(temp_storage):
+    """zh_classical 释义题无例句时，题干降级为释义文本提示"""
+    definitions = [Definition(text="兵器", examples=[])]
+    temp_storage.save_vocab(_make_classical_vocab("兵", "vocab_001", part_of_speech="n.", definitions=definitions))
+
+    result = services.generate_web_quiz("vocab_001", "释义")
+    assert result is not None
+    quiz = result["quiz"]
+    assert "请写出" in quiz["question"]
+    assert "<mark>" not in quiz["question"]
+    assert quiz["answer"] == "n.|兵器"
+    assert quiz["language"] == "zh_classical"
+
+
+def test_generate_web_classical_quiz_options_format(temp_storage):
+    """zh_classical 释义题选项为 4 个不重复词性，答案为 词性|释义 编码"""
+    definitions = [Definition(text="兵器", examples=["收天下之兵"])]
+    temp_storage.save_vocab(_make_classical_vocab("兵", "vocab_001", part_of_speech="n.", definitions=definitions))
+
+    result = services.generate_web_quiz("vocab_001", "释义")
+    quiz = result["quiz"]
+    assert isinstance(quiz["options"], list)
+    assert len(set(quiz["options"])) == 4
+    assert "n." in quiz["options"]
+    assert quiz["answer"] == "n.|兵器"
+    assert quiz["language"] == "zh_classical"
 
 
 # ──────────────────────────────────────────
