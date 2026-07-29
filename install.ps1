@@ -22,7 +22,7 @@ $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  VocabCraft v0.2.0 安装向导" -ForegroundColor Cyan
+Write-Host "  VocabCraft v0.3.0 安装向导" -ForegroundColor Cyan
 Write-Host "  (TRAEWORK CN + TRAEIDE CN 双环境)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""

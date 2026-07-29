@@ -178,7 +178,7 @@ Skills 和 Rules 配置位于 `.trae/` 目录下，Trae 会自动读取，修改
 |-----------|---------|---------|
 | vocabcraft-capture | `/capture` | 拍照录入词汇流程编排（OCR + 结构化解析） |
 | vocabcraft-review | `/review` | 到期复习清单生成（SM-2 排程） |
-| vocabcraft-quiz | `/quiz` | 考题生成与评分（更新记忆状态） |
+| vocabcraft-quiz | `/quiz` | 考题生成与评分（更新记忆状态，支持文言文释义题） |
 | vocabcraft-stats | `/stats` | 词汇统计查询 |
 | vocabcraft-export | `/export` | 词汇数据导出 |
 
@@ -342,15 +342,15 @@ vocabcraft/
 
 ```powershell
 # Windows (PowerShell 5.1+)
-.\scripts\build-release.ps1 -Version 0.2.0
+.\scripts\build-release.ps1 -Version 0.3.0
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.2.0
+bash scripts/build-release.sh 0.3.0
 ```
 
-产物：`dist/VocabCraft-v0.2.0.{zip,tar.zst,tar.gz}`，结构与 GitHub Release 资产一致。
+产物：`dist/VocabCraft-v0.3.0.{zip,tar.zst,tar.gz}`，结构与 GitHub Release 资产一致。
 
 构建脚本采用**白名单复制策略**，只打包必要文件：
 

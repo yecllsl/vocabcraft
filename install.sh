@@ -33,7 +33,7 @@ done
 
 echo ""
 echo "========================================"
-echo "  VocabCraft v0.2.0 安装向导"
+echo "  VocabCraft v0.3.0 安装向导"
 echo "  (TRAEWORK CN + TRAEIDE CN 双环境)"
 echo "========================================"
 echo ""
