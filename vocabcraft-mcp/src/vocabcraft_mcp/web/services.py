@@ -393,16 +393,27 @@ def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> Optional[dict]:
         # 文言文释义题：题干高亮目标词，选项为 4 个词性，答案编码为 "词性|释义"
         definition_index = quiz.definition_index if quiz.definition_index is not None else 0
         selected_def = defs[definition_index] if 0 <= definition_index < len(defs) else (defs[0] if defs else None)
+
+        # 优先从 definition.text 的【词性】标记解析，失败则回退到全局词性
+        pos_zh, meaning = ("", "")
+        if selected_def is not None:
+            pos_zh, meaning = _parse_def_pos(selected_def.text)
+        if not pos_zh:
+            pos_zh = vocab.structured.part_of_speech.strip()
+            # 全局词性已是英文简写时，回译为中文再统一处理
+            if pos_zh and not pos_zh.startswith("【"):
+                pos_zh = en_to_zh_pos(pos_zh)
+        correct_pos_en = zh_to_en_pos(pos_zh) if pos_zh else "?"
+
         if selected_def and selected_def.examples:
             sentence = selected_def.examples[0]
             highlighted = sentence.replace(word, f"<mark>{word}</mark>")
-            # 若例句中未出现目标词，降级为释义文本提示
             prompt = highlighted if highlighted != sentence else f"请写出「{word}」的词性与释义"
         else:
             prompt = f"请写出「{word}」的词性与释义"
-        # 工具层已将 answer 编码为 "词性|释义"
-        answer = quiz.answer
-        options = _build_classical_pos_options(vocab.structured.part_of_speech)
+
+        answer = f"{correct_pos_en}|{meaning}" if meaning else f"{correct_pos_en}|"
+        options = _build_classical_pos_options(correct_pos_en)
     else:  # 释义
         prompt = f"请写出单词「{word}」的释义"
         answer = first_def_text if defs else word

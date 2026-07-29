@@ -41,9 +41,9 @@ def _make_vocab(word, vid, language="en", repetitions=0, next_review=""):
 
 
 def _make_classical_vocab(word, vid, part_of_speech="n.", definitions=None, next_review=""):
-    """构造文言文测试词汇（用于 zh_classical 释义题）"""
+    """构造文言文测试词汇（definition.text 含【词性】标记）"""
     if definitions is None:
-        definitions = [Definition(text=f"{word} 的释义", examples=[f"此{word}乃测试例句。"])]
+        definitions = [Definition(text=f"【名词】{word} 的释义", examples=[f"此{word}乃测试例句。"])]
     return VocabRecord(
         id=vid,
         structured=StructuredVocab(
@@ -196,6 +196,21 @@ def test_generate_web_classical_quiz_with_example(temp_storage):
     assert "n." in quiz["options"]
     assert quiz["answer"] == "n.|兵器"
     assert quiz["language"] == "zh_classical"
+
+
+def test_generate_web_classical_quiz_uses_def_pos(temp_storage):
+    """zh_classical 释义题优先使用 definition.text 中的【词性】标记"""
+    definitions = [
+        Definition(text="【动词】行走", examples=["老臣今者殊不欲食，乃自强步。"]),
+    ]
+    temp_storage.save_vocab(_make_classical_vocab("步", "vocab_001", part_of_speech="n.", definitions=definitions))
+
+    result = services.generate_web_quiz("vocab_001", "释义")
+    quiz = result["quiz"]
+    assert quiz["answer"] == "v.|行走"
+    assert "v." in quiz["options"]
+    # 全局词性 n. 可以出现在干扰项中，但不能是正确选项
+    assert quiz["options"].index("v.") >= 0
 
 
 def test_generate_web_classical_quiz_without_example(temp_storage):
