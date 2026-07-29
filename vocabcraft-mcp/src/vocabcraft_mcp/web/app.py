@@ -7,13 +7,14 @@
 数据安全: 仅监听本机地址，数据不离开本地文件系统。
 """
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup, escape
 
-from vocabcraft_mcp.web.services import en_to_zh_pos
+from vocabcraft_mcp.tools.quiz import en_to_zh_pos
 
 # web 模块根目录，用于定位 templates 和 static
 _WEB_DIR = Path(__file__).parent
@@ -21,11 +22,12 @@ _TEMPLATES_DIR = _WEB_DIR / "templates"
 _STATIC_DIR = _WEB_DIR / "static"
 
 # 仅放行 <mark> / </mark> 标签的占位标记
-_MARK_OPEN = "\x00MARK_OPEN\x00"
-_MARK_CLOSE = "\x00MARK_CLOSE\x00"
+# 使用一次性随机 token，降低与用户输入内容碰撞的概率
+_MARK_OPEN = f"__MARK_OPEN_{uuid4().hex}__"
+_MARK_CLOSE = f"__MARK_CLOSE_{uuid4().hex}__"
 
 
-def _safe_mark(value: str) -> str:
+def _safe_mark(value: str) -> Markup:
     """仅放行 <mark> / </mark> 标签，其他 HTML 仍转义。
 
     实现思路：先将合法 mark 标签替换为不可能出现在正常文本中的占位符，

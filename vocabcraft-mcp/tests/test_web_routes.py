@@ -394,6 +394,28 @@ def test_batch_review_unknown_item(client):
     assert response.status_code == 404
 
 
+def test_batch_review_item_renders_mark_and_zh_pos(client):
+    """批量复习题目片段应渲染真实 <mark> 标签和中文词性选项"""
+    test_client, storage = client
+    today = _today_iso()
+    storage.save_vocab(_make_classical_vocab("兵", "vocab_001", next_review=today))
+    storage.save_vocab(_make_classical_vocab("车", "vocab_002", next_review=today))
+
+    response = test_client.post("/api/review/batch/start")
+    assert response.status_code == 200
+
+    import re
+
+    batch_match = re.search(r"/api/review/batch/(batch_[a-f0-9]+)/item/0", response.text)
+    assert batch_match is not None
+    batch_id = batch_match.group(1)
+
+    response = test_client.get(f"/api/review/batch/{batch_id}/item/0")
+    assert response.status_code == 200
+    assert "<mark>兵</mark>" in response.text
+    assert "<span>名词</span>" in response.text
+
+
 def test_grade_batch_review_item_classical_pos_definition(client):
     """批量复习中 zh_classical 释义题可通过 pos + definition 表单字段评分"""
     test_client, storage = client

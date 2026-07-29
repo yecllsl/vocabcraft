@@ -764,7 +764,7 @@ a:hover { text-decoration: underline; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-/* 文言文释义题目标词高亮 */
+/* 文言文释义题目标词高亮（当前仅 .quiz-question 使用） */
 mark {
     background-color: #fff3a8;
     padding: 0 4px;

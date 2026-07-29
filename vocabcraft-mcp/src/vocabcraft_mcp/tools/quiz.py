@@ -52,6 +52,54 @@ def _strip_pos_prefix(value: str) -> str:
     return _POS_PREFIX_PATTERN.sub("", value).strip()
 
 
+# ──────────────────────────────────────────
+# 词性解析与中英文映射（Web 层复用）
+# ──────────────────────────────────────────
+
+_POS_ZH_TO_EN = {
+    "名词": "n.",
+    "动词": "v.",
+    "形容词": "adj.",
+    "副词": "adv.",
+    "代词": "pron.",
+    "数词": "num.",
+    "量词": "量",
+    "连词": "连",
+    "介词": "介",
+    "助词": "助",
+    "叹词": "叹",
+}
+_POS_EN_TO_ZH = {v: k for k, v in _POS_ZH_TO_EN.items()}
+
+
+def _parse_def_pos(text: str) -> tuple[str, str]:
+    """从释义文本中解析【词性】标记。
+
+    输入：【名词】步伐，脚步
+    返回：(中文词性, 纯释义文本)
+    无标记时返回 ("", 原文本)
+    """
+    text = text.strip()
+    match = re.match(r"^【(.+?)】\s*(.*)$", text)
+    if match:
+        return match.group(1).strip(), match.group(2).strip()
+    return "", text
+
+
+def zh_to_en_pos(zh: str) -> str:
+    """中文词性（支持组合）转英文简写。无法识别的片段原样保留。"""
+    parts = [p.strip() for p in zh.split("/") if p.strip()]
+    mapped = [_POS_ZH_TO_EN.get(p, p) for p in parts]
+    return "/".join(mapped)
+
+
+def en_to_zh_pos(en: str) -> str:
+    """英文简写（支持组合）转中文。无法识别的片段原样保留。"""
+    parts = [p.strip() for p in en.split("/") if p.strip()]
+    mapped = [_POS_EN_TO_ZH.get(p, p) for p in parts]
+    return "/".join(mapped)
+
+
 def _generate_quiz_id(storage) -> str:
     """生成 quiz_YYYYMMDD_NNN，基于当天已有考题数 +1"""
     today = _now_utc().strftime("%Y%m%d")
@@ -147,9 +195,16 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
     if qtype == "拼写":
         answer = v.structured.word
     elif qtype == "释义" and v.structured.language == "zh_classical":
-        pos = v.structured.part_of_speech.strip()
-        pos = pos if pos else "?"
-        answer = f"{pos}|{defs[definition_index].text.strip()}" if defs else ""
+        selected = defs[definition_index] if defs else None
+        if selected is not None:
+            pos_zh, meaning = _parse_def_pos(selected.text)
+            if not pos_zh:
+                # 释义无【词性】标记时，回退到全局词性并统一为英文简写
+                pos_zh = v.structured.part_of_speech.strip()
+            pos = zh_to_en_pos(pos_zh) if pos_zh else "?"
+            answer = f"{pos}|{meaning}"
+        else:
+            answer = "?|"
     else:
         answer = defs[definition_index].text if defs else ""
     quiz = Quiz(
@@ -210,11 +265,14 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
         grade = 5 if correct else 0
         result["correct"] = correct
     elif quiz.quiz_type == "释义" and vocab.structured.language == "zh_classical":
-        # zh_classical 释义题：answer 编码为 "词性|释义"，按词性（大小写不敏感）+ 释义（忽略词性前缀）评分
+        # zh_classical 释义题：answer 编码为 "词性|释义"，按词性（中英文统一为英文简写）+ 释义（忽略词性前缀）评分
         expected_pos, expected_meaning = _parse_classical_definition_answer(quiz.answer)
         actual_pos, actual_meaning = _parse_classical_definition_answer(response)
+        # 允许中英文词性互答：统一转换为英文简写后比较
+        expected_pos = zh_to_en_pos(expected_pos)
+        actual_pos = zh_to_en_pos(actual_pos)
         correct = (
-            expected_pos.lower() == actual_pos.lower()
+            expected_pos == actual_pos
             and _strip_pos_prefix(expected_meaning) == _strip_pos_prefix(actual_meaning)
         )
         grade = 5 if correct else 0

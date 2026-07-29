@@ -559,3 +559,16 @@ def test_grade_quiz_classical_definition_with_zh_pos_prefix(isolated_storage):
     result = grade_quiz(gen["quiz_id"], "名词|兵器")
     assert result["grade"] == 5
     assert result["correct"] is True
+
+
+def test_grade_quiz_classical_definition_mixed_pos_style(isolated_storage):
+    """期望英文词性、用户回答中文词性（或相反）时仍能判对"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+
+    save_vocab(_make_classical_vocab(pos="n."))
+    gen = generate_quiz("vocab_001", "释义")
+
+    # 期望 n.|兵器，用户用中文词性回答
+    result = grade_quiz(gen["quiz_id"], "名词|兵器")
+    assert result["grade"] == 5
+    assert result["correct"] is True

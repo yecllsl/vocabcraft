@@ -209,8 +209,6 @@ def test_generate_web_classical_quiz_uses_def_pos(temp_storage):
     quiz = result["quiz"]
     assert quiz["answer"] == "v.|行走"
     assert "v." in quiz["options"]
-    # 全局词性 n. 可以出现在干扰项中，但不能是正确选项
-    assert quiz["options"].index("v.") >= 0
 
 
 def test_generate_web_classical_quiz_without_example(temp_storage):
@@ -559,7 +557,7 @@ def test_mastery_distribution_by_language_empty(temp_storage):
 # Task 1: 词性解析与中英文映射
 # ──────────────────────────────────────────
 
-from vocabcraft_mcp.web.services import _parse_def_pos, zh_to_en_pos, en_to_zh_pos
+from vocabcraft_mcp.tools.quiz import _parse_def_pos, en_to_zh_pos, zh_to_en_pos
 
 
 def test_parse_def_pos_with_marker():
