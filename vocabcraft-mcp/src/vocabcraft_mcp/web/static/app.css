@@ -763,3 +763,12 @@ a:hover { text-decoration: underline; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* 文言文释义题目标词高亮 */
+mark {
+    background-color: #fff3a8;
+    padding: 0 4px;
+    border-radius: 3px;
+    font-weight: 600;
+    color: inherit;
+}
