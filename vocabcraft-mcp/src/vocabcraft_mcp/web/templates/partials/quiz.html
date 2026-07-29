@@ -5,7 +5,7 @@
         <span style="font-size: 13px; color: var(--text-muted);">请作答后点击提交</span>
     </div>
 
-    <div class="quiz-question">{{ quiz.question }}</div>
+    <div class="quiz-question">{{ quiz.question | safe_mark }}</div>
 
     <form hx-post="/api/quiz/{{ quiz.id }}/grade"
           hx-target="#content" hx-swap="innerHTML">
@@ -14,7 +14,7 @@
             {% for option in quiz.options %}
             <label class="quiz-option">
                 <input type="radio" name="pos" value="{{ option }}" required>
-                <span>{{ option }}</span>
+                <span>{{ option | pos_to_zh }}</span>
             </label>
             {% endfor %}
         </div>

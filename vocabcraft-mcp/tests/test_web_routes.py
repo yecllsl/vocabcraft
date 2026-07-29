@@ -117,6 +117,19 @@ def test_generate_quiz_route(client):
     assert "提交答案" in response.text
 
 
+def test_generate_quiz_route_classical_shows_mark_and_zh_pos(client):
+    """文言文释义题片段应渲染真实 <mark> 标签和中文词性选项"""
+    test_client, storage = client
+    storage.save_vocab(_make_classical_vocab("兵", "vocab_001"))
+
+    response = test_client.post("/api/quiz/vocab_001/generate?quiz_type=释义")
+    assert response.status_code == 200
+    assert "<mark>兵</mark>" in response.text
+    assert "名词" in response.text
+    # 不应在选项显示文本中直接显示英文简写（value 属性中仍需保留以兼容后端评分）
+    assert "<span>名词</span>" in response.text
+
+
 def test_quiz_partial_includes_language(client, monkeypatch):
     """quiz_partial 路由应在模板上下文中注入 language"""
     from vocabcraft_mcp.web.routes import quiz as quiz_module
@@ -165,14 +178,14 @@ def test_grade_quiz_route(client):
 
 
 def _make_classical_vocab(word, vid, next_review=""):
-    """构造文言文测试词汇（带释义与例句）"""
+    """构造文言文测试词汇（definition.text 含【词性】标记）"""
     return VocabRecord(
         id=vid,
         structured=StructuredVocab(
             word=word,
             phonetic="",
             part_of_speech="n.",
-            definitions=[Definition(text="兵器", examples=[f"收天下之{word}，聚之咸阳。"])],
+            definitions=[Definition(text=f"【名词】兵器", examples=[f"收天下之{word}，聚之咸阳。"])],
             language="zh_classical",
         ),
         review_state=ReviewState(next_review=next_review),

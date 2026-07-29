@@ -20,7 +20,7 @@
         <span class="batch-progress-text">第 {{ item.index + 1 }} / {{ item.total }} 题</span>
     </div>
 
-    <div class="quiz-question">{{ item.quiz.question }}</div>
+    <div class="quiz-question">{{ item.quiz.question | safe_mark }}</div>
 
     <form class="batch-quiz-form"
           hx-post="/api/review/batch/{{ item.batch_id }}/item/{{ item.index }}/grade"
@@ -30,7 +30,7 @@
             {% for option in item.quiz.options %}
             <label class="quiz-option">
                 <input type="radio" name="pos" value="{{ option }}" required>
-                <span>{{ option }}</span>
+                <span>{{ option | pos_to_zh }}</span>
             </label>
             {% endfor %}
         </div>
