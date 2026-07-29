@@ -8,6 +8,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from random import sample, shuffle
+import re
 from typing import Optional
 from uuid import uuid4
 
@@ -241,6 +242,54 @@ def get_forgetting_curve() -> list[dict]:
         retention = max(35, 100 - (i + 1) * 12)
         curve.append({"days": interval, "retention": retention, "review": i})
     return curve
+
+
+# ──────────────────────────────────────────
+# Task 1: 词性解析与中英文映射
+# ──────────────────────────────────────────
+
+_POS_ZH_TO_EN = {
+    "名词": "n.",
+    "动词": "v.",
+    "形容词": "adj.",
+    "副词": "adv.",
+    "代词": "pron.",
+    "数词": "num.",
+    "量词": "量",
+    "连词": "连",
+    "介词": "介",
+    "助词": "助",
+    "叹词": "叹",
+}
+_POS_EN_TO_ZH = {v: k for k, v in _POS_ZH_TO_EN.items()}
+
+
+def _parse_def_pos(text: str) -> tuple[str, str]:
+    """从释义文本中解析【词性】标记。
+
+    输入：【名词】步伐，脚步
+    返回：(中文词性, 纯释义文本)
+    无标记时返回 ("", 原文本)
+    """
+    text = text.strip()
+    match = re.match(r"^【(.+?)】\s*(.*)$", text)
+    if match:
+        return match.group(1).strip(), match.group(2).strip()
+    return "", text
+
+
+def zh_to_en_pos(zh: str) -> str:
+    """中文词性（支持组合）转英文简写。无法识别的片段原样保留。"""
+    parts = [p.strip() for p in zh.split("/") if p.strip()]
+    mapped = [_POS_ZH_TO_EN.get(p, p) for p in parts]
+    return "/".join(mapped)
+
+
+def en_to_zh_pos(en: str) -> str:
+    """英文简写（支持组合）转中文。无法识别的片段原样保留。"""
+    parts = [p.strip() for p in en.split("/") if p.strip()]
+    mapped = [_POS_EN_TO_ZH.get(p, p) for p in parts]
+    return "/".join(mapped)
 
 
 # ──────────────────────────────────────────

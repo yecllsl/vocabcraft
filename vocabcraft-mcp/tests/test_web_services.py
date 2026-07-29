@@ -541,6 +541,48 @@ def test_mastery_distribution_by_language_empty(temp_storage):
 
 
 # ──────────────────────────────────────────
+# Task 1: 词性解析与中英文映射
+# ──────────────────────────────────────────
+
+from vocabcraft_mcp.web.services import _parse_def_pos, zh_to_en_pos, en_to_zh_pos
+
+
+def test_parse_def_pos_with_marker():
+    """【词性】标记可被解析为中文词性和纯释义"""
+    pos, meaning = _parse_def_pos("【名词】步伐，脚步")
+    assert pos == "名词"
+    assert meaning == "步伐，脚步"
+
+
+def test_parse_def_pos_without_marker():
+    """无标记时返回空词性和原文本"""
+    pos, meaning = _parse_def_pos("步伐，脚步")
+    assert pos == ""
+    assert meaning == "步伐，脚步"
+
+
+def test_zh_to_en_pos_single():
+    """单个中文词性映射为英文简写"""
+    assert zh_to_en_pos("名词") == "n."
+    assert zh_to_en_pos("动词") == "v."
+
+
+def test_zh_to_en_pos_combined():
+    """组合中文词性映射为组合英文简写"""
+    assert zh_to_en_pos("名词/动词") == "n./v."
+
+
+def test_en_to_zh_pos_single():
+    """单个英文简写映射为中文"""
+    assert en_to_zh_pos("n.") == "名词"
+
+
+def test_en_to_zh_pos_combined():
+    """组合英文简写映射为中文"""
+    assert en_to_zh_pos("n./v.") == "名词/动词"
+
+
+# ──────────────────────────────────────────
 # N-05 Task 6: get_insights_summary 汇总 + 小样本降级
 # ──────────────────────────────────────────
 
