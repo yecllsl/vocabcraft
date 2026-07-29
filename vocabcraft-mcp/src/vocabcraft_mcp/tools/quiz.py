@@ -52,6 +52,24 @@ def _strip_pos_prefix(value: str) -> str:
     return _POS_PREFIX_PATTERN.sub("", value).strip()
 
 
+def _normalize_classical_meaning(value: str) -> str:
+    """对释义文本做轻量归一化，降低标点/空格差异导致的误判。
+
+    目前统一常见引号（中文单双引号、直角引号、ASCII 单双引号）为 ASCII 双引号，
+    并折叠连续空白为单个空格，方便用户答案与标准答案比较。
+    """
+    normalized = value.strip()
+    # 统一各类引号为 ASCII 双引号
+    normalized = normalized.replace("\u201c", '"').replace("\u201d", '"')  # “ ”
+    normalized = normalized.replace("\u2018", '"').replace("\u2019", '"')  # ‘ ’
+    normalized = normalized.replace("\u300c", '"').replace("\u300d", '"')  # 「 」
+    normalized = normalized.replace("\u300e", '"').replace("\u300f", '"')  # 『 』
+    normalized = normalized.replace("'", '"')  # ASCII 单引号 -> ASCII 双引号
+    # 折叠连续空白
+    normalized = re.sub(r"\s+", " ", normalized)
+    return normalized
+
+
 # ──────────────────────────────────────────
 # 词性解析与中英文映射（Web 层复用）
 # ──────────────────────────────────────────
@@ -273,7 +291,8 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
         actual_pos = zh_to_en_pos(actual_pos)
         correct = (
             expected_pos == actual_pos
-            and _strip_pos_prefix(expected_meaning) == _strip_pos_prefix(actual_meaning)
+            and _normalize_classical_meaning(_strip_pos_prefix(expected_meaning))
+            == _normalize_classical_meaning(_strip_pos_prefix(actual_meaning))
         )
         grade = 5 if correct else 0
         result["correct"] = correct

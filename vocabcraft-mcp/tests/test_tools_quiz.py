@@ -420,6 +420,32 @@ def test_grade_quiz_classical_definition_pipe_in_meaning(isolated_storage):
     assert result["correct"] is True
 
 
+def test_grade_quiz_classical_definition_quote_mismatch(isolated_storage):
+    """释义中中文单双引号不一致时应判对"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+
+    # 标准答案使用中文双引号
+    save_vocab({
+        "id": "vocab_001",
+        "structured": {
+            "word": "长",
+            "phonetic": "",
+            "part_of_speech": "adj.",
+            "definitions": [
+                {"text": "【形容词】与\"短\"相对", "examples": []},
+            ],
+            "language": "zh_classical",
+        },
+    })
+    gen = generate_quiz("vocab_001", "释义")
+    assert gen["quiz"]["answer"] == "adj.|与\"短\"相对"
+
+    # 用户输入中文单引号，仍应判对
+    result = grade_quiz(gen["quiz_id"], "adj.|与'短'相对")
+    assert result["grade"] == 5
+    assert result["correct"] is True
+
+
 def test_grade_quiz_classical_definition_updates_sm2(isolated_storage):
     """zh_classical 释义题评分后仍更新 SM-2 状态与复习记录"""
     from vocabcraft_mcp.tools.crud import save_vocab, get_storage
