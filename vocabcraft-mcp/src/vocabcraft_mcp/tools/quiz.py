@@ -11,6 +11,7 @@
       释义题（主观）返回 grade_prompt 交宿主 LLM 评分，骨架阶段默认 grade=3
 """
 import random
+import re
 from datetime import datetime, timezone
 
 from vocabcraft_mcp.models import Definition, Quiz, ReviewRecord
@@ -32,6 +33,23 @@ def _parse_classical_definition_answer(answer: str) -> tuple[str, str]:
     """
     pos, _, meaning = answer.strip().partition("|")
     return pos.strip().lower(), meaning.strip()
+
+
+_POS_PREFIX_PATTERN = re.compile(
+    r"^\s*(?:[a-z]+\.\s*(?:/[a-z]+\.)*\s*[|｜]\s*|[\u4e00-\u9fa5]+(?:/[\u4e00-\u9fa5]+)*\s*[|｜]\s*)",
+    re.IGNORECASE,
+)
+
+
+def _strip_pos_prefix(value: str) -> str:
+    """移除释义文本前端可能存在的词性标注。
+
+    例如：
+        n.|兵器     -> 兵器
+        名词|兵器   -> 兵器
+        n. 兵器     -> n. 兵器（无明确分隔符时保留）
+    """
+    return _POS_PREFIX_PATTERN.sub("", value).strip()
 
 
 def _generate_quiz_id(storage) -> str:
@@ -192,10 +210,13 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
         grade = 5 if correct else 0
         result["correct"] = correct
     elif quiz.quiz_type == "释义" and vocab.structured.language == "zh_classical":
-        # zh_classical 释义题：answer 编码为 "词性|释义"，按词性（大小写不敏感）+ 释义（严格一致）评分
+        # zh_classical 释义题：answer 编码为 "词性|释义"，按词性（大小写不敏感）+ 释义（忽略词性前缀）评分
         expected_pos, expected_meaning = _parse_classical_definition_answer(quiz.answer)
         actual_pos, actual_meaning = _parse_classical_definition_answer(response)
-        correct = expected_pos == actual_pos and expected_meaning == actual_meaning
+        correct = (
+            expected_pos.lower() == actual_pos.lower()
+            and _strip_pos_prefix(expected_meaning) == _strip_pos_prefix(actual_meaning)
+        )
         grade = 5 if correct else 0
         result["correct"] = correct
     else:

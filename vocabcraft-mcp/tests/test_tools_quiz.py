@@ -10,7 +10,7 @@
 
 import pytest
 
-from vocabcraft_mcp.tools.quiz import generate_quiz, grade_quiz
+from vocabcraft_mcp.tools.quiz import generate_quiz, grade_quiz, _strip_pos_prefix
 from vocabcraft_mcp.tools.crud import save_vocab, get_storage
 from vocabcraft_mcp.prompts.quiz_generate_prompt import CLASSICAL_GENERATE_PROMPT
 
@@ -520,3 +520,42 @@ def test_generate_non_classical_definition_uses_default_prompt(isolated_storage,
     # 默认 prompt 包含音标与题型说明
     assert "音标：" in prompt
     assert "题型：释义" in prompt
+
+
+def test_strip_pos_prefix_removes_en_pos():
+    """剥离英文词性前缀"""
+    assert _strip_pos_prefix("n.|兵器") == "兵器"
+
+
+def test_strip_pos_prefix_removes_zh_pos():
+    """剥离中文词性前缀"""
+    assert _strip_pos_prefix("名词|兵器") == "兵器"
+
+
+def test_strip_pos_prefix_no_prefix():
+    """无前缀时原样返回"""
+    assert _strip_pos_prefix("兵器") == "兵器"
+
+
+def test_grade_quiz_classical_definition_with_pos_prefix(isolated_storage):
+    """用户释义带词性前缀时仍能判对"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+
+    save_vocab(_make_classical_vocab())
+    gen = generate_quiz("vocab_001", "释义")
+
+    result = grade_quiz(gen["quiz_id"], "n.|兵器")
+    assert result["grade"] == 5
+    assert result["correct"] is True
+
+
+def test_grade_quiz_classical_definition_with_zh_pos_prefix(isolated_storage):
+    """用户释义带中文词性前缀时仍能判对"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+
+    save_vocab(_make_classical_vocab(pos="名词"))
+    gen = generate_quiz("vocab_001", "释义")
+
+    result = grade_quiz(gen["quiz_id"], "名词|兵器")
+    assert result["grade"] == 5
+    assert result["correct"] is True
