@@ -574,6 +574,27 @@ def test_parse_def_pos_without_marker():
     assert meaning == "步伐，脚步"
 
 
+def test_parse_def_pos_leading_spaces():
+    """前导空格不影响词性标记解析"""
+    pos, meaning = _parse_def_pos("  【名词】  步伐，脚步  ")
+    assert pos == "名词"
+    assert meaning == "步伐，脚步"
+
+
+def test_parse_def_pos_combined():
+    """组合词性标记可被解析"""
+    pos, meaning = _parse_def_pos("【名词/动词】步伐")
+    assert pos == "名词/动词"
+    assert meaning == "步伐"
+
+
+def test_parse_def_pos_unrecognized():
+    """非标准词性标记原样保留"""
+    pos, meaning = _parse_def_pos("【形】步伐")
+    assert pos == "形"
+    assert meaning == "步伐"
+
+
 def test_zh_to_en_pos_single():
     """单个中文词性映射为英文简写"""
     assert zh_to_en_pos("名词") == "n."

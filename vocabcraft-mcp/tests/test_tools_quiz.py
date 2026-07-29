@@ -537,6 +537,11 @@ def test_strip_pos_prefix_no_prefix():
     assert _strip_pos_prefix("兵器") == "兵器"
 
 
+def test_strip_pos_prefix_meaning_contains_pipe():
+    """释义内部包含 '|' 时仅剥离前缀"""
+    assert _strip_pos_prefix("n.|兵器|刀剑") == "兵器|刀剑"
+
+
 def test_grade_quiz_classical_definition_with_pos_prefix(isolated_storage):
     """用户释义带词性前缀时仍能判对"""
     from vocabcraft_mcp.tools.crud import save_vocab
