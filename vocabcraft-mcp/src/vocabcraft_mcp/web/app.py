@@ -11,14 +11,42 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup, escape
+
+from vocabcraft_mcp.web.services import en_to_zh_pos
 
 # web 模块根目录，用于定位 templates 和 static
 _WEB_DIR = Path(__file__).parent
 _TEMPLATES_DIR = _WEB_DIR / "templates"
 _STATIC_DIR = _WEB_DIR / "static"
 
+# 仅放行 <mark> / </mark> 标签的占位标记
+_MARK_OPEN = "\x00MARK_OPEN\x00"
+_MARK_CLOSE = "\x00MARK_CLOSE\x00"
+
+
+def _safe_mark(value: str) -> str:
+    """仅放行 <mark> / </mark> 标签，其他 HTML 仍转义。
+
+    实现思路：先将合法 mark 标签替换为不可能出现在正常文本中的占位符，
+    对其余内容做 HTML 转义，最后把占位符还原为真实标签并返回 Markup。
+    注意：markupsafe.Markup.replace 会转义替换内容，因此需先转回普通 str。
+    """
+    text = str(value).replace("<mark>", _MARK_OPEN).replace("</mark>", _MARK_CLOSE)
+    escaped = str(escape(text))
+    escaped = escaped.replace(_MARK_OPEN, "<mark>").replace(_MARK_CLOSE, "</mark>")
+    return Markup(escaped)
+
+
+def _pos_to_zh(value: str) -> str:
+    """英文词性简写转中文显示，支持组合形式（如 n./v.）。"""
+    return en_to_zh_pos(str(value))
+
+
 # 全局模板实例，供路由模块复用
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+templates.env.filters["safe_mark"] = _safe_mark
+templates.env.filters["pos_to_zh"] = _pos_to_zh
 
 
 def create_app() -> FastAPI:

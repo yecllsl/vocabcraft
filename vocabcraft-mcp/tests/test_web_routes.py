@@ -487,3 +487,43 @@ def test_base_page_has_insights_nav_tab(client):
     assert response.status_code == 200
     assert "语种洞察" in response.text
     assert 'hx-get="/insights"' in response.text
+
+
+def test_safe_mark_filter_renders_mark_tag(client):
+    """safe_mark 过滤器只放行 <mark> 标签"""
+    test_client, _ = client
+    from vocabcraft_mcp.web.app import templates
+
+    env = templates.env
+    assert "safe_mark" in env.filters
+
+    render = env.from_string('{{ text | safe_mark }}')
+    html = render.render({"text": "于是入<mark>朝</mark>见威王。"})
+    assert "<mark>朝</mark>" in html
+    assert "&lt;mark&gt;" not in html
+
+
+def test_safe_mark_filter_escapes_other_html(client):
+    """safe_mark 过滤器仍转义其他 HTML"""
+    test_client, _ = client
+    from vocabcraft_mcp.web.app import templates
+
+    env = templates.env
+    render = env.from_string('{{ text | safe_mark }}')
+    html = render.render({"text": "<script>alert(1)</script><mark>x</mark>"})
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
+    assert "<mark>x</mark>" in html
+
+
+def test_pos_to_zh_filter_exists(client):
+    """pos_to_zh 过滤器已注册"""
+    test_client, _ = client
+    from vocabcraft_mcp.web.app import templates
+
+    env = templates.env
+    assert "pos_to_zh" in env.filters
+
+    render = env.from_string('{{ pos | pos_to_zh }}')
+    assert render.render({"pos": "n."}) == "名词"
+    assert render.render({"pos": "n./v."}) == "名词/动词"
