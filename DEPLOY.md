@@ -182,20 +182,14 @@ Skills 和 Rules 配置位于 `.trae/` 目录下，Trae 会自动读取，修改
 | vocabcraft-stats | `/stats` | 词汇统计查询 |
 | vocabcraft-export | `/export` | 词汇数据导出 |
 
-### Rules 说明（vocabcraft-* 业务规则 + BMAD 共存）
+### 业务规则说明
 
-`.trae/rules/` 下同时存在两类规则：
+业务规则已迁移至两个位置：
 
-**vocabcraft-\* 业务规则**（词汇学习业务约束）：
+- **全局开发规范 + 业务规则**：`AGENTS.md`（项目根目录），所有 Agent 运行时共享
+- **任务级约束**：各 `SKILL.md` 的「约束规则」段（`.trae/skills/`、`.opencode/skills/`、`.workbuddy/skills/`）
 
-| Rule 名称 | 作用范围 | 功能描述 |
-|-----------|---------|---------|
-| vocabcraft-* 采集规则 | /capture | OCR 识别、词汇结构化解析约束 |
-| vocabcraft-* 复习规则 | /review /quiz | SM-2 排程、考题生成、评分约束 |
-| vocabcraft-* 数据安全 | 全局 | 本地存储、不外传、导出确认 |
-| vocabcraft-* 交互规则 | 全局 | 命令格式、反馈、降级方案 |
-
-**BMAD 工作流规则**（通用开发方法论，与词汇业务无关）：
+原 `.trae/rules/` 目录已废弃，规则内容已内联到上述文件中。
 
 | Rule 名称 | 功能描述 |
 |-----------|---------|
@@ -256,13 +250,13 @@ uv sync
 ### Q5: Skills/Commands 不生效
 
 **检查项：**
-1. `.trae/skills/vocabcraft-*` 和 `.trae/rules/vocabcraft-*` 目录/文件是否存在
+1. `.trae/skills/vocabcraft-*` 目录和 SKILL.md 文件是否存在
 2. 文件名和格式是否正确
 3. Trae 是否重启
 
 **解决方案：**
 - 重启 Trae IDE CN / Trae Work CN
-- 检查 .trae 目录结构是否完整（应有 agents/commands/skills/rules 子目录）
+- 检查 .trae 目录结构是否完整（应有 skills/ 子目录）
 
 ### Q6: PaddleOCR / OCR 安装失败
 
@@ -355,8 +349,8 @@ bash scripts/build-release.sh 0.3.0
 构建脚本采用**白名单复制策略**，只打包必要文件：
 
 - `vocabcraft-mcp/src/`、`vocabcraft-mcp/tests/`、`pyproject.toml`、`uv.lock`
-- `.trae/skills/vocabcraft-*`、`.trae/rules/vocabcraft-*`、`.trae/agents/vocabcraft-*`、`.trae/commands/vocabcraft-*`（**只打包 vocabcraft-* 业务文件，不打包 BMAD 既有文件**）
-- `.trae/mcp.json`（注入 `${workspaceFolder}` 变量版本）、`.trae/hooks.json`
+- `.trae/skills/vocabcraft-*`（**只打包 vocabcraft-* 业务文件**）
+- `.trae/mcp.json`（注入 `${workspaceFolder}` 变量版本）
 - 顶层文档（README/QUICKSTART/DEPLOY/LICENSE）和安装脚本
 
 自动排除：

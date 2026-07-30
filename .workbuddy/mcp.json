@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "vocabcraft-mcp": {
+      "command": "C:\\Users\\yecll\\.local\\bin\\uv.exe",
+      "args": [
+        "run",
+        "--directory",
+        "D:/yecll/Documents/LocalCode/vocabcraft/vocabcraft-mcp",
+        "vocabcraft-mcp"
+      ]
+    }
+  }
+}
