@@ -8,14 +8,8 @@
 到期定义: review_state.next_review <= 今天（YYYY-MM-DD 字符串比较）。
 """
 
-from datetime import datetime, timezone
-
+from vocabcraft_mcp.algorithms import _now_utc
 from vocabcraft_mcp.tools.crud import get_storage
-
-
-def _today_utc_iso() -> str:
-    """当前 UTC 日期 YYYY-MM-DD，统一到期比较基准"""
-    return datetime.now(timezone.utc).date().isoformat()
 
 
 def schedule_review(vocab_id: str = "") -> dict:
@@ -33,7 +27,7 @@ def schedule_review(vocab_id: str = "") -> dict:
         词汇不存在时: {error}
     """
     storage = get_storage()
-    today = _today_utc_iso()
+    today = _now_utc().date().isoformat()
 
     # 单词汇模式：返回复习状态
     if vocab_id:

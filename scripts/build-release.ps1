@@ -22,7 +22,7 @@ $packageName = "VocabCraft-v$Version"
 $tempDir = Join-Path $distDir $packageName
 $zipPath = Join-Path $distDir "$packageName.zip"
 $gzPath = Join-Path $distDir "$packageName.tar.gz"
-$zstPath = Join-Path $distDir "$packageName.tar.zst"
+
 
 function Write-Step([string]$msg) {
     Write-Host "[build] $msg" -ForegroundColor Yellow
@@ -279,28 +279,7 @@ if ($LASTEXITCODE -eq 0) {
     Write-Err "tar.gz packing failed (tar exit $LASTEXITCODE)"
 }
 
-# 打包为 tar.zst（推荐，体积最小；需 zstd 可用，不可用时跳过，CI 会在 Linux 上产出）
-if (Get-Command zstd -ErrorAction SilentlyContinue) {
-    if (Test-Path $zstPath) { Remove-Item $zstPath -Force }
-    # 先打 tar 再用 zstd 压缩（避免 PowerShell 管道传字节的编码问题）
-    $tempTar = Join-Path $env:TEMP "vc_build_$(Get-Random).tar"
-    & tar -C $distDir -cf $tempTar $packageName
-    if ($LASTEXITCODE -eq 0) {
-        & zstd -3 -q -f $tempTar -o $zstPath
-        if ($LASTEXITCODE -eq 0) {
-            $zstItem = Get-Item $zstPath
-            $zstSizeMB = [math]::Round($zstItem.Length / 1MB, 2)
-            Write-Ok "packed: $zstPath ($zstSizeMB MB)"
-        } else {
-            Write-Err "tar.zst packing failed (zstd exit $LASTEXITCODE)"
-        }
-    } else {
-        Write-Err "tar.zst: tar step failed (exit $LASTEXITCODE)"
-    }
-    Remove-Item $tempTar -Force -ErrorAction SilentlyContinue
-} else {
-    Write-Host "[skip]  zstd not found, skipping tar.zst (CI produces it on Linux)" -ForegroundColor DarkGray
-}
+
 
 # ──────────────────────────────────────────
 # 清理临时目录
@@ -324,7 +303,6 @@ Write-Host ""
 Write-Host "  Artifacts:" -ForegroundColor Cyan
 Write-Host "    $zipPath ($zipSizeMB MB)" -ForegroundColor Cyan
 if (Test-Path $gzPath) { Write-Host "    $gzPath" -ForegroundColor Cyan }
-if (Test-Path $zstPath) { Write-Host "    $zstPath" -ForegroundColor Cyan }
 Write-Host "  Files:    $fileCount" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  User steps (TRAEWORK CN / TRAEIDE CN 均适用):" -ForegroundColor White

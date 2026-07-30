@@ -18,6 +18,14 @@ WorkBuddy 不读 `.trae/`，需等价移植：
 - **vocab_id 格式**：`vocab_YYYYMMDD_NNN`（NNN 当日递增）；quiz 以 `quiz_` 开头。
 - **结构化 vs 记忆状态分离**：`StructuredVocab` 与 `ReviewState` 分离；`grade_quiz` 只 patch `review_state`，不触动用户确认的 `structured`。
 
+## 调度算法实际实现（2026-07-30 核查）
+- 真正驱动排程的是 `src/vocabcraft_mcp/algorithms.py` 的改良版 SM-2（`compute_next_review`：EF 初始 2.5/下限 1.3；通过走 1→6→×EF；失败 reps 归零、间隔=1 天）。
+- ⚠️ **三套不一致的间隔定义**：①`INITIAL_INTERVALS_DAYS=[1,2,4,7,15]`（真正用于新词初始排程）；②`resources/forgetting_curve.json` 的 20min/1h/9h/1d/2d/6d/31d（**完全未被任何代码读取的死配置**，既不被算法用、也不被 Web 用；注释还引用了不存在的 `algorithms.ebbinghaus_schedule`）；③标准 SM-2 的 1天/6天/×EF。
+- AGENTS.md 写"遗忘曲线参数取自 forgetting_curve.json"不准确，该 json 只是展示用。
+- `algorithms.py` docstring 第 8 行称"grade 3 同 0-2 视为失败"，但代码 `if grade < 3` 实际把 3 当通过（标准 SM-2 中 3=勉强记住=通过，代码正确、注释错误）。
+- 对比 Anki：现行默认是 FSRS（机器学习、个性化、可设目标保留率），老版/早期默认是 SM-2 变体。结论：SM-2 够用省心；FSRS 数据越多越强、长期效率更优。VocabCraft 走本地极简路线，SM-2 契合 ponytail 原则。
+
 ## 备注
 - `uv` 已安装（0.11.31）。`vocabcraft-mcp/.venv` 已存在，import 正常。
 - README 对 `web/` 模块描述不足，实际项目比文档更丰富。
+- `vocabcraft-stats` skill 文档已修正（移除服务端不支持的 overview/review 维度，改为 date/language/mastery/quiz_type）。

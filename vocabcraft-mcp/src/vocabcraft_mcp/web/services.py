@@ -11,7 +11,7 @@ from random import sample, shuffle
 from typing import Optional
 from uuid import uuid4
 
-from vocabcraft_mcp.algorithms import INITIAL_INTERVALS_DAYS
+from vocabcraft_mcp.algorithms import INITIAL_INTERVALS_DAYS, _now_utc
 from vocabcraft_mcp.models import Quiz, ReviewRecord, VocabRecord
 from vocabcraft_mcp.storage import Storage
 from vocabcraft_mcp.tools.crud import get_storage as _default_get_storage
@@ -31,11 +31,6 @@ def _get_storage() -> Storage:
     return _default_get_storage()
 
 
-def _today_utc_iso() -> str:
-    """当前 UTC 日期 YYYY-MM-DD"""
-    return datetime.now(timezone.utc).date().isoformat()
-
-
 # ──────────────────────────────────────────
 # Dashboard 概览
 # ──────────────────────────────────────────
@@ -48,7 +43,7 @@ def get_dashboard_summary() -> dict:
     storage = _get_storage()
     vocabs = storage.get_all_vocabs_for_statistics()
 
-    today = _today_utc_iso()
+    today = _now_utc().date().isoformat()
     week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).date().isoformat()
 
     # KPI 指标
@@ -135,7 +130,7 @@ def get_upcoming_reviews() -> list[dict]:
     返回已到期（next_review <= 今天）的词汇列表，按到期日升序排列。
     """
     storage = _get_storage()
-    today = _today_utc_iso()
+    today = _now_utc().date().isoformat()
 
     upcoming = []
     for v in storage.get_all_vocabs_for_statistics():
@@ -573,7 +568,7 @@ def get_vocab_detail(vocab_id: str) -> Optional[dict]:
 # 词汇管理（列表 / 搜索 / 更新 / 删除）
 # ──────────────────────────────────────────
 
-_SUPPORTED_LANGUAGES = [("en", "英语"), ("zh", "中文"), ("zh_classical", "文言文"), ("de", "德语")]
+SUPPORTED_LANGUAGES = [("en", "英语"), ("zh", "中文"), ("zh_classical", "文言文"), ("de", "德语")]
 
 
 def list_vocabs_for_web(language: str = "", keyword: str = "") -> list[dict]:
@@ -676,11 +671,6 @@ def update_vocab_from_web(vocab_id: str, form: dict) -> Optional[dict]:
     if updated is None:
         return None
     return get_vocab_detail(updated.id)
-
-
-def get_language_options() -> list[tuple[str, str]]:
-    """返回 Web 表单可用的语言选项"""
-    return list(_SUPPORTED_LANGUAGES)
 
 
 # ──────────────────────────────────────────
@@ -860,7 +850,7 @@ def get_insights_summary(language: str) -> dict:
         }
     """
     storage = _get_storage()
-    today = _today_utc_iso()
+    today = _now_utc().date().isoformat()
     vocabs = [v for v in storage.get_all_vocabs_for_statistics()
               if v.structured.language == language]
 

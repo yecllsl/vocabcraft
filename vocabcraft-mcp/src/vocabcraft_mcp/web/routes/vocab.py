@@ -27,7 +27,7 @@ async def vocab_list_partial(
             "vocabs": vocabs,
             "language": language,
             "keyword": keyword,
-            "language_options": services.get_language_options(),
+            "language_options": services.SUPPORTED_LANGUAGES,
         },
     )
 
@@ -56,7 +56,7 @@ async def vocab_edit_partial(request: Request, vocab_id: str):
         "partials/vocab_edit.html",
         {
             "vocab": detail,
-            "language_options": services.get_language_options(),
+            "language_options": services.SUPPORTED_LANGUAGES,
         },
     )
 
@@ -89,6 +89,6 @@ async def vocab_delete_partial(request: Request, vocab_id: str):
             "vocabs": vocabs,
             "language": "",
             "keyword": "",
-            "language_options": services.get_language_options(),
+            "language_options": services.SUPPORTED_LANGUAGES,
         },
     )

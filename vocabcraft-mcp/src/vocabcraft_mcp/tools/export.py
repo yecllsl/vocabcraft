@@ -14,12 +14,8 @@
 import csv
 import json
 from datetime import date, datetime, timezone
-from pathlib import Path
 
-from vocabcraft_mcp.tools.crud import get_storage
-
-# 默认数据目录：与 crud.py 一致
-_DEFAULT_DATA_DIR = Path(__file__).parent.parent.parent.parent / "data"
+from vocabcraft_mcp.tools.crud import get_storage, _DEFAULT_DATA_DIR
 
 # 支持的导出格式
 _VALID_FORMATS = {"json", "csv"}

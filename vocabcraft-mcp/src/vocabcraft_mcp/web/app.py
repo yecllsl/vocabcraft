@@ -36,15 +36,10 @@ def _safe_mark(value: str) -> Markup:
     return Markup("".join(escaped))
 
 
-def _pos_to_zh(value: str) -> str:
-    """英文词性简写转中文显示，支持组合形式（如 n./v.）。"""
-    return en_to_zh_pos(str(value))
-
-
 # 全局模板实例，供路由模块复用
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 templates.env.filters["safe_mark"] = _safe_mark
-templates.env.filters["pos_to_zh"] = _pos_to_zh
+templates.env.filters["pos_to_zh"] = en_to_zh_pos
 
 
 def create_app() -> FastAPI:

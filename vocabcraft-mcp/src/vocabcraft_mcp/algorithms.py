@@ -5,8 +5,8 @@
 
 SM-2 算法原理（SuperMemo 2, 1987 Piotr Wozniak）:
     用户对每张卡片打分 grade (0-5)：
-        0-2: 完全不记得 → 重置 repetitions=0, interval=1（明天重背）
-        3:   勉强记住 → 同 0-2 处理（SM-2 原版将 <3 视为失败）
+        0-2: 完全不记得 → 视为失败：重置 repetitions=0, interval=1（明天重背）
+        3:   勉强记住 → 视为通过（SM-2 标准 q>=3 即成功）：reps 递增、间隔正常推进
         4:   记住但有迟疑 → 正常推进，ease 不变
         5:   完美记忆 → 正常推进，ease 略升
     ease factor (EF) 无论答对答错都更新（反映真实难度），下限 1.3 防止间隔不增长。
@@ -27,9 +27,14 @@ DEFAULT_EASE_FACTOR = 2.5  # 新词初始 EF
 INITIAL_INTERVALS_DAYS = [1, 2, 4, 7, 15]
 
 
+def _now_utc() -> datetime:
+    """当前 UTC 日期时间，统一时间基准，供全模块复用"""
+    return datetime.now(timezone.utc)
+
+
 def _today_utc() -> date:
     """获取当前 UTC 日期，统一日期基准便于测试与回放"""
-    return datetime.now(timezone.utc).date()
+    return _now_utc().date()
 
 
 def compute_next_review(

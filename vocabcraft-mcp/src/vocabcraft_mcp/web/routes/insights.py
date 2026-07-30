@@ -16,13 +16,6 @@ _ALLOWED_LANGUAGES = {"de", "zh_classical"}
 _DEFAULT_LANGUAGE = "de"
 
 
-def _normalize_language(lang: str | None) -> str:
-    """归一化语言参数，非法值回退默认"""
-    if lang in _ALLOWED_LANGUAGES:
-        return lang
-    return _DEFAULT_LANGUAGE
-
-
 @router.get("/insights", response_class=HTMLResponse)
 async def insights_page(request: Request):
     """渲染语种洞察主页面（默认 de）"""
@@ -37,7 +30,7 @@ async def insights_page(request: Request):
 @router.get("/partials/insights", response_class=HTMLResponse)
 async def insights_partial(request: Request, language: str = "de"):
     """返回语种洞察片段 HTML（HTMX 切换语种用）"""
-    lang = _normalize_language(language)
+    lang = language if language in _ALLOWED_LANGUAGES else _DEFAULT_LANGUAGE
     summary = services.get_insights_summary(lang)
     return templates.TemplateResponse(
         request,
@@ -49,5 +42,5 @@ async def insights_partial(request: Request, language: str = "de"):
 @router.get("/api/insights")
 async def insights_api(language: str = "de"):
     """返回语种洞察 JSON"""
-    lang = _normalize_language(language)
+    lang = language if language in _ALLOWED_LANGUAGES else _DEFAULT_LANGUAGE
     return services.get_insights_summary(lang)

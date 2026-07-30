@@ -11,11 +11,10 @@
       自动刷新 updated_at；grade_quiz 通过它只改 review_state 子字段
     - query_vocab / delete_vocab: 透传 storage
 """
-from datetime import datetime, timezone
 from pathlib import Path
 
+from vocabcraft_mcp.algorithms import get_initial_schedule, _now_utc
 from vocabcraft_mcp.models import VocabRecord, StructuredVocab, ReviewState
-from vocabcraft_mcp.algorithms import get_initial_schedule
 from vocabcraft_mcp.storage import Storage
 
 # 默认数据目录：项目根目录下的 data/ 文件夹
@@ -28,25 +27,23 @@ def get_storage() -> Storage:
     return Storage(base_dir=_DEFAULT_DATA_DIR)
 
 
-def _now_utc() -> datetime:
-    """当前 UTC 时间，统一时间基准"""
-    return datetime.now(timezone.utc)
+def _generate_id(prefix: str, existing_ids: list[str]) -> str:
+    """生成 {prefix}_YYYYMMDD_NNN，基于当天已有编号 +1
+
+    Args:
+        prefix: ID 前缀，如 "vocab"/"quiz"/"rec"
+        existing_ids: 同类型已有 ID 列表
+    """
+    today = _now_utc().strftime("%Y%m%d")
+    p = f"{prefix}_{today}_"
+    existing = [eid for eid in existing_ids if eid.startswith(p)]
+    nnn = max((int(eid.split("_")[-1]) for eid in existing), default=0) + 1
+    return f"{p}{nnn:03d}"
 
 
 def _generate_vocab_id(storage: Storage) -> str:
-    """生成 vocab_YYYYMMDD_NNN，NNN 基于当天最大编号 +1
-
-    当天序号按已有词汇最大编号递增，避免不连续或并发写入时撞号覆盖。
-    """
-    today = _now_utc().strftime("%Y%m%d")
-    prefix = f"vocab_{today}_"
-    existing = [vid for vid in storage.list_all_vocab_ids() if vid.startswith(prefix)]
-    if not existing:
-        nnn = 1
-    else:
-        max_nnn = max(int(vid.split("_")[-1]) for vid in existing)
-        nnn = max_nnn + 1
-    return f"{prefix}{nnn:03d}"
+    """生成 vocab_YYYYMMDD_NNN"""
+    return _generate_id("vocab", storage.list_all_vocab_ids())
 
 
 def _find_existing_vocab_id(storage: Storage, word: str, language: str) -> str | None:

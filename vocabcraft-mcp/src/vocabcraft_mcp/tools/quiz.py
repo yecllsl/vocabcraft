@@ -119,19 +119,15 @@ def en_to_zh_pos(en: str) -> str:
 
 
 def _generate_quiz_id(storage) -> str:
-    """生成 quiz_YYYYMMDD_NNN，基于当天已有考题数 +1"""
-    today = _now_utc().strftime("%Y%m%d")
-    prefix = f"quiz_{today}_"
-    existing = [qid for qid in storage.list_all_quiz_ids() if qid.startswith(prefix)]
-    return f"{prefix}{len(existing) + 1:03d}"
+    """生成 quiz_YYYYMMDD_NNN"""
+    from vocabcraft_mcp.tools.crud import _generate_id
+    return _generate_id("quiz", storage.list_all_quiz_ids())
 
 
 def _generate_record_id(storage) -> str:
-    """生成 rec_YYYYMMDD_NNN，基于当天已有复习记录数 +1"""
-    today = _now_utc().strftime("%Y%m%d")
-    prefix = f"rec_{today}_"
-    existing = [r.record_id for r in storage.list_all_review_records() if r.record_id.startswith(prefix)]
-    return f"{prefix}{len(existing) + 1:03d}"
+    """生成 rec_YYYYMMDD_NNN"""
+    from vocabcraft_mcp.tools.crud import _generate_id
+    return _generate_id("rec", [r.record_id for r in storage.list_all_review_records()])
 
 
 _CLASSICAL_POS_POOL = ["n.", "v.", "adj.", "adv.", "pron.", "num.", "量", "连", "介", "助", "叹"]

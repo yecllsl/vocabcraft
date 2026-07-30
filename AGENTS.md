@@ -195,7 +195,7 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 ### 复习规则
 
-1. 遗忘曲线参数取自 `vocabcraft-mcp/resources/forgetting_curve.json`，默认遵循艾宾浩斯曲线
+1. 复习排程由 `vocabcraft-mcp/src/vocabcraft_mcp/algorithms.py` 的**改良版 SM-2** 驱动（EF 初始 2.5、下限 1.3；通过走 1→6→×EF；失败 reps 归零、间隔=1 天）。`vocabcraft-mcp/resources/forgetting_curve.json` 是**未被任何代码读取的死配置**（Web 曲线由 `web/services.py` 的 `get_forgetting_curve()` 合成参考线 + `_real_retention_curve()` 基于真实复习记录计算，二者均不加载该 json）；json 注释中引用的 `algorithms.ebbinghaus_schedule` 也不存在。
 2. grade 评分标准 0-5：5完全记住/4记住略迟疑/3勉强记住/2部分记错/1几乎全忘/0完全忘记
 3. grade<3 时必须重置复习周期（回到短间隔），不得递增间隔
 4. 到期词汇（`next_review_date <= 今天`）必须复习，用户跳过时需记录原因且不延后日期
