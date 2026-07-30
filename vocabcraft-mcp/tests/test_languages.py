@@ -190,10 +190,11 @@ def test_parse_vocab_german_branch():
 
 
 def test_parse_vocab_empty_text_with_language():
-    """空文本时仍归一化 language 并返回 error"""
+    """空文本时进入对话多模态模式（dialog），language 仍归一化"""
     result = parse_vocab(ocr_text="", language="Deutsch")
     assert result["language"] == "de"
-    assert "error" in result
+    assert result["mode"] == "dialog"
+    assert "parse_prompt" in result
     assert result["structured_vocab"] is None
 
 

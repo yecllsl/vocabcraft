@@ -55,7 +55,8 @@ def ocr_recognize(image_path: str, language: str = "") -> dict:
 
 @mcp.tool()
 def parse_vocab(image_path: str = "", ocr_text: str = "", language: str = "en") -> dict:
-    """AI 结构化解析词汇（词形/音标/词性/释义/例句）"""
+    """AI 结构化解析词汇（词形/音标/词性/释义/例句）。
+    三模式优先级：对话多模态（无参数）> 本地路径多模态（image_path）> OCR 文本（ocr_text）。"""
     return parse_vocab.parse_vocab(image_path, ocr_text, language)
 
 

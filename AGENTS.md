@@ -1,6 +1,6 @@
 # VocabCraft - 词汇学习与制作一体 MCP 工具
 
-基于 Trae IDE CN / Trae Work CN 的词汇学习与制作一体化解决方案。核心流程：拍照 OCR 识别词汇 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。**一份配置同时运行在 TRAEWORK CN 与 TRAEIDE CN 双环境**。
+基于 Trae IDE CN / Trae Work CN 的词汇学习与制作一体化解决方案。核心流程：拍照 → **多模态 LLM 直接解析图片（首选）** / OCR 识别（后备）→ 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。**一份配置同时运行在 TRAEWORK CN 与 TRAEIDE CN 双环境**。
 
 ## 系统架构
 
@@ -19,7 +19,7 @@ Skills 编排层 (.trae/skills/vocabcraft-*: capture / review / quiz / stats / e
 ├── subagent 角色定义 (vocabcraft-*-agent: 采集 / 复习 / 考题 agent)
     ↓
 MCP Tools 层 (vocabcraft-mcp)
-├── OCR 识别 → 结构化解析 → 存储 → SM-2 排程 → 考题生成 → 评分 → 统计 → 导出
+├── 多模态 LLM 直接解析图片（首选）→ 结构化解析 → 存储 → SM-2 排程 → 考题生成 → 评分 → 统计 → 导出
     ↓
 Rules 约束层 (业务规则 + 安全/合规/质量/流程规则)
     ↓
@@ -30,7 +30,8 @@ Rules 约束层 (业务规则 + 安全/合规/质量/流程规则)
 
 - **MCP Server**: Python 3.12+ / FastMCP / Pydantic v2
 - **复习算法**: SM-2 遗忘曲线（SuperMemo 2）
-- **OCR 引擎（可选）**: PaddleOCR（本地部署，无需 API Key；不安装也能用基础功能）
+- **多模态 LLM 解析（首选）**: 宿主 LLM 直接读取图片，无需额外依赖
+- **OCR 引擎（可选后备）**: PaddleOCR（本地部署，无需 API Key；仅在多模态不可用时使用）
 - **数据存储**: JSON 文件（本地存储，原子写入）
 - **包管理**: uv（现代高速 Python 包管理器）
 - **测试**: pytest + pytest-asyncio + pytest-cov
@@ -182,16 +183,18 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 ### 采集规则
 
-1. OCR 失败时降级为手动输入，禁止直接报错终止流程
-2. 必填字段 word + definitions 不允许为空保存，缺失时必须补全后才保存
-3. 图片文件存储在本地 `data/images/`，禁止上传到任何外部服务
-4. vocab_id 格式：`vocab_YYYYMMDD_NNN`，NNN 按当日已有编号递增
-5. 解析结果需用户确认后才调用 `save_vocab` 保存
-6. **word（词形）和 definitions（释义）为必填字段**，不允许为 null 保存——缺失会导致后续出题与复习不可用
+1. **多模态 LLM 直接解析图片（首选）**：优先使用 `parse_vocab(image_path=...)` 的多模态模式，宿主 LLM 直接读取图片完成结构化解析
+2. **OCR 为降级后备**：多模态模式不可用时（如宿主 LLM 不支持图片读取），降级为 OCR 识别 + 文本解析流程
+3. OCR 失败时降级为手动输入，禁止直接报错终止流程
+4. 必填字段 word + definitions 不允许为空保存，缺失时必须补全后才保存
+5. 图片文件存储在本地 `data/images/`，禁止上传到任何外部服务
+6. vocab_id 格式：`vocab_YYYYMMDD_NNN`，NNN 按当日已有编号递增
+7. 解析结果需用户确认后才调用 `save_vocab` 保存
+8. **word（词形）和 definitions（释义）为必填字段**，不允许为 null 保存——缺失会导致后续出题与复习不可用
    - `definitions` 为 `list[Definition]`，每项 `{text, examples}` 内嵌该释义的关联例句
-7. 若 AI 解析未能完成结构化，必须使用占位值填充并提示用户在确认时修改：word 标记"待确认"、definitions 标记"待确认"
-8. 保存词汇时必须同时初始化 SM-2 记忆状态（repetitions=0、easiness=2.5、next_review_date=次日）
-9. **多义词必须按义项关联例句**：每条例句挂在对应义项的 `definitions[i].examples` 字段下，禁止所有例句堆在某一条释义下或顶层
+9. 若 AI 解析未能完成结构化，必须使用占位值填充并提示用户在确认时修改：word 标记"待确认"、definitions 标记"待确认"
+10. 保存词汇时必须同时初始化 SM-2 记忆状态（repetitions=0、easiness=2.5、next_review_date=次日）
+11. **多义词必须按义项关联例句**：每条例句挂在对应义项的 `definitions[i].examples` 字段下，禁止所有例句堆在某一条释义下或顶层
 
 ### 复习规则
 
@@ -233,9 +236,10 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 - **触发条件**: 命令 `/capture` 或自然语言"录词/录入词汇/添加词汇/拍照录词/采集词汇"
 - **调用 Skill**: `vocabcraft-capture`
-- **执行流程**: 获取输入(图片路径优先) → OCR识别(失败降级手动输入) → `parse_vocab` 结构化解析 → 用户确认 → `save_vocab` 保存(生成 `vocab_id`: `vocab_YYYYMMDD_NNN`) → 初始化 SM-2 记忆状态(repetitions=0, easiness=2.5, next_review_date=次日)
-- **关键 MCP Tools**: `ocr_recognize`(识别图片)、`parse_vocab`(结构化解析)、`save_vocab`(保存并初始化复习)
-- **约束**: 解析结果必须经用户确认后才保存；OCR 失败必须降级手动输入，不报错终止；必填字段 word + definitions 不允许为空
+- **执行流程**: 获取输入(图片路径优先) → **多模态 LLM 直接解析图片（首选）** → 用户确认 → `save_vocab` 保存(生成 `vocab_id`: `vocab_YYYYMMDD_NNN`) → 初始化 SM-2 记忆状态(repetitions=0, easiness=2.5, next_review_date=次日)
+- **降级流程**: 多模态不可用 → `ocr_recognize` OCR 识别 → `parse_vocab` 文本解析 → 用户确认 → 保存
+- **关键 MCP Tools**: `parse_vocab`(多模态/文本解析，首选传入 `image_path`)、`ocr_recognize`(OCR 后备)、`save_vocab`(保存并初始化复习)
+- **约束**: 多模态 LLM 解析为首选，OCR 为降级后备；解析结果必须经用户确认后才保存；OCR 失败必须降级手动输入，不报错终止；必填字段 word + definitions 不允许为空
 
 ### /review — 复习排程
 
@@ -273,8 +277,8 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 | Tool | 用途 | 关键参数 |
 |------|------|----------|
-| `ocr_recognize` | 识别图片中的词汇文本 | `image_path` |
-| `parse_vocab` | 结构化解析词汇(词形/音标/释义/例句) | OCR 文本或用户输入文本 |
+| `parse_vocab` | 结构化解析词汇(词形/音标/释义/例句)，**首选多模态模式** | `image_path`(多模态)/`ocr_text`(文本后备) |
+| `ocr_recognize` | OCR 识别图片中的词汇文本（降级后备） | `image_path` |
 | `save_vocab` | 保存词汇并初始化记忆状态 | 解析后的结构化数据 |
 | `schedule_review` | 查询到期需复习的词汇列表 | 截止日期(默认今天) |
 | `generate_quiz` | 为单个词汇生成指定题型的考题 | `vocab_id`、`quiz_type` |

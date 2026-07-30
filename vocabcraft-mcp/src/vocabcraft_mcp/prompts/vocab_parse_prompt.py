@@ -38,7 +38,32 @@ _LANGUAGE_GUIDE = {
   - 例句要求: 优先采用原文例句；若无则构造 1-2 个德语例句，附中文翻译。""",
 }
 
-# 基础模板：{raw_text}/{language}/{lang_guide} 三占位
+# JSON 输出模板（复用，避免两份 prompt 维护两套 JSON 格式）
+_JSON_SCHEMA = """{{
+    "word": "词形（原形/拼写，必填）",
+    "phonetic": "音标（如 /wɜːd/，无则空串）",
+    "part_of_speech": "词性（见下方语言引导，无则空串）",
+    "definitions": [
+        {{"text": "释义1", "part_of_speech": "名词", "examples": ["例句1（出处）", "例句2（出处）"]}},
+        {{"text": "释义2", "part_of_speech": "动词", "examples": ["例句3（出处）"]}}
+    ],
+    "language": "{language}",
+    "source_image": null
+}}"""
+
+# 解析要求（复用）
+_PARSE_REQUIREMENTS = """解析要求：
+1. word 必须从原文中提取最规范的词形；若原文含多个词，取主词
+2. definitions 至少 1 条，每条简明扼要；多义词列出主要义项
+3. **definitions 为 list[Definition]，每项 {{"text": 释义, "part_of_speech": 词性, "examples": [例句]}}**：
+   - 每条释义的例句必须挂在该释义的 examples 字段下，体现"释义 ↔ 例句"的对应关系
+   - 多义词必须按义项分组例句，禁止所有例句堆在某一条释义下
+   - 无法确定归属的例句挂到语义最相关的释义下
+4. 若原文信息不全（如无音标/词性），对应字段填空串或空列表，禁止填 null
+5. 若原文完全无法识别为词汇，返回 word="" 并在 definitions 中说明原因
+6. definitions 每项的 part_of_speech 填该义项的词性；多义词各义项词性不同时必须填写（如文言文"兵"：名词/动词）；各义项词性相同时留空串"""
+
+# 文本解析基础模板（OCR 后备模式使用）
 # ponytail: 保留 PARSE_PROMPT 名字向后兼容，但词性引导已迁移至 _LANGUAGE_GUIDE，
 # 新代码请用 render_parse_prompt；直接 .format 缺 lang_guide 会 KeyError。
 PARSE_PROMPT = """你是一位词汇学专家。请对以下 OCR 识别出的词汇文本进行结构化解析。
@@ -49,35 +74,32 @@ PARSE_PROMPT = """你是一位词汇学专家。请对以下 OCR 识别出的词
 语言：{language}
 
 请提取并按以下 JSON 格式输出（不要输出其他内容）：
-{{
-    "word": "词形（原形/拼写，必填）",
-    "phonetic": "音标（如 /wɜːd/，无则空串）",
-    "part_of_speech": "词性（见下方语言引导，无则空串）",
-    "definitions": [
-        {{"text": "释义1", "part_of_speech": "名词", "examples": ["例句1（出处）", "例句2（出处）"]}},
-        {{"text": "释义2", "part_of_speech": "动词", "examples": ["例句3（出处）"]}}
-    ],
-    "language": "{language}",
-    "source_image": null
-}}
+{json_schema}
 
-解析要求：
-1. word 必须从原文中提取最规范的词形；若原文含多个词，取主词
-2. definitions 至少 1 条，每条简明扼要；多义词列出主要义项
-3. **definitions 为 list[Definition]，每项 {{"text": 释义, "part_of_speech": 词性, "examples": [例句]}}**：
-   - 每条释义的例句必须挂在该释义的 examples 字段下，体现"释义 ↔ 例句"的对应关系
-   - 多义词必须按义项分组例句，禁止所有例句堆在某一条释义下
-   - 无法确定归属的例句挂到语义最相关的释义下
-4. 若原文信息不全（如无音标/词性），对应字段填空串或空列表，禁止填 null
-5. 若原文完全无法识别为词汇，返回 word="" 并在 definitions 中说明原因
-6. definitions 每项的 part_of_speech 填该义项的词性；多义词各义项词性不同时必须填写（如文言文"兵"：名词/动词）；各义项词性相同时留空串
+{parse_requirements}
+
+{lang_guide}
+"""
+
+# 多模态解析 prompt（首选模式：宿主 LLM 直接读取图片）
+# 适用于两种场景：
+# 1. 用户在对话中上传了图片（dialog 模式，无 image_path）
+# 2. 用户提供了本地图片路径（multimodal 模式，有 image_path）
+MULTIMODAL_PARSE_PROMPT = """你是一位词汇学专家。请直接读取用户在本对话中提供的图片（可能是对话中上传的图片，或通过 image_path 指定的本地图片），进行结构化解析。
+
+语言：{language}
+
+请从图片中提取词汇信息，并按以下 JSON 格式输出（不要输出其他内容）：
+{json_schema}
+
+{parse_requirements}
 
 {lang_guide}
 """
 
 
 def render_parse_prompt(raw_text: str, language: str) -> str:
-    """渲染解析提示词，按语言注入专属词性/例句引导
+    """渲染文本解析提示词（OCR 后备模式），按语言注入专属词性/例句引导
 
     Args:
         raw_text: OCR 识别的原始文本
@@ -88,5 +110,27 @@ def render_parse_prompt(raw_text: str, language: str) -> str:
     """
     guide = _LANGUAGE_GUIDE.get(language, _LANGUAGE_GUIDE["en"])
     return PARSE_PROMPT.format(
-        raw_text=raw_text, language=language, lang_guide=guide
+        raw_text=raw_text,
+        language=language,
+        lang_guide=guide,
+        json_schema=_JSON_SCHEMA.format(language=language),
+        parse_requirements=_PARSE_REQUIREMENTS,
+    )
+
+
+def render_multimodal_parse_prompt(language: str) -> str:
+    """渲染多模态解析提示词（首选模式），指示宿主 LLM 直接从图片读取词汇
+
+    Args:
+        language: canonical 语言代码（en/zh/zh_classical/de；未知值回退英语引导）
+
+    Returns:
+        完整的多模态解析提示词字符串
+    """
+    guide = _LANGUAGE_GUIDE.get(language, _LANGUAGE_GUIDE["en"])
+    return MULTIMODAL_PARSE_PROMPT.format(
+        language=language,
+        lang_guide=guide,
+        json_schema=_JSON_SCHEMA.format(language=language),
+        parse_requirements=_PARSE_REQUIREMENTS,
     )

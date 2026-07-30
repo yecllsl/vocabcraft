@@ -1,25 +1,28 @@
 # src/vocabcraft_mcp/tools/parse_vocab.py
 """AI 结构化解析词汇 Tool
 
-接收图片路径或 OCR 原始文本，构造 AI 解析 prompt，由调用方（宿主 LLM）执行解析。
-返回包含 parse_prompt 的字典，宿主 LLM 据此输出词汇结构化 JSON。
+三模式解析（按优先级排列）：
+1. **对话多模态模式（首选）**：无参数调用，宿主 LLM 读取对话上下文中的图片
+2. **本地路径多模态模式**：传入 image_path，宿主 LLM 读取指定路径的图片
+3. **OCR 文本模式（后备）**：传入 ocr_text，宿主 LLM 基于文本完成解析
 
 骨架阶段：仅返回 prompt 与默认值模板，不对接具体 LLM 客户端。
-完整实现 TODO：对接 LLM 客户端，直接返回解析结果。
 """
 from vocabcraft_mcp.models import normalize_language
-from vocabcraft_mcp.prompts.vocab_parse_prompt import render_parse_prompt
+from vocabcraft_mcp.prompts.vocab_parse_prompt import (
+    render_multimodal_parse_prompt,
+    render_parse_prompt,
+)
 
 
 def parse_vocab(image_path: str = "", ocr_text: str = "", language: str = "en") -> dict:
-    """AI 结构化解析词汇
+    """AI 结构化解析词汇（三模式）
 
-    优先使用 ocr_text；若 ocr_text 为空且提供 image_path，
-    可由调用方先调用 ocr_recognize 获取文本后再传入。
+    优先级：对话多模态 > 本地路径多模态 > OCR 文本。
 
     Args:
-        image_path: 词汇图片路径（可选，骨架阶段不直接读取）
-        ocr_text: OCR 识别的原始文本
+        image_path: 词汇图片本地路径（可选，多模态模式使用）
+        ocr_text: OCR 识别的原始文本（后备模式使用）
         language: 语言代码（支持别名归一化，如 "中文"/"german"/"文言文"）
 
     Returns:
@@ -27,28 +30,53 @@ def parse_vocab(image_path: str = "", ocr_text: str = "", language: str = "en") 
         - structured_vocab: 解析结果（骨架阶段为 None，由宿主 LLM 填充）
         - parse_prompt: AI 解析提示词（含按语言分支的词性/例句引导）
         - language: 归一化后的 canonical 语言代码
-        - image_path: 回显图片路径
+        - image_path: 回显图片路径（dialog 模式为空串）
+        - mode: 当前解析模式，"dialog"/"multimodal"/"ocr"
         - error: 错误信息（仅在出错时存在）
     """
-    # 归一化语言代码（接受别名/大小写变体），驱动 prompt 按语言分支
+    # 归一化语言代码，驱动 prompt 按语言分支
     lang = normalize_language(language)
 
-    if not ocr_text or not ocr_text.strip():
+    # 模式 1：对话多模态模式（首选）— 用户直接在对话中上传了图片
+    if not image_path and not ocr_text:
+        prompt = render_multimodal_parse_prompt(lang)
         return {
             "structured_vocab": None,
             "language": lang,
-            "image_path": image_path,
-            "error": "OCR 文本为空，无法解析；请先调用 ocr_recognize 或手动提供 ocr_text",
+            "parse_prompt": prompt,
+            "image_path": "",
+            "mode": "dialog",
+            "message": "请使用 parse_prompt 读取对话中的图片完成解析，结果填入 structured_vocab",
         }
 
-    # 渲染解析 prompt（render_parse_prompt 按 language 分支提供词性/例句引导）
-    prompt = render_parse_prompt(ocr_text, lang)
+    # 模式 2：本地路径多模态模式 — 用户提供了本地图片路径
+    if image_path and image_path.strip():
+        prompt = render_multimodal_parse_prompt(lang)
+        return {
+            "structured_vocab": None,
+            "language": lang,
+            "parse_prompt": prompt,
+            "image_path": image_path,
+            "mode": "multimodal",
+            "message": "请使用 parse_prompt 读取指定路径图片完成解析，结果填入 structured_vocab",
+        }
 
-    # TODO: 对接 LLM 客户端，直接调用并解析 JSON 返回 structured_vocab
+    # 模式 3：OCR 文本模式（后备）
+    if ocr_text and ocr_text.strip():
+        prompt = render_parse_prompt(ocr_text, lang)
+        return {
+            "structured_vocab": None,
+            "language": lang,
+            "parse_prompt": prompt,
+            "image_path": "",
+            "mode": "ocr",
+            "message": "请使用 parse_prompt 完成解析，结果填入 structured_vocab",
+        }
+
+    # 不应到达此处（前两个条件覆盖了所有输入组合），但保留兜底
     return {
         "structured_vocab": None,
         "language": lang,
-        "parse_prompt": prompt,
-        "image_path": image_path,
-        "message": "请使用 parse_prompt 调用 LLM 完成解析，结果填入 structured_vocab",
+        "image_path": "",
+        "error": "解析失败：请提供图片（对话上传或本地路径）或 OCR 文本",
     }

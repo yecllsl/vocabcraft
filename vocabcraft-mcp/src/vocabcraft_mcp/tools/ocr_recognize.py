@@ -48,7 +48,7 @@ def _get_ocr_engine(language: str):
                 "或 `uv pip install paddleocr paddlepaddle` 后重试。"
             ) from exc
         _ocr_engines[paddle_lang] = PaddleOCR(
-            use_angle_cls=True, lang=paddle_lang, show_log=False
+            use_angle_cls=True, lang=paddle_lang
         )
     return _ocr_engines[paddle_lang]
 
@@ -64,7 +64,7 @@ def _run_paddle_ocr(image_path: str, language: str) -> str:
         识别文本，每行一个结果，用换行符连接
     """
     engine = _get_ocr_engine(language)
-    result = engine.ocr(image_path, cls=True)
+    result = engine.ocr(image_path)
     lines = []
     if result and result[0]:
         for line in result[0]:
