@@ -432,16 +432,16 @@ def test_grade_quiz_classical_definition_quote_mismatch(isolated_storage):
             "phonetic": "",
             "part_of_speech": "adj.",
             "definitions": [
-                {"text": "【形容词】与\"短\"相对", "examples": []},
+                {"text": "与\"短\"相对", "examples": [], "part_of_speech": "形容词"},
             ],
             "language": "zh_classical",
         },
     })
     gen = generate_quiz("vocab_001", "释义")
-    assert gen["quiz"]["answer"] == "adj.|【形容词】与\"短\"相对"
+    assert gen["quiz"]["answer"] == "adj.|与\"短\"相对"
 
     # 用户输入中文单引号，应判错
-    result = grade_quiz(gen["quiz_id"], "adj.|【形容词】与'短'相对")
+    result = grade_quiz(gen["quiz_id"], "adj.|与'短'相对")
     assert result["grade"] == 0
     assert result["correct"] is False
 

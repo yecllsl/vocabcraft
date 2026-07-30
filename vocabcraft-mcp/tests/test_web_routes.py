@@ -178,14 +178,14 @@ def test_grade_quiz_route(client):
 
 
 def _make_classical_vocab(word, vid, next_review=""):
-    """构造文言文测试词汇（definition.text 含【词性】标记）"""
+    """构造文言文测试词汇"""
     return VocabRecord(
         id=vid,
         structured=StructuredVocab(
             word=word,
             phonetic="",
             part_of_speech="n.",
-            definitions=[Definition(text=f"【名词】兵器", examples=[f"收天下之{word}，聚之咸阳。"])],
+            definitions=[Definition(text="兵器", examples=[f"收天下之{word}，聚之咸阳。"], part_of_speech="名词")],
             language="zh_classical",
         ),
         review_state=ReviewState(next_review=next_review),

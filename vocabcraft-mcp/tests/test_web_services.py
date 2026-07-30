@@ -41,9 +41,9 @@ def _make_vocab(word, vid, language="en", repetitions=0, next_review=""):
 
 
 def _make_classical_vocab(word, vid, part_of_speech="n.", definitions=None, next_review=""):
-    """构造文言文测试词汇（definition.text 含【词性】标记）"""
+    """构造文言文测试词汇"""
     if definitions is None:
-        definitions = [Definition(text=f"【名词】{word} 的释义", examples=[f"此{word}乃测试例句。"])]
+        definitions = [Definition(text=f"{word} 的释义", examples=[f"此{word}乃测试例句。"], part_of_speech="名词")]
     return VocabRecord(
         id=vid,
         structured=StructuredVocab(
