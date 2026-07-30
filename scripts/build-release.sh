@@ -56,10 +56,7 @@ log_ok "cleaned"
 # [2/6] 创建目标目录结构
 # ──────────────────────────────────────────
 log_step "[2/6] Create directory structure..."
-mkdir -p "$STAGING_DIR/.trae/rules"
 mkdir -p "$STAGING_DIR/.trae/skills"
-mkdir -p "$STAGING_DIR/.trae/agents"
-mkdir -p "$STAGING_DIR/.trae/commands"
 mkdir -p "$STAGING_DIR/vocabcraft-mcp/src"
 mkdir -p "$STAGING_DIR/vocabcraft-mcp/tests"
 mkdir -p "$STAGING_DIR/vocabcraft-mcp/data/vocabs"
@@ -138,19 +135,10 @@ copy_vocabcraft_dirs() {
     done
 }
 
-# .trae/rules/ 只复制 vocabcraft-* 前缀的规则文件
-copy_vocabcraft_files "$PROJECT_ROOT/.trae/rules" "$STAGING_DIR/.trae/rules"
-
 # .trae/skills/ 只复制 vocabcraft-* 前缀的 skill 目录
 copy_vocabcraft_dirs "$PROJECT_ROOT/.trae/skills" "$STAGING_DIR/.trae/skills"
 
-# .trae/agents/ 只复制 vocabcraft-* 前缀的 agent 定义
-copy_vocabcraft_files "$PROJECT_ROOT/.trae/agents" "$STAGING_DIR/.trae/agents"
-
-# .trae/commands/ 只复制 vocabcraft-* 前缀的命令定义
-copy_vocabcraft_files "$PROJECT_ROOT/.trae/commands" "$STAGING_DIR/.trae/commands"
-
-log_ok ".trae config copied (vocabcraft-* only, BMAD files excluded)"
+log_ok ".trae config copied (skills only, rules/agents/commands migrated to AGENTS.md)"
 
 # ──────────────────────────────────────────
 # [4/6] 复制 vocabcraft-mcp 源码（白名单）
@@ -217,7 +205,7 @@ log_ok "source copied"
 # [5/6] 复制顶层文档和安装脚本
 # ──────────────────────────────────────────
 log_step "[5/6] Copy docs and install scripts..."
-for f in install.ps1 install.sh README.md DEPLOY.md QUICKSTART.md LICENSE; do
+for f in install.ps1 install.sh README.md DEPLOY.md QUICKSTART.md LICENSE AGENTS.md; do
     [ -f "$PROJECT_ROOT/$f" ] && cp "$PROJECT_ROOT/$f" "$STAGING_DIR/$f"
 done
 log_ok "docs copied"

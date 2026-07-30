@@ -141,19 +141,10 @@ function Copy-VocabcraftPrefixedItems {
     }
 }
 
-# .trae/rules/ 只复制 vocabcraft-* 前缀的规则文件
-Copy-VocabcraftPrefixedItems -srcDir (Join-Path $projectRoot ".trae\rules") -dstDir (Join-Path $tempDir ".trae\rules") -isDirectory $false
-
 # .trae/skills/ 只复制 vocabcraft-* 前缀的 skill 目录
 Copy-VocabcraftPrefixedItems -srcDir (Join-Path $projectRoot ".trae\skills") -dstDir (Join-Path $tempDir ".trae\skills") -isDirectory $true
 
-# .trae/agents/ 只复制 vocabcraft-* 前缀的 agent 定义
-Copy-VocabcraftPrefixedItems -srcDir (Join-Path $projectRoot ".trae\agents") -dstDir (Join-Path $tempDir ".trae\agents") -isDirectory $false
-
-# .trae/commands/ 只复制 vocabcraft-* 前缀的命令定义
-Copy-VocabcraftPrefixedItems -srcDir (Join-Path $projectRoot ".trae\commands") -dstDir (Join-Path $tempDir ".trae\commands") -isDirectory $false
-
-Write-Ok ".trae config copied (vocabcraft-* only, BMAD files excluded)"
+Write-Ok ".trae config copied (skills only, rules/agents/commands migrated to AGENTS.md)"
 
 # ──────────────────────────────────────────
 # [4/6] 复制 vocabcraft-mcp 源码（白名单）
@@ -220,7 +211,7 @@ Write-Ok "source copied"
 # [5/6] 复制顶层文档和安装脚本
 # ──────────────────────────────────────────
 Write-Step "[5/6] Copy docs and install scripts..."
-$topFiles = @("install.ps1", "install.sh", "README.md", "DEPLOY.md", "QUICKSTART.md", "LICENSE")
+$topFiles = @("install.ps1", "install.sh", "README.md", "DEPLOY.md", "QUICKSTART.md", "LICENSE", "AGENTS.md")
 foreach ($f in $topFiles) {
     $src = Join-Path $projectRoot $f
     if (Test-Path $src) {
