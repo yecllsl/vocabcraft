@@ -199,9 +199,9 @@ def test_generate_web_classical_quiz_with_example(temp_storage):
 
 
 def test_generate_web_classical_quiz_uses_def_pos(temp_storage):
-    """zh_classical 释义题优先使用 definition.text 中的【词性】标记"""
+    """zh_classical 释义题使用 definition.part_of_speech 字段"""
     definitions = [
-        Definition(text="【动词】行走", examples=["老臣今者殊不欲食，乃自强步。"]),
+        Definition(text="行走", examples=["老臣今者殊不欲食，乃自强步。"], part_of_speech="动词"),
     ]
     temp_storage.save_vocab(_make_classical_vocab("步", "vocab_001", part_of_speech="n.", definitions=definitions))
 

@@ -10,6 +10,7 @@ from datetime import datetime, timezone, timedelta
 from random import sample, shuffle
 from typing import Optional
 from uuid import uuid4
+import re
 
 from vocabcraft_mcp.algorithms import INITIAL_INTERVALS_DAYS, _now_utc
 from vocabcraft_mcp.models import Quiz, ReviewRecord, VocabRecord
@@ -17,7 +18,6 @@ from vocabcraft_mcp.storage import Storage
 from vocabcraft_mcp.tools.crud import get_storage as _default_get_storage
 from vocabcraft_mcp.tools.quiz import (
     _CLASSICAL_POS_POOL,
-    _parse_def_pos,
     en_to_zh_pos,
     generate_quiz as _generate_quiz_tool,
     grade_quiz as _grade_quiz_tool,
@@ -347,15 +347,12 @@ def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> Optional[dict]:
         definition_index = quiz.definition_index if quiz.definition_index is not None else 0
         selected_def = defs[definition_index] if 0 <= definition_index < len(defs) else (defs[0] if defs else None)
 
-        # 优先从 definition.text 的【词性】标记解析，失败则回退到全局词性
-        pos_zh, meaning = ("", "")
+        pos_zh = ""
+        meaning = selected_def.text if selected_def else ""
         if selected_def is not None:
-            pos_zh, meaning = _parse_def_pos(selected_def.text)
-        if not pos_zh:
-            pos_zh = vocab.structured.part_of_speech.strip()
-            # 全局词性已是英文简写时，回译为中文再统一处理
-            if pos_zh and not pos_zh.startswith("【"):
-                pos_zh = en_to_zh_pos(pos_zh)
+            pos_zh = selected_def.part_of_speech or vocab.structured.part_of_speech.strip()
+        if pos_zh and not pos_zh.startswith("【"):
+            pos_zh = en_to_zh_pos(pos_zh)
         correct_pos_en = zh_to_en_pos(pos_zh) if pos_zh else "?"
 
         if selected_def and selected_def.examples:
