@@ -9,6 +9,7 @@
 # 可选参数：
 #   --install-ocr    直接安装 OCR 依赖（跳过询问）
 #   --fix-path       将 .trae/mcp.json 中的 ${workspaceFolder} 替换为绝对路径
+#   --agent-runtime  配置 Agent 运行时 (trae/workbuddy/opencode/all)
 #
 # 前置要求：
 #   - Python 3.12+
@@ -19,13 +20,15 @@ set -e
 # 解析命令行参数
 INSTALL_OCR=0
 FIX_PATH=0
-for arg in "$@"; do
-    case "$arg" in
-        --install-ocr) INSTALL_OCR=1 ;;
-        --fix-path)    FIX_PATH=1 ;;
+AGENT_RUNTIME=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --install-ocr) INSTALL_OCR=1; shift ;;
+        --fix-path)    FIX_PATH=1; shift ;;
+        --agent-runtime) AGENT_RUNTIME="$2"; shift 2 ;;
         *)
-            echo "未知参数: $arg"
-            echo "可用参数：--install-ocr, --fix-path"
+            echo "未知参数: $1"
+            echo "可用参数：--install-ocr, --fix-path, --agent-runtime <trae|workbuddy|opencode|all>"
             exit 1
             ;;
     esac
@@ -127,9 +130,71 @@ else
 fi
 
 # ──────────────────────────────────────────
-# [5/5] 验证安装
+# [5/5] Agent Runtime 配置
 # ──────────────────────────────────────────
-echo "[5/5] 验证安装..."
+if [ -n "$AGENT_RUNTIME" ]; then
+    echo ""
+    echo "=== Agent Runtime 配置 ==="
+
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SYNC_SCRIPT="$SCRIPT_DIR/scripts/sync-agent-configs.sh"
+
+    case $AGENT_RUNTIME in
+        trae)
+            echo "Trae 配置说明:"
+            echo "  1. 用 Trae 打开项目文件夹"
+            echo "  2. 设置 > MCP > 启用「项目级 MCP」"
+            echo "  3. 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
+            ;;
+        workbuddy)
+            echo "正在同步 WorkBuddy 配置..."
+            if [ -f "$SYNC_SCRIPT" ]; then
+                bash "$SYNC_SCRIPT" --skip-opencode
+                echo ""
+                echo "下一步:"
+                echo "  1. 用 WorkBuddy 打开项目文件夹"
+                echo "  2. 在 MCP 配置中信任 vocabcraft-mcp"
+            else
+                echo "  同步脚本不存在: $SYNC_SCRIPT"
+            fi
+            ;;
+        opencode)
+            echo "正在同步 opencode 配置..."
+            if [ -f "$SYNC_SCRIPT" ]; then
+                bash "$SYNC_SCRIPT" --skip-workbuddy
+                echo ""
+                echo "下一步:"
+                echo "  1. 在项目目录运行 opencode"
+                echo "  2. AGENTS.md 将自动加载"
+            else
+                echo "  同步脚本不存在: $SYNC_SCRIPT"
+            fi
+            ;;
+        all)
+            echo "正在同步所有 Agent Runtime 配置..."
+            if [ -f "$SYNC_SCRIPT" ]; then
+                bash "$SYNC_SCRIPT"
+                echo ""
+                echo "所有配置已同步。各运行时下一步:"
+                echo "  Trae: 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
+                echo "  WorkBuddy: 在 MCP 配置中信任 vocabcraft-mcp"
+                echo "  opencode: 在项目目录运行 opencode"
+            else
+                echo "  同步脚本不存在: $SYNC_SCRIPT"
+            fi
+            ;;
+        *)
+            echo "未知 Agent Runtime: $AGENT_RUNTIME"
+            echo "支持的值: trae, workbuddy, opencode, all"
+            exit 1
+            ;;
+    esac
+fi
+
+# ──────────────────────────────────────────
+# [6/6] 验证安装
+# ──────────────────────────────────────────
+echo "[6/6] 验证安装..."
 
 # 验证 MCP Server 入口点可用
 if uv run vocabcraft-mcp --help &> /dev/null; then

@@ -8,6 +8,7 @@
 # 可选参数：
 #   -InstallOcr    直接安装 OCR 依赖（跳过询问）
 #   -FixPath       将 .trae/mcp.json 中的 ${workspaceFolder} 替换为绝对路径
+#   -AgentRuntime  配置 Agent 运行时 (trae/workbuddy/opencode/all)
 #
 # 前置要求：
 #   - Python 3.12+
@@ -15,7 +16,10 @@
 
 param(
     [switch]$InstallOcr,
-    [switch]$FixPath
+    [switch]$FixPath,
+    [Parameter(Mandatory=$false)]
+    [ValidateSet("trae", "workbuddy", "opencode", "all")]
+    [string]$AgentRuntime
 )
 
 $ErrorActionPreference = "Stop"
@@ -137,9 +141,65 @@ if ($shouldInstallOcr) {
 }
 
 # ──────────────────────────────────────────
-# [5/5] 验证安装
+# [5/5] Agent Runtime 配置
 # ──────────────────────────────────────────
-Write-Host "[5/5] 验证安装..." -ForegroundColor Yellow
+if ($AgentRuntime) {
+    Write-Host ""
+    Write-Host "=== Agent Runtime 配置 ===" -ForegroundColor Cyan
+
+    $SyncScript = Join-Path $PSScriptRoot "scripts/sync-agent-configs.ps1"
+
+    switch ($AgentRuntime) {
+        "trae" {
+            Write-Host "Trae 配置说明:" -ForegroundColor Yellow
+            Write-Host "  1. 用 Trae 打开项目文件夹"
+            Write-Host "  2. 设置 > MCP > 启用「项目级 MCP」"
+            Write-Host "  3. 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
+        }
+        "workbuddy" {
+            Write-Host "正在同步 WorkBuddy 配置..." -ForegroundColor Yellow
+            if (Test-Path $SyncScript) {
+                & $SyncScript -SkipOpencode
+                Write-Host ""
+                Write-Host "下一步:" -ForegroundColor Yellow
+                Write-Host "  1. 用 WorkBuddy 打开项目文件夹"
+                Write-Host "  2. 在 MCP 配置中信任 vocabcraft-mcp"
+            } else {
+                Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
+            }
+        }
+        "opencode" {
+            Write-Host "正在同步 opencode 配置..." -ForegroundColor Yellow
+            if (Test-Path $SyncScript) {
+                & $SyncScript -SkipWorkbuddy
+                Write-Host ""
+                Write-Host "下一步:" -ForegroundColor Yellow
+                Write-Host "  1. 在项目目录运行 opencode"
+                Write-Host "  2. AGENTS.md 将自动加载"
+            } else {
+                Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
+            }
+        }
+        "all" {
+            Write-Host "正在同步所有 Agent Runtime 配置..." -ForegroundColor Yellow
+            if (Test-Path $SyncScript) {
+                & $SyncScript
+                Write-Host ""
+                Write-Host "所有配置已同步。各运行时下一步:" -ForegroundColor Green
+                Write-Host "  Trae: 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
+                Write-Host "  WorkBuddy: 在 MCP 配置中信任 vocabcraft-mcp"
+                Write-Host "  opencode: 在项目目录运行 opencode"
+            } else {
+                Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
+            }
+        }
+    }
+}
+
+# ──────────────────────────────────────────
+# [6/6] 验证安装
+# ──────────────────────────────────────────
+Write-Host "[6/6] 验证安装..." -ForegroundColor Yellow
 
 Push-Location $mcpDir
 try {
