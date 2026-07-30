@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 # scripts/migrate_def_pos.py
-"""将 definitions[i].text 中嵌入的【词性】前缀提取到 part_of_speech 字段。
+"""将 definitions[i].text 中嵌入的【词性】前缀提取到 part_of_speech 字段，
+并为缺失 part_of_speech 的义项从词汇级 part_of_speech 回填。
 
 背景：旧版解析 prompt 未提供 part_of_speech 字段，LLM 将文言文义项词性
 编码为【名词】步伐，脚步 格式嵌入 text。新版 Definition 模型新增 part_of_speech
 字段，本脚本一次性清理存量数据。
 
 行为约定：
-- 扫描所有 *.json，匹配 definitions[i].text 以【开头的记录
-- 提取【词性】到 part_of_speech，清理 text
+- 第一轮：匹配 definitions[i].text 以【开头的记录，提取【词性】到 part_of_speech
+- 第二轮：definitions[i].part_of_speech 为空但 vocab 级 part_of_speech 为单一
+  可识别词性时，从 vocab 级回填（compound POS 如"形容词、动词、名词"不回填）
 - 默认 --dry-run：只打印不写盘；加 --apply 落盘
-- 幂等：已无【前缀的记录不受影响
+- 幂等：已无【前缀且已填充 part_of_speech 的记录不受影响
 """
 from __future__ import annotations
 
@@ -24,9 +26,37 @@ from pathlib import Path
 DEFAULT_VOCABS_DIR = Path("vocabcraft-mcp/data/vocabs")
 _POS_PATTERN = re.compile(r"^【(.+?)】\s*(.*)$", re.DOTALL)
 
+# 英文词性简写 → 中文映射（用于 vocab 级 part_of_speech 回填）
+_EN_TO_ZH_POS = {
+    "n.": "名词", "v.": "动词", "adj.": "形容词", "adv.": "副词",
+    "pron.": "代词", "num.": "数词", "prep.": "介词", "conj.": "连词",
+    "int.": "叹词", "konj.": "连词",
+}
+
+# 单一中文词性正则（不含顿号/斜杠分隔符）
+_SINGLE_ZH_POS = re.compile(r"^[\u4e00-\u9fa5]+$")
+
+
+def _normalize_vocab_pos(vocab_pos: str) -> str:
+    """将 vocab 级 part_of_speech 归一化为中文，compound 返回空串。"""
+    pos = vocab_pos.strip()
+    if not pos:
+        return ""
+    # 含分隔符 → compound，不回填
+    if any(sep in pos for sep in ("、", "/", "，")):
+        return ""
+    # 英文简写 → 中文
+    lower = pos.lower()
+    if lower in _EN_TO_ZH_POS:
+        return _EN_TO_ZH_POS[lower]
+    # 已是中文单一词性
+    if _SINGLE_ZH_POS.match(pos):
+        return pos
+    return ""
+
 
 def find_targets(vocabs_dir: Path) -> list[Path]:
-    """扫描所有 *.json，挑出 definitions 中含【词性】前缀的文件。"""
+    """扫描所有 *.json，挑出 definitions 中含【词性】前缀或 def_pos 为空的文件。"""
     targets: list[Path] = []
     for fp in sorted(vocabs_dir.glob("*.json")):
         try:
@@ -35,10 +65,23 @@ def find_targets(vocabs_dir: Path) -> list[Path]:
             print(f"[WARN] JSON 解析失败，跳过: {fp.name}", file=sys.stderr)
             continue
         definitions = data.get("structured", {}).get("definitions", [])
+        vocab_pos = _normalize_vocab_pos(
+            data.get("structured", {}).get("part_of_speech", "")
+        )
+        needs_work = False
         for d in definitions:
-            if isinstance(d, dict) and _POS_PATTERN.match(d.get("text", "")):
-                targets.append(fp)
+            if not isinstance(d, dict):
+                continue
+            text = d.get("text", "")
+            def_pos = d.get("part_of_speech", "")
+            if _POS_PATTERN.match(text):
+                needs_work = True
                 break
+            if not def_pos and vocab_pos:
+                needs_work = True
+                break
+        if needs_work:
+            targets.append(fp)
     return targets
 
 
@@ -46,7 +89,9 @@ def build_migrated(data: dict) -> dict:
     """对单个 vocab 字典执行迁移，返回新字典。"""
     import copy
     new_data = copy.deepcopy(data)
-    definitions = new_data.get("structured", {}).get("definitions", [])
+    structured = new_data.get("structured", {})
+    definitions = structured.get("definitions", [])
+    vocab_pos = _normalize_vocab_pos(structured.get("part_of_speech", ""))
     for d in definitions:
         if not isinstance(d, dict):
             continue
@@ -55,6 +100,8 @@ def build_migrated(data: dict) -> dict:
         if match:
             d["part_of_speech"] = match.group(1).strip()
             d["text"] = match.group(2).strip()
+        elif not d.get("part_of_speech") and vocab_pos:
+            d["part_of_speech"] = vocab_pos
     return new_data
 
 
