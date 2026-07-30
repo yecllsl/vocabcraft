@@ -1,6 +1,6 @@
 # VocabCraft - 词汇学习与制作一体 MCP 工具
 
-基于 Trae IDE CN / Trae Work CN 的词汇学习与制作一体化解决方案。核心流程：拍照 OCR 识别词汇 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。**一份配置同时运行在 TRAEWORK CN 与 TRAEIDE CN 双环境**。
+词汇学习与制作一体化解决方案，同时支持 **Trae IDE CN / Trae Work CN**、**WorkBuddy (CodeBuddy)** 和 **opencode** 三个 Agent Runtime。核心流程：拍照 OCR 识别词汇 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。
 
 ## 核心功能
 
@@ -17,15 +17,14 @@
 ```
 用户交互层
 ├── 对话式交互 (命令 / 自然语言)
-└── 双环境: Trae IDE CN + Trae Work CN (共用 .trae/mcp.json)
+├── 三运行时: Trae + WorkBuddy + opencode (共用 AGENTS.md)
     ↓
 Skills 编排层 (.trae/skills/vocabcraft-*: capture / review / quiz / stats / export)
-├── subagent 角色定义 (.trae/agents/vocabcraft-*-agent: 采集 / 复习 / 考题 agent)
     ↓
 MCP Tools 层 (vocabcraft-mcp)
 ├── OCR 识别 → 结构化解析 → 存储 → SM-2 排程 → 考题生成 → 评分 → 统计 → 导出
     ↓
-Rules 约束层 (.trae/rules/vocabcraft-* 业务规则，与 BMAD 工作流规则共存)
+Rules 约束层 (AGENTS.md — 统一规则源，三个运行时共用)
     ↓
 数据存储层 (本地 JSON 文件，原子写入)
 ```
@@ -46,7 +45,7 @@ Rules 约束层 (.trae/rules/vocabcraft-* 业务规则，与 BMAD 工作流规�
 
 - Python 3.12+
 - [uv 包管理器](https://docs.astral.sh/uv/)（Windows: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`）
-- Trae IDE CN 或 Trae Work CN（两者均支持，双环境共用同一份配置）
+- Trae IDE CN / Trae Work CN、WorkBuddy (CodeBuddy) 或 opencode（三选一或全部）
 
 ### 安装步骤
 
@@ -73,14 +72,27 @@ chmod +x install.sh
 
 > ⏱️ 首次安装会询问是否安装 OCR 引擎（PaddleOCR + PaddlePaddle 约 1.5 GB）。**仅当需要 `/capture` 拍照录入词汇时才需要**。手动录入、复习、考题等功能无需 OCR。
 
-#### 3. 在 Trae 中配置（双环境操作一致）
+#### 3. 配置 Agent Runtime
 
-1. 用 Trae IDE CN **或** Trae Work CN 打开解压后的文件夹
-2. 进入 **设置 → MCP**
-3. 打开 **"启用项目级 MCP"** 开关
+##### Trae
+
+1. 用 Trae IDE CN 或 Trae Work CN 打开项目文件夹
+2. 进入 **设置 → MCP**，打开 **"启用项目级 MCP"** 开关
+3. 进入 **设置 → 规则**，开启 **"将 AGENTS.md 包含在上下文中"**
 4. 重启 Trae
 
-> 💡 项目级 MCP 配置已内置于 `.trae/mcp.json`，使用 `${workspaceFolder}` 变量自动适配路径，**两个环境共用同一份配置**，无需手动填写。
+> 💡 项目级 MCP 配置已内置于 `.trae/mcp.json`，使用 `${workspaceFolder}` 变量自动适配路径。
+
+##### WorkBuddy (CodeBuddy)
+
+1. 运行安装脚本：`.\install.ps1 -AgentRuntime workbuddy`（或 `bash install.sh --agent-runtime workbuddy`）
+2. 用 WorkBuddy 打开项目文件夹
+3. 在 MCP 配置中信任 vocabcraft-mcp
+
+##### opencode
+
+1. 运行安装脚本：`.\install.ps1 -AgentRuntime opencode`（或 `bash install.sh --agent-runtime opencode`）
+2. 在项目目录运行 `opencode`
 
 #### 4. 开始使用
 
@@ -179,62 +191,56 @@ uv sync --extra ocr
 
 ```
 vocabcraft/
-├── vocabcraft-mcp/                       # MCP Server 服务层（Python）
+├── AGENTS.md                                 # 统一规则源（三个运行时共用）
+├── vocabcraft-mcp/                           # MCP Server 服务层（Python）
 │   ├── src/vocabcraft_mcp/
-│   │   ├── server.py                      # FastMCP 服务入口（main 函数）
-│   │   ├── models.py                      # Pydantic v2 数据模型（词汇/考题/记忆状态）
-│   │   ├── storage.py                     # JSON 存储引擎（原子写、部分更新）
-│   │   ├── algorithms.py                  # SM-2 遗忘曲线算法
-│   │   ├── tools/                         # MCP Tools（OCR / 解析 / CRUD / 排程 / 考题 / 评分 / 统计 / 导出）
-│   │   ├── prompts/                       # AI Prompt 模板（词汇解析 / 考题生成 / 评分）
-│   │   └── resources/                     # MCP Resources（遗忘曲线 / 语言包 / 考题模板）
-│   ├── tests/                             # 测试套件（单元 + 集成）
-│   ├── data/                              # 运行时数据（被 .gitignore，保留 .gitkeep）
-│   │   ├── vocabs/                        # 词汇记录 JSON
-│   │   ├── reviews/                       # 复习排程 JSON
-│   │   ├── quizzes/                       # 考题与作答 JSON
-│   │   ├── images/                        # OCR 图片
-│   │   └── exports/                       # 导出文件
-│   ├── pyproject.toml                     # Python 项目配置（入口 vocabcraft-mcp）
-│   └── uv.lock                            # 依赖锁定文件
+│   │   ├── server.py                         # FastMCP 服务入口（main 函数）
+│   │   ├── models.py                         # Pydantic v2 数据模型（词汇/考题/记忆状态）
+│   │   ├── storage.py                        # JSON 存储引擎（原子写、部分更新）
+│   │   ├── algorithms.py                     # SM-2 遗忘曲线算法
+│   │   ├── tools/                            # MCP Tools（OCR / 解析 / CRUD / 排程 / 考题 / 评分 / 统计 / 导出）
+│   │   ├── prompts/                          # AI Prompt 模板（词汇解析 / 考题生成 / 评分）
+│   │   └── resources/                        # MCP Resources（遗忘曲线 / 语言包 / 考题模板）
+│   ├── tests/                                # 测试套件（单元 + 集成）
+│   ├── data/                                 # 运行时数据（被 .gitignore，保留 .gitkeep）
+│   │   ├── vocabs/                           # 词汇记录 JSON
+│   │   ├── reviews/                          # 复习排程 JSON
+│   │   ├── quizzes/                          # 考题与作答 JSON
+│   │   ├── images/                           # OCR 图片
+│   │   └── exports/                          # 导出文件
+│   ├── pyproject.toml                        # Python 项目配置（入口 vocabcraft-mcp）
+│   └── uv.lock                               # 依赖锁定文件
 │
-├── .trae/                                  # 配置层（subagent 配置 + BMAD 共存）
-│   ├── mcp.json                            # 项目级 MCP 配置（双环境共用，${workspaceFolder} 适配）
-│   ├── hooks.json                          # Trae 钩子配置
-│   ├── skill-config.json                   # Skills 配置
-│   ├── 开发流程规范.md                     # 开发流程统一手册
-│   ├── agents/                             # subagent 角色定义（vocabcraft-* + BMAD）
-│   ├── commands/                           # 命令定义（vocabcraft-* + BMAD）
-│   ├── documents/                          # 项目文档（发版计划等）
-│   ├── skills/                             # Skills 源文件
-│   │   ├── vocabcraft-capture/             # /capture 拍照录入
-│   │   ├── vocabcraft-review/              # /review 复习排程
-│   │   ├── vocabcraft-quiz/                # /quiz 考题与评分
-│   │   ├── vocabcraft-stats/               # /stats 统计
-│   │   └── vocabcraft-export/              # /export 导出
-│   └── rules/                              # 规则源文件
-│       ├── vocabcraft-*.md                 # 词汇业务规则（采集/复习/数据安全/交互等）
-│       ├── ponytail.md                     # BMAD: 懒惰高级开发模式
-│       ├── project-rules.md                # BMAD: 项目总规则
-│       ├── security-rules.md               # BMAD: 安全规则
-│       ├── compliance-rules.md             # BMAD: 合规规则
-│       ├── quality-rules.md                # BMAD: 质量规则
-│       └── process-rules.md                # BMAD: 流程规则
+├── .trae/                                    # 配置层（Trae 开发时源文件）
+│   ├── mcp.json                              # 项目级 MCP 配置（${workspaceFolder} 适配）
+│   ├── skill-config.json                     # Skills 配置
+│   ├── skills/                               # Skills 源文件
+│   │   ├── vocabcraft-capture/               # /capture 拍照录入
+│   │   ├── vocabcraft-review/                # /review 复习排程
+│   │   ├── vocabcraft-quiz/                  # /quiz 考题与评分
+│   │   ├── vocabcraft-stats/                 # /stats 统计
+│   │   └── vocabcraft-export/                # /export 导出
+│   └── 开发流程规范.md                        # 开发流程统一手册
+│
+├── .opencode/                                # opencode 配置（sync-agent-configs 生成）
+├── .workbuddy/                               # WorkBuddy 配置（sync-agent-configs 生成）
 │
 ├── .github/
 │   └── workflows/
-│       ├── test.yml                        # CI：单元 + 集成测试（3.12/3.13）
-│       └── release.yml                     # Release：push tag → 自动打包 + 上传
+│       ├── test.yml                          # CI：单元 + 集成测试（3.12/3.13）
+│       └── release.yml                       # Release：push tag → 自动打包 + 上传
 │
-├── scripts/                                # 开发者工具
-│   ├── build-release.ps1                   # Windows 发布包构建（PowerShell）
-│   └── build-release.sh                    # Linux/macOS 发布包构建（bash，与 .ps1 逻辑对齐）
-├── install.ps1                             # Windows 安装脚本（可选装 OCR）
-├── install.sh                              # Linux/macOS 安装脚本（可选装 OCR）
-├── QUICKSTART.md                           # 5 分钟快速上手
-├── DEPLOY.md                               # 详细部署指南
-├── README.md                               # 本文件
-└── LICENSE                                 # MIT
+├── scripts/                                  # 开发者工具
+│   ├── build-release.ps1                     # Windows 发布包构建（PowerShell）
+│   ├── build-release.sh                      # Linux/macOS 发布包构建（bash，与 .ps1 逻辑对齐）
+│   ├── sync-agent-configs.ps1               # 同步 AGENTS.md 到 opencode/WorkBuddy 配置（PowerShell）
+│   └── sync-agent-configs.sh                # 同步 AGENTS.md 到 opencode/WorkBuddy 配置（bash）
+├── install.ps1                               # Windows 安装脚本（可选装 OCR）
+├── install.sh                                # Linux/macOS 安装脚本（可选装 OCR）
+├── QUICKSTART.md                             # 5 分钟快速上手
+├── DEPLOY.md                                 # 详细部署指南
+├── README.md                                 # 本文件
+└── LICENSE                                   # MIT
 ```
 
 ## 架构设计说明
@@ -246,42 +252,35 @@ vocabcraft/
 | 层级 | 位置 | 用途 |
 |------|------|------|
 | **服务层** | `vocabcraft-mcp/` | 纯 Python MCP Server，通用，不绑定任何客户端，可独立发布 |
-| **配置层** | `.trae/` | Trae 专用配置，定义 subagent 行为、流程与约束（单一真相源） |
+| **配置层** | `.trae/` | Trae 开发时源文件，定义 Skills 流程与约束（单一真相源） |
 
-### subagent 配置层定义
+### AGENTS.md 统一规则源
 
-`.trae/` 目录是 subagent 配置层，定义了 AI 在 Trae 环境中的行为：
+`AGENTS.md` 是三个运行时共用的统一规则源，包含：
 
-- **`agents/`** — subagent 角色定义（vocabcraft-* 业务 agent）
-- **`commands/`** — 命令入口定义（`/capture` `/review` `/quiz` `/stats` `/export`）
-- **`skills/`** — 流程编排（每个 skill 对应一个命令的完整执行流程）
-- **`rules/`** — 约束规则（业务规则 + 安全/合规/质量/流程规则）
-- **`mcp.json`** — MCP Server 连接配置
+- **业务规则** — 采集规则、复习规则、交互规则、数据安全规则
+- **开发规范** — 代码规范、安全规则、合规规则、质量规则、流程规则
+- **架构定义** — 系统架构、MCP Tools 参考、Agent 行为约束
+- **命令参考** — /capture、/review、/quiz、/stats、/export 的触发条件与约束
 
-### BMAD 工作流共存
+三个运行时（Trae / WorkBuddy / opencode）都读取 `AGENTS.md`，保证行为一致。
 
-`.trae/rules/` 目录下同时存在两类规则，互不冲突：
+### 多运行时适配
 
-1. **vocabcraft-\* 业务规则** — 词汇学习业务的专属约束（采集规则、复习规则、数据安全、交互规范等）
-2. **BMAD 工作流规则** — 通用开发方法论（`ponytail.md` 懒惰开发模式、`project-rules.md` 项目总规则、`security-rules.md` / `compliance-rules.md` / `quality-rules.md` / `process-rules.md`）
+项目同时支持 **Trae IDE CN / Trae Work CN**、**WorkBuddy (CodeBuddy)** 和 **opencode** 三个 Agent Runtime，核心机制：
 
-两者各司其职：业务规则约束词汇学习流程，BMAD 规则约束代码开发流程。发布包构建时**只打包 vocabcraft-\* 业务文件**，不打包 BMAD 既有文件（详见 `scripts/build-release.sh`）。
-
-### 双环境适配
-
-项目同时支持 **Trae IDE CN** 与 **Trae Work CN** 两个环境，核心机制：
-
-1. **共用 `.trae/mcp.json`** — 使用 `${workspaceFolder}` 变量指向项目根目录，两个环境都会自动替换为实际路径
-2. **同一份 Skills/Rules** — 两个环境读取相同的 `.trae/` 配置，行为一致
-3. **路径回退方案** — 若 Trae 版本不支持 `${workspaceFolder}` 变量，运行 `.\install.ps1 -FixPath`（Windows）或 `./install.sh --fix-path`（Linux/macOS）自动替换为绝对路径
+1. **统一规则源** — `AGENTS.md` 是唯一的规则与行为定义文件，三个运行时共用
+2. **开发时源文件** — `.trae/` 是 Skills 和 MCP 配置的开发时源文件（编辑在这里进行）
+3. **同步生成** — 运行 `.\scripts\sync-agent-configs.ps1`（或 `.\scripts\sync-agent-configs.sh`）将 `.trae/skills/` 同步到 `.opencode/` 和 `.workbuddy/` 对应目录
+4. **各运行时独立配置目录** — `.trae/`（Trae）、`.opencode/`（opencode）、`.workbuddy/`（WorkBuddy）各自独立，互不干扰
 
 ### 为什么要分离？
 
 1. **职责清晰**: 代码归代码，配置归配置
-2. **可复用**: `vocabcraft-mcp/` 可单独在其他 MCP 客户端（如 Cursor）中使用
-3. **单一真相源**: Skills/Rules/agents/commands 配置直接在 `.trae/` 下编辑，无需同步步骤
+2. **可复用**: `vocabcraft-mcp/` 可单独在任何 MCP 客户端中使用
+3. **单一真相源**: `AGENTS.md` 是唯一的规则与行为定义，Skills 配置在 `.trae/` 下编辑，同步到其他运行时
 4. **Git 友好**: 项目结构一目了然，`.trae/` 即 Trae 配置根目录
-5. **双环境友好**: 一份配置，两个环境同时运行
+5. **多运行时友好**: 一份 AGENTS.md，三个运行时共用，同步脚本自动生成各运行时配置
 
 ## 数据安全
 
@@ -305,13 +304,18 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ### Q: MCP Server 不生效
 
-1. 确认已在 Trae 中打开 **"启用项目级 MCP"** 开关
-2. 确认已重启 Trae
+1. 确认已打开「启用项目级 MCP」开关（Trae）或已信任 vocabcraft-mcp（WorkBuddy）
+2. 确认已重启 IDE / 运行时
 3. 如果 `${workspaceFolder}` 变量不被支持，运行 `.\install.ps1 -FixPath` 自动修复路径
 
-### Q: Trae IDE CN 和 Trae Work CN 能否同时使用？
+### Q: 多个 Agent Runtime 能否同时使用？
 
-可以。两个环境共用同一份 `.trae/mcp.json`（使用 `${workspaceFolder}` 自动适配路径），在任一环境打开项目文件夹并启用项目级 MCP 即可。详见 [DEPLOY.md](DEPLOY.md)。
+可以。三个运行时（Trae IDE CN / Trae Work CN、WorkBuddy、opencode）共用同一份 `AGENTS.md` 规则源，各自有独立的配置目录。首次运行或修改 Skills 后，执行同步脚本确保各运行时配置一致：
+
+```powershell
+.\scripts\sync-agent-configs.ps1          # Windows
+bash scripts/sync-agent-configs.sh        # Linux/macOS
+```
 
 ### Q: OCR / PaddleOCR 安装失败
 
