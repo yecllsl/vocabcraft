@@ -60,4 +60,4 @@ description: Use when 用户想查看词汇统计、词汇量、掌握度分布�
 - 统计数据只读，不修改词汇记录
 - 输出为 Markdown 格式，可直接在对话展示
 - 支持多维度聚合查询
-- 详见 `.trae/rules/vocabcraft-interaction-rules.md`
+- 详见 AGENTS.md「业务规则 > 交互规则」

@@ -64,4 +64,4 @@ description: Use when 用户想导出词汇数据、备份数据、导出 csv、
 - 导出文件保存到本地 `data/exports/`，不外传
 - 不导出个人身份信息（本项目本就不记录）
 - 支持 JSON 与 CSV 两种格式
-- 详见 `.trae/rules/vocabcraft-data-safety-rules.md`
+- 详见 AGENTS.md「业务规则 > 数据安全规则」

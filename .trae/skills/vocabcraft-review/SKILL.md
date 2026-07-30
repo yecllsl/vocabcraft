@@ -83,4 +83,4 @@ description: Use when 用户想复习词汇、查询到期单词、按遗忘曲�
 - grade<3 重置复习周期，不得递增
 - 评分标准客观，grade 0-5
 - 遗忘曲线参数取自 `resources/forgetting_curve.json`
-- 详见 `.trae/rules/vocabcraft-review-rules.md`
+- 详见 AGENTS.md「业务规则 > 复习规则」

@@ -72,4 +72,4 @@ description: Use when 用户想出题考我、做词汇测试、练习单词、�
 - 选择题干扰项来自同词性/近义词
 - 填空题优先用词汇自带 examples，无则降级释义题
 - 评分后必须更新记忆状态
-- 详见 `.trae/rules/vocabcraft-review-rules.md`（评分与记忆状态规则共用）
+- 详见 AGENTS.md「业务规则 > 复习规则」（评分与记忆状态规则共用）

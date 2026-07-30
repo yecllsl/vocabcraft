@@ -63,4 +63,5 @@ description: Use when 用户想录入词汇、拍照识别单词、添加生词�
 - 图片文件存储在本地 `data/images/`，不外传
 - vocab_id 格式：`vocab_YYYYMMDD_NNN`
 - 解析结果需用户确认后才保存
-- 详见 `.trae/rules/vocabcraft-capture-rules.md`、`vocabcraft-data-safety-rules.md`
+- 多义词必须将例句挂到对应释义的 `definitions[i].examples` 下
+- 详见 AGENTS.md「业务规则 > 采集规则」
