@@ -35,7 +35,7 @@
             <div class="form-group">
                 <label for="definitions">释义与例句（每行一条，格式：<code>释义文本|例句1;例句2</code>）</label>
                 <textarea id="definitions" name="definitions" rows="6"
-                          placeholder="每行一条释义，可附例句（格式：释义|例句1;例句2）&#10;例：&#10;兵器|收天下之兵，聚之咸阳;此所谓藉寇兵而赍盗粮&#10;士兵，军队|项羽兵四十万，在新丰鸿门">{% for d in vocab.definitions %}{{ d.text }}{% if d.examples %}|{{ d.examples | join(';') }}{% endif %}
+                          placeholder="每行一条释义，可附例句（格式：释义|例句1;例句2）&#10;例：&#10;兵器|收天下之兵，聚之咸阳;此所谓藉寇兵而赍盗粮&#10;士兵，军队|项羽兵四十万，在新丰鸿门">{% for d in vocab.definitions %}{% if d.part_of_speech %}【{{ d.part_of_speech }}】{% endif %}{{ d.text }}{% if d.examples %}|{{ d.examples | join(';') }}{% endif %}
 {% endfor %}</textarea>
             </div>
 

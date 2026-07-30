@@ -20,7 +20,7 @@
             <ul class="detail-list detail-defs">
                 {% for d in vocab.definitions %}
                 <li class="def-item">
-                    <div class="def-text">{{ d.text }}</div>
+                    <div class="def-text">{% if d.part_of_speech %}<span class="def-pos">【{{ d.part_of_speech }}】</span>{% endif %}{{ d.text }}</div>
                     {% if d.examples %}
                     <ul class="detail-examples">
                         {% for e in d.examples %}

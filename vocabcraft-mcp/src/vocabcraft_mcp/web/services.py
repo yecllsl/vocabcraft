@@ -588,7 +588,10 @@ def list_vocabs_for_web(language: str = "", keyword: str = "") -> list[dict]:
             "language": v["structured"]["language"],
             "part_of_speech": v["structured"]["part_of_speech"],
             # 列表卡片只显示释义文本摘要（不含例句，保持轻量）
-            "definitions": [d["text"] for d in v["structured"]["definitions"]],
+            "definitions": [
+                f"【{d.get('part_of_speech', '')}】{d['text']}" if d.get("part_of_speech") else d["text"]
+                for d in v["structured"]["definitions"]
+            ],
             "next_review": v["review_state"]["next_review"],
             "repetitions": v["review_state"]["repetitions"],
         }
