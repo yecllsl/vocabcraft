@@ -10,7 +10,7 @@
 
 import pytest
 
-from vocabcraft_mcp.tools.quiz import generate_quiz, grade_quiz, _strip_pos_prefix
+from vocabcraft_mcp.tools.quiz import generate_quiz, grade_quiz
 from vocabcraft_mcp.tools.crud import save_vocab, get_storage
 from vocabcraft_mcp.prompts.quiz_generate_prompt import CLASSICAL_GENERATE_PROMPT
 
@@ -421,7 +421,7 @@ def test_grade_quiz_classical_definition_pipe_in_meaning(isolated_storage):
 
 
 def test_grade_quiz_classical_definition_quote_mismatch(isolated_storage):
-    """释义中中文单双引号不一致时应判对"""
+    """释义中中文单双引号不一致时应判错"""
     from vocabcraft_mcp.tools.crud import save_vocab
 
     # 标准答案使用中文双引号
@@ -438,12 +438,12 @@ def test_grade_quiz_classical_definition_quote_mismatch(isolated_storage):
         },
     })
     gen = generate_quiz("vocab_001", "释义")
-    assert gen["quiz"]["answer"] == "adj.|与\"短\"相对"
+    assert gen["quiz"]["answer"] == "adj.|【形容词】与\"短\"相对"
 
-    # 用户输入中文单引号，仍应判对
-    result = grade_quiz(gen["quiz_id"], "adj.|与'短'相对")
-    assert result["grade"] == 5
-    assert result["correct"] is True
+    # 用户输入中文单引号，应判错
+    result = grade_quiz(gen["quiz_id"], "adj.|【形容词】与'短'相对")
+    assert result["grade"] == 0
+    assert result["correct"] is False
 
 
 def test_grade_quiz_classical_definition_updates_sm2(isolated_storage):
@@ -548,24 +548,7 @@ def test_generate_non_classical_definition_uses_default_prompt(isolated_storage,
     assert "题型：释义" in prompt
 
 
-def test_strip_pos_prefix_removes_en_pos():
-    """剥离英文词性前缀"""
-    assert _strip_pos_prefix("n.|兵器") == "兵器"
 
-
-def test_strip_pos_prefix_removes_zh_pos():
-    """剥离中文词性前缀"""
-    assert _strip_pos_prefix("名词|兵器") == "兵器"
-
-
-def test_strip_pos_prefix_no_prefix():
-    """无前缀时原样返回"""
-    assert _strip_pos_prefix("兵器") == "兵器"
-
-
-def test_strip_pos_prefix_meaning_contains_pipe():
-    """释义内部包含 '|' 时仅剥离前缀"""
-    assert _strip_pos_prefix("n.|兵器|刀剑") == "兵器|刀剑"
 
 
 def test_grade_quiz_classical_definition_with_pos_prefix(isolated_storage):

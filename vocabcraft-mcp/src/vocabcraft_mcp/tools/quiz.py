@@ -12,7 +12,7 @@
 """
 import random
 import re
-from datetime import datetime, timezone
+
 
 from vocabcraft_mcp.models import Definition, Quiz, ReviewRecord
 from vocabcraft_mcp.algorithms import compute_next_review
@@ -25,49 +25,7 @@ from vocabcraft_mcp.tools.crud import get_storage, update_vocab, _now_utc
 _OBJECTIVE_TYPES = {"选择", "填空", "拼写"}
 
 
-def _parse_classical_definition_answer(answer: str) -> tuple[str, str]:
-    """解析 zh_classical 释义题 answer/response 为 (词性, 释义)。
 
-    使用 str.partition("|") 拆分，允许释义中包含额外的 "|"；
-    词性转小写以便大小写不敏感比较，释义保留原样仅去首尾空白。
-    """
-    pos, _, meaning = answer.strip().partition("|")
-    return pos.strip().lower(), meaning.strip()
-
-
-_POS_PREFIX_PATTERN = re.compile(
-    r"^\s*(?:[a-z]+\.\s*(?:/[a-z]+\.)*\s*[|｜]\s*|[\u4e00-\u9fa5]+(?:/[\u4e00-\u9fa5]+)*\s*[|｜]\s*)",
-    re.IGNORECASE,
-)
-
-
-def _strip_pos_prefix(value: str) -> str:
-    """移除释义文本前端可能存在的词性标注。
-
-    例如：
-        n.|兵器     -> 兵器
-        名词|兵器   -> 兵器
-        n. 兵器     -> n. 兵器（无明确分隔符时保留）
-    """
-    return _POS_PREFIX_PATTERN.sub("", value).strip()
-
-
-def _normalize_classical_meaning(value: str) -> str:
-    """对释义文本做轻量归一化，降低标点/空格差异导致的误判。
-
-    目前统一常见引号（中文单双引号、直角引号、ASCII 单双引号）为 ASCII 双引号，
-    并折叠连续空白为单个空格，方便用户答案与标准答案比较。
-    """
-    normalized = value.strip()
-    # 统一各类引号为 ASCII 双引号
-    normalized = normalized.replace("\u201c", '"').replace("\u201d", '"')  # “ ”
-    normalized = normalized.replace("\u2018", '"').replace("\u2019", '"')  # ‘ ’
-    normalized = normalized.replace("\u300c", '"').replace("\u300d", '"')  # 「 」
-    normalized = normalized.replace("\u300e", '"').replace("\u300f", '"')  # 『 』
-    normalized = normalized.replace("'", '"')  # ASCII 单引号 -> ASCII 双引号
-    # 折叠连续空白
-    normalized = re.sub(r"\s+", " ", normalized)
-    return normalized
 
 
 # ──────────────────────────────────────────
@@ -211,12 +169,9 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
     elif qtype == "释义" and v.structured.language == "zh_classical":
         selected = defs[definition_index] if defs else None
         if selected is not None:
-            pos_zh, meaning = _parse_def_pos(selected.text)
-            if not pos_zh:
-                # 释义无【词性】标记时，回退到全局词性并统一为英文简写
-                pos_zh = v.structured.part_of_speech.strip()
-            pos = zh_to_en_pos(pos_zh) if pos_zh else "?"
-            answer = f"{pos}|{meaning}"
+            pos = selected.part_of_speech or v.structured.part_of_speech.strip()
+            pos = zh_to_en_pos(pos) if pos else "?"
+            answer = f"{pos}|{selected.text}"
         else:
             answer = "?|"
     else:
@@ -279,17 +234,11 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
         grade = 5 if correct else 0
         result["correct"] = correct
     elif quiz.quiz_type == "释义" and vocab.structured.language == "zh_classical":
-        # zh_classical 释义题：answer 编码为 "词性|释义"，按词性（中英文统一为英文简写）+ 释义（忽略词性前缀）评分
-        expected_pos, expected_meaning = _parse_classical_definition_answer(quiz.answer)
-        actual_pos, actual_meaning = _parse_classical_definition_answer(response)
-        # 允许中英文词性互答：统一转换为英文简写后比较
-        expected_pos = zh_to_en_pos(expected_pos)
-        actual_pos = zh_to_en_pos(actual_pos)
-        correct = (
-            expected_pos == actual_pos
-            and _normalize_classical_meaning(_strip_pos_prefix(expected_meaning))
-            == _normalize_classical_meaning(_strip_pos_prefix(actual_meaning))
-        )
+        expected_pos, _, expected_meaning = quiz.answer.partition("|")
+        actual_pos, _, actual_meaning = response.partition("|")
+        expected_pos = zh_to_en_pos(expected_pos.strip().lower())
+        actual_pos = zh_to_en_pos(actual_pos.strip().lower())
+        correct = expected_pos == actual_pos and expected_meaning.strip() == actual_meaning.strip()
         grade = 5 if correct else 0
         result["correct"] = correct
     else:
