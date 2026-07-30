@@ -44,7 +44,18 @@ function New-OpencodeConfig {
     $OpencodeConfig = @{ '$schema' = "https://opencode.ai/config.json"; mcp = @{}; instructions = @("AGENTS.md") }
     foreach ($ServerName in $McpContent.mcpServers.PSObject.Properties.Name) {
         $Server = $McpContent.mcpServers.$ServerName
-        $OpencodeConfig.mcp[$ServerName] = @{ type = "local"; command = @($Server.command) + $Server.args }
+        # Extract cwd from --directory arg, build command without it
+        $cwd = $null
+        $cmdArgs = @()
+        $skipNext = $false
+        foreach ($arg in $Server.args) {
+            if ($skipNext) { $skipNext = $false; $cwd = ($arg -replace '\$\{workspaceFolder\}/', '' -replace '\\', '/'); continue }
+            if ($arg -eq '--directory') { $skipNext = $true; continue }
+            $cmdArgs += $arg
+        }
+        $mcpEntry = @{ type = "local"; command = @($Server.command) + $cmdArgs }
+        if ($cwd) { $mcpEntry['cwd'] = $cwd }
+        $OpencodeConfig.mcp[$ServerName] = $mcpEntry
     }
     $OpencodeConfig | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $OpencodeDir "opencode.json") -Encoding UTF8
     Write-Host "已生成 opencode 配置" -ForegroundColor Green

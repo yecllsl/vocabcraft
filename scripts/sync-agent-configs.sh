@@ -8,6 +8,8 @@ TRAE_SKILLS="$PROJECT_ROOT/.trae/skills"
 TRAE_MCP="$PROJECT_ROOT/.trae/mcp.json"
 AGENTS_MD="$PROJECT_ROOT/AGENTS.md"
 
+export PROJECT_ROOT TRAE_MCP
+
 [ -d "$TRAE_SKILLS" ] || { echo "错误: 源目录不存在: $TRAE_SKILLS"; exit 1; }
 [ -f "$TRAE_MCP" ] || { echo "错误: MCP 配置不存在: $TRAE_MCP"; exit 1; }
 [ -f "$AGENTS_MD" ] || { echo "错误: AGENTS.md 不存在: $AGENTS_MD"; exit 1; }
@@ -40,12 +42,28 @@ generate_opencode_config() {
     local opencode_dir="$PROJECT_ROOT/.opencode"
     mkdir -p "$opencode_dir"
     python3 -c "
-import json
-with open('$TRAE_MCP') as f:
+import json, os
+with open(os.environ['TRAE_MCP']) as f:
     trae_mcp = json.load(f)
 config = {'\$schema': 'https://opencode.ai/config.json', 'mcp': {}, 'instructions': ['AGENTS.md']}
 for name, server in trae_mcp.get('mcpServers', {}).items():
-    config['mcp'][name] = {'type': 'local', 'command': [server['command']] + server.get('args', [])}
+    args = server.get('args', [])
+    cwd = None
+    cmd_args = []
+    skip_next = False
+    for arg in args:
+        if skip_next:
+            skip_next = False
+            cwd = arg.replace('\${workspaceFolder}/', '').replace(chr(92), '/')
+            continue
+        if arg == '--directory':
+            skip_next = True
+            continue
+        cmd_args.append(arg)
+    entry = {'type': 'local', 'command': [server['command']] + cmd_args}
+    if cwd:
+        entry['cwd'] = cwd
+    config['mcp'][name] = entry
 with open('$opencode_dir/opencode.json', 'w', encoding='utf-8') as f:
     json.dump(config, f, indent=2, ensure_ascii=False)
 "
@@ -57,12 +75,12 @@ generate_workbuddy_mcp() {
     mkdir -p "$workbuddy_dir"
     python3 -c "
 import json, os
-project_root = '$PROJECT_ROOT'
+project_root = os.environ['PROJECT_ROOT']
 uv_path = 'uv'
 for p in [os.path.expanduser('~/.local/bin/uv'), '/usr/local/bin/uv']:
     if os.path.isfile(p):
         uv_path = p; break
-with open('$TRAE_MCP') as f:
+with open(os.environ['TRAE_MCP']) as f:
     trae_mcp = json.load(f)
 mcp = {'mcpServers': {}}
 for name, server in trae_mcp.get('mcpServers', {}).items():

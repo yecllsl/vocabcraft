@@ -203,9 +203,14 @@ Write-Host "[6/6] 验证安装..." -ForegroundColor Yellow
 
 Push-Location $mcpDir
 try {
-    # 验证 MCP Server 入口点可用（FastMCP 的 --help 可能直接启动 server，只要不报错即可）
-    $testResult = uv run vocabcraft-mcp --help 2>&1
-    Write-Host "  ✓ MCP Server 入口点可用" -ForegroundColor Green
+    # 验证 MCP Server 入口点可用（检查模块能否导入，避免启动 stdio 服务阻塞）
+    $testResult = uv run python -c "from vocabcraft_mcp.server import main; print('OK')" 2>&1
+    if ($testResult -match "OK") {
+        Write-Host "  ✓ MCP Server 入口点可用" -ForegroundColor Green
+    } else {
+        Write-Host "  ⚠ 自动验证失败，但不影响使用" -ForegroundColor Yellow
+        Write-Host "  如遇问题请手动验证: cd vocabcraft-mcp && uv run vocabcraft-mcp" -ForegroundColor Yellow
+    }
 } catch {
     Write-Host "  ⚠ 自动验证失败，但不影响使用" -ForegroundColor Yellow
     Write-Host "  如遇问题请手动验证: cd vocabcraft-mcp && uv run vocabcraft-mcp" -ForegroundColor Yellow

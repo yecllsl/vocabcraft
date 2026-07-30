@@ -196,8 +196,8 @@ fi
 # ──────────────────────────────────────────
 echo "[6/6] 验证安装..."
 
-# 验证 MCP Server 入口点可用
-if uv run vocabcraft-mcp --help &> /dev/null; then
+# 验证 MCP Server 入口点可用（检查模块能否导入，避免启动 stdio 服务阻塞）
+if uv run python -c "from vocabcraft_mcp.server import main; print('OK')" &> /dev/null; then
     echo "  ✓ MCP Server 入口点可用"
 else
     echo "  ⚠ MCP Server 验证跳过（入口点可能需要交互模式）"
