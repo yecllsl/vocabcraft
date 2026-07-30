@@ -11,8 +11,6 @@
       释义题（主观）返回 grade_prompt 交宿主 LLM 评分，骨架阶段默认 grade=3
 """
 import random
-import re
-
 
 from vocabcraft_mcp.models import Definition, Quiz, ReviewRecord
 from vocabcraft_mcp.algorithms import compute_next_review
@@ -23,8 +21,6 @@ from vocabcraft_mcp.tools.crud import get_storage, update_vocab, _now_utc
 # 客观题：工具内精确匹配评分；zh_classical 释义题按 "词性|释义" 客观评分；
 # 其他释义题为主观题交 LLM
 _OBJECTIVE_TYPES = {"选择", "填空", "拼写"}
-
-
 
 
 
@@ -46,20 +42,6 @@ _POS_ZH_TO_EN = {
     "叹词": "叹",
 }
 _POS_EN_TO_ZH = {v: k for k, v in _POS_ZH_TO_EN.items()}
-
-
-def _parse_def_pos(text: str) -> tuple[str, str]:
-    """从释义文本中解析【词性】标记。
-
-    输入：【名词】步伐，脚步
-    返回：(中文词性, 纯释义文本)
-    无标记时返回 ("", 原文本)
-    """
-    text = text.strip()
-    match = re.match(r"^【(.+?)】\s*(.*)$", text)
-    if match:
-        return match.group(1).strip(), match.group(2).strip()
-    return "", text
 
 
 def zh_to_en_pos(zh: str) -> str:
