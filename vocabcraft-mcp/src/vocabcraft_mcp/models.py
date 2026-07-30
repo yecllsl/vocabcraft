@@ -64,6 +64,7 @@ class Definition(BaseModel):
     """
     text: str = Field(description="释义文本")
     examples: list[str] = Field(default_factory=list, description="该释义对应的例句列表")
+    part_of_speech: str = Field(default="", description="义项级词性（zh_classical 必填，其他语言可选）")
 
 
 class StructuredVocab(BaseModel):

@@ -310,3 +310,19 @@ def test_review_record_legacy_json_without_definition_index():
     }
     r = ReviewRecord.model_validate(json.loads(json.dumps(legacy)))
     assert r.definition_index is None
+
+
+# ──────────────────────────────────────────
+# Definition.part_of_speech（义项级词性）
+# ──────────────────────────────────────────
+
+def test_definition_part_of_speech_default():
+    """Definition.part_of_speech 默认空串"""
+    d = Definition(text="hello", examples=[])
+    assert d.part_of_speech == ""
+
+
+def test_definition_part_of_speech_explicit():
+    """Definition.part_of_speech 可显式传入"""
+    d = Definition(text="兵器", examples=["收天下之兵"], part_of_speech="名词")
+    assert d.part_of_speech == "名词"
