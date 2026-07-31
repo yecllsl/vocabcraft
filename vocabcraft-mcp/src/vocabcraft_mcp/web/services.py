@@ -424,7 +424,13 @@ def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> Optional[dict]:
             storage.save_quiz(updated_q)
             quiz_ids_out.append(qid)
 
-        return {"quiz_ids": quiz_ids_out}
+        first_quiz = None
+        if quiz_ids_out:
+            q = storage.load_quiz(quiz_ids_out[0])
+            if q is not None:
+                first_quiz = q.model_dump()
+                first_quiz["language"] = vocab.structured.language
+        return {"quiz_id": quiz_ids_out[0] if quiz_ids_out else quiz_id, "quiz": first_quiz, "quiz_ids": quiz_ids_out}
     else:  # 释义
         prompt = f"请写出单词「{word}」的释义"
         answer = first_def_text if defs else word
