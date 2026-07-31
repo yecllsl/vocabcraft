@@ -1,6 +1,6 @@
 # VocabCraft - 词汇学习与制作一体 MCP 工具
 
-基于 Trae IDE CN / Trae Work CN 的词汇学习与制作一体化解决方案。核心流程：拍照 → **多模态 LLM 直接解析图片（首选）** / OCR 识别（后备）→ 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。**一份配置同时运行在 TRAEWORK CN 与 TRAEIDE CN 双环境**。
+基于 Trae IDE CN / Trae Work CN / WorkBuddy / Opencode 的词汇学习与制作一体化解决方案。核心流程：拍照 → **多模态 LLM 直接解析图片（对话上传 > 本地路径）** / OCR 识别（后备）→ 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。**TRAE配置可通过脚本生成适合 WorkBuddy和Opencode的配置**。
 
 ## 系统架构
 
@@ -125,7 +125,7 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 - cli覆盖率必须≥60%
 - 禁止交付无单元测试的核心代码
 - 禁止Mock内部业务逻辑（保持测试真实性）
-- 必须Mock外部API调用（飞书、LLM）
+- 必须Mock外部API调用（LLM 等）
 
 #### 开发方法论
 - 禁止先写实现后补测试，必须TDD顺序（RED→GREEN→REFACTOR）
@@ -183,10 +183,10 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 ### 采集规则
 
-1. **多模态 LLM 直接解析图片（首选）**：优先使用 `parse_vocab(image_path=...)` 的多模态模式，宿主 LLM 直接读取图片完成结构化解析
-2. **OCR 为降级后备**：多模态模式不可用时（如宿主 LLM 不支持图片读取），降级为 OCR 识别 + 文本解析流程
-3. OCR 失败时降级为手动输入，禁止直接报错终止流程
-4. 必填字段 word + definitions 不允许为空保存，缺失时必须补全后才保存
+1. **对话多模态 LLM 直接解析图片（首选）**：优先使用 `parse_vocab()` 无参数调用，宿主 LLM 直接读取对话上下文中的图片完成结构化解析
+2. **本地路径多模态（次选）**：对话上传不可用时，使用 `parse_vocab(image_path=...)` 读取本地图片
+3. **OCR 为降级后备**：多模态模式不可用时，降级为 OCR 识别 + 文本解析流程
+4. OCR 失败时降级为手动输入，禁止直接报错终止流程
 5. 图片文件存储在本地 `data/images/`，禁止上传到任何外部服务
 6. vocab_id 格式：`vocab_YYYYMMDD_NNN`，NNN 按当日已有编号递增
 7. 解析结果需用户确认后才调用 `save_vocab` 保存
@@ -198,7 +198,7 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 ### 复习规则
 
-1. 复习排程由 `vocabcraft-mcp/src/vocabcraft_mcp/algorithms.py` 的**改良版 SM-2** 驱动（EF 初始 2.5、下限 1.3；通过走 1→6→×EF；失败 reps 归零、间隔=1 天）。`vocabcraft-mcp/resources/forgetting_curve.json` 是**未被任何代码读取的死配置**（Web 曲线由 `web/services.py` 的 `get_forgetting_curve()` 合成参考线 + `_real_retention_curve()` 基于真实复习记录计算，二者均不加载该 json）；json 注释中引用的 `algorithms.ebbinghaus_schedule` 也不存在。
+1. 复习排程由 `vocabcraft-mcp/src/vocabcraft_mcp/algorithms.py` 的**改良版 SM-2** 驱动（EF 初始 2.5、下限 1.3；通过走 1→6→×EF；失败 reps 归零、间隔=1 天）。
 2. grade 评分标准 0-5：5完全记住/4记住略迟疑/3勉强记住/2部分记错/1几乎全忘/0完全忘记
 3. grade<3 时必须重置复习周期（回到短间隔），不得递增间隔
 4. 到期词汇（`next_review_date <= 今天`）必须复习，用户跳过时需记录原因且不延后日期
@@ -215,7 +215,7 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 2. 自然语言关键词：录词/复习/出题/统计/导出
 3. 每次操作结果必须给出明确反馈（成功/失败/降级提示）
 4. 错误发生时提供降级方案而非直接报错
-5. OCR 失败时允许手动输入词汇文本
+5. 多模态 LLM 解析失败时允许降级为 OCR 或手动输入词汇文本
 6. AI 解析异常时提供友好提示和重试机制
 7. 解析结果、分类、导出操作必须经用户确认后才执行
 8. 长流程（如批量复习）应展示进度，避免用户困惑
@@ -236,10 +236,10 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 - **触发条件**: 命令 `/capture` 或自然语言"录词/录入词汇/添加词汇/拍照录词/采集词汇"
 - **调用 Skill**: `vocabcraft-capture`
-- **执行流程**: 获取输入(图片路径优先) → **多模态 LLM 直接解析图片（首选）** → 用户确认 → `save_vocab` 保存(生成 `vocab_id`: `vocab_YYYYMMDD_NNN`) → 初始化 SM-2 记忆状态(repetitions=0, easiness=2.5, next_review_date=次日)
-- **降级流程**: 多模态不可用 → `ocr_recognize` OCR 识别 → `parse_vocab` 文本解析 → 用户确认 → 保存
-- **关键 MCP Tools**: `parse_vocab`(多模态/文本解析，首选传入 `image_path`)、`ocr_recognize`(OCR 后备)、`save_vocab`(保存并初始化复习)
-- **约束**: 多模态 LLM 解析为首选，OCR 为降级后备；解析结果必须经用户确认后才保存；OCR 失败必须降级手动输入，不报错终止；必填字段 word + definitions 不允许为空
+- **执行流程**: 获取输入(对话上传图片优先 → 本地路径次选) → **多模态 LLM 直接解析图片（首选：`parse_vocab()` 无参数对话模式 / 次选：`parse_vocab(image_path=...)` 本地路径模式）** → 用户确认 → `save_vocab` 保存(生成 `vocab_id`: `vocab_YYYYMMDD_NNN`) → 初始化 SM-2 记忆状态(repetitions=0, easiness=2.5, next_review_date=次日)
+- **降级流程**: 对话多模态不可用 → 本地路径多模态 → `ocr_recognize` OCR 识别 → `parse_vocab(ocr_text=...)` 文本解析 → 手动输入
+- **关键 MCP Tools**: `parse_vocab`(三模式：无参数对话多模态/`image_path`本地路径多模态/`ocr_text`文本解析)、`ocr_recognize`(OCR 后备)、`save_vocab`(保存并初始化复习)
+- **约束**: 对话多模态 LLM 解析为首选，本地路径为次选，OCR 为降级后备；解析结果必须经用户确认后才保存；OCR 失败必须降级手动输入，不报错终止；必填字段 word + definitions 不允许为空
 
 ### /review — 复习排程
 
@@ -277,7 +277,7 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 | Tool | 用途 | 关键参数 |
 |------|------|----------|
-| `parse_vocab` | 结构化解析词汇(词形/音标/释义/例句)，**首选多模态模式** | `image_path`(多模态)/`ocr_text`(文本后备) |
+| `parse_vocab` | 结构化解析词汇(词形/音标/释义/例句)，**三模式：对话多模态 > 本地路径多模态 > OCR 文本** | 无参数(对话多模态)/`image_path`(本地路径多模态)/`ocr_text`(文本后备) |
 | `ocr_recognize` | OCR 识别图片中的词汇文本（降级后备） | `image_path` |
 | `save_vocab` | 保存词汇并初始化记忆状态 | 解析后的结构化数据 |
 | `schedule_review` | 查询到期需复习的词汇列表 | 截止日期(默认今天) |
