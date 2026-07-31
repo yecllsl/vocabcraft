@@ -132,6 +132,31 @@ def test_upcoming_reviews(temp_storage):
     assert upcoming[0]["vocab_id"] == "vocab_001"
 
 
+def test_get_upcoming_reviews_filters_by_language(temp_storage):
+    """get_upcoming_reviews(language=xx) 应只返回该语种词汇"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+
+    today = datetime.now(timezone.utc).date().isoformat()
+
+    save_vocab({
+        "id": "vocab_web_en",
+        "structured": {"word": "hello", "language": "en", "definitions": [{"text": "你好", "examples": []}]},
+        "review_state": {"next_review": today},
+    })
+    save_vocab({
+        "id": "vocab_web_zh",
+        "structured": {"word": "你好", "language": "zh", "definitions": [{"text": "hello", "examples": []}]},
+        "review_state": {"next_review": today},
+    })
+
+    all_reviews = services.get_upcoming_reviews()
+    assert len(all_reviews) == 2
+
+    en_reviews = services.get_upcoming_reviews(language="en")
+    assert len(en_reviews) == 1
+    assert en_reviews[0]["vocab_id"] == "vocab_web_en"
+
+
 # ──────────────────────────────────────────
 # 复习日历测试
 # ──────────────────────────────────────────
@@ -342,6 +367,37 @@ def test_start_batch_review_no_due_words(temp_storage):
     """无到期词汇时返回 None"""
     temp_storage.save_vocab(_make_vocab("hello", "vocab_001", next_review="2099-01-01"))
     assert services.start_batch_review() is None
+
+
+def test_start_batch_review_filters_by_language(temp_storage):
+    """start_batch_review(language=xx) 应只复习该语种到期词汇"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+
+    today = _today_iso()
+    save_vocab({
+        "id": "vocab_batch_en",
+        "structured": {"word": "hello", "language": "en", "definitions": [{"text": "你好", "examples": []}]},
+        "review_state": {"next_review": today},
+    })
+    save_vocab({
+        "id": "vocab_batch_zh",
+        "structured": {"word": "你好", "language": "zh", "definitions": [{"text": "hello", "examples": []}]},
+        "review_state": {"next_review": today},
+    })
+
+    # 不过滤：2 题
+    batch_all = services.start_batch_review()
+    assert batch_all is not None
+    assert batch_all["total"] == 2
+
+    # 只复习 en：1 题
+    batch_en = services.start_batch_review(language="en")
+    assert batch_en is not None
+    assert batch_en["total"] == 1
+
+    item = services.get_batch_review_item(batch_en["batch_id"], 0)
+    assert item is not None
+    assert item["quiz"]["language"] == "en"
 
 
 def test_grade_batch_review_item(temp_storage):

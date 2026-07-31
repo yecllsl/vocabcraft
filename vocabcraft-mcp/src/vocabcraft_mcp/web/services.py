@@ -124,10 +124,11 @@ def get_multi_dim_stats() -> dict:
 # 待复习列表
 # ──────────────────────────────────────────
 
-def get_upcoming_reviews() -> list[dict]:
+def get_upcoming_reviews(language: str = "") -> list[dict]:
     """获取待复习词汇列表
 
     返回已到期（next_review <= 今天）的词汇列表，按到期日升序排列。
+    language 参数可选，传入时只返回该语种词汇。
     """
     storage = _get_storage()
     today = _now_utc().date().isoformat()
@@ -145,6 +146,9 @@ def get_upcoming_reviews() -> list[dict]:
             "repetitions": v.review_state.repetitions,
             "is_overdue": due_date < today,
         })
+
+    if language:
+        upcoming = [x for x in upcoming if x["language"] == language]
 
     upcoming.sort(key=lambda x: x["due_date"])
     return upcoming
@@ -416,15 +420,16 @@ class _BatchReviewSession:
 _batch_sessions: dict[str, _BatchReviewSession] = {}
 
 
-def start_batch_review() -> Optional[dict]:
+def start_batch_review(language: str = "") -> Optional[dict]:
     """为今日到期词汇创建批量复习会话
 
+    language 参数可选，传入时只复习该语种到期词汇。
     Returns:
         {"batch_id": str, "total": int}；无到期词汇返回 None
     """
     from vocabcraft_mcp.tools.review import schedule_review
 
-    schedule = schedule_review()
+    schedule = schedule_review(language=language)
     due_words = schedule.get("due_words", [])
     if not due_words:
         return None
@@ -433,7 +438,10 @@ def start_batch_review() -> Optional[dict]:
     for item in due_words:
         result = generate_web_quiz(item["vocab_id"], "")
         if result:
-            quiz_ids.append(result["quiz_id"])
+            if "quiz_ids" in result:
+                quiz_ids.extend(result["quiz_ids"])
+            elif "quiz_id" in result:
+                quiz_ids.append(result["quiz_id"])
 
     if not quiz_ids:
         return None
