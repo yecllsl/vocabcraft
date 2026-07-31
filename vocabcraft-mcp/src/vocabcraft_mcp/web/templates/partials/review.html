@@ -6,12 +6,27 @@
             <div class="chart-title" style="margin-bottom: 0;">今日待复习 ({{ upcoming | length }})</div>
             {% if upcoming %}
             <button class="btn btn-primary btn-sm"
-                    hx-post="/api/review/batch/start"
+                    hx-post="/api/review/batch/start{{ '?language=' + language if language else '' }}"
                     hx-target="#content" hx-swap="innerHTML">
                 开始今日复习
             </button>
             {% endif %}
         </div>
+
+        <!-- 语种标签栏 -->
+        <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+            <a class="tag {{ 'tag-active' if not language }}"
+               href="#" hx-get="/partials/review" hx-target="#content" hx-swap="innerHTML"
+               style="cursor: pointer;">全部 ({{ total_count }})</a>
+            {% for lang_code, lang_name in supported_languages %}
+            {% if lang_counts.get(lang_code, 0) > 0 %}
+            <a class="tag language-{{ lang_code }} {{ 'tag-active' if language == lang_code }}"
+               href="#" hx-get="/partials/review?language={{ lang_code }}" hx-target="#content" hx-swap="innerHTML"
+               style="cursor: pointer;">{{ lang_name }} ({{ lang_counts[lang_code] }})</a>
+            {% endif %}
+            {% endfor %}
+        </div>
+
         {% if batch_error %}
         <div class="empty-state" style="padding: 12px;">
             <div class="empty-text">{{ batch_error }}</div>
