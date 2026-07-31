@@ -76,14 +76,27 @@ _CLASSICAL_POS_POOL = ["n.", "v.", "adj.", "adv.", "pron.", "num.", "量", "连"
 def _least_reviewed_definition_index(vocab_id: str, defs: list[Definition], storage) -> int:
     """返回复习次数最少的义项下标；次数相同按下标升序取第一个。
 
-    注意：由于 ReviewRecord 未记录 quiz_type，统计口径覆盖该词汇所有题型的复习记录；
-    跨题型复习会共同参与释义题的义项轮询。
+    统计粒度为 (definition_index, example_index) 对，
+    按义项聚合后选择总复习次数最少的义项。
     """
-    counts = {i: 0 for i in range(len(defs))}
+    counts: dict[tuple[int, int], int] = {}
+    for i, d in enumerate(defs):
+        for j in range(len(d.examples)):
+            counts[(i, j)] = 0
+    if not counts:
+        return 0
+
     for r in storage.list_all_review_records():
-        if r.vocab_id == vocab_id and r.definition_index is not None and r.definition_index in counts:
-            counts[r.definition_index] += 1
-    return min(counts, key=lambda i: (counts[i], i))
+        if r.vocab_id == vocab_id and r.definition_index is not None:
+            key = (r.definition_index, r.example_index or 0)
+            if key in counts:
+                counts[key] += 1
+
+    def_counts: dict[int, int] = {i: 0 for i in range(len(defs))}
+    for (di, _ei), c in counts.items():
+        def_counts[di] = def_counts.get(di, 0) + c
+
+    return min(def_counts, key=lambda i: (def_counts[i], i))
 
 
 def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:

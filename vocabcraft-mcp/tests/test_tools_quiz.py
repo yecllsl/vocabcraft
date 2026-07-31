@@ -548,6 +548,32 @@ def test_generate_non_classical_definition_uses_default_prompt(isolated_storage,
     assert "题型：释义" in prompt
 
 
+def test_least_reviewed_definition_index_by_example(isolated_storage):
+    """_least_reviewed_definition_index 应统计 (def_idx, ex_idx) 覆盖"""
+    from vocabcraft_mcp.tools.quiz import _least_reviewed_definition_index
+    from vocabcraft_mcp.models import Definition, ReviewRecord
+    from datetime import datetime, timezone
+
+    defs = [
+        Definition(text="兵器", examples=["收天下之兵", "兵者国之大事"], part_of_speech="n."),
+        Definition(text="士兵", examples=["赵兵果败"], part_of_speech="n."),
+    ]
+
+    # 模拟：义项0例句0已复习1次，其余为0
+    rec = ReviewRecord(
+        record_id="rec_ex_001",
+        vocab_id="vocab_ex_001",
+        review_time=datetime.now(timezone.utc),
+        grade=5, prev_ease=2.5, new_ease=2.6,
+        definition_index=0, example_index=0,
+    )
+    get_storage().save_review_record(rec)
+
+    result = _least_reviewed_definition_index("vocab_ex_001", defs, get_storage())
+    # 义项0有1次复习，义项1有0次 → 应返回义项1
+    assert result == 1
+
+
 
 
 
