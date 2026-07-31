@@ -309,6 +309,7 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
         prev_ease=prev_ease,
         new_ease=new_state["ease_factor"],
         definition_index=quiz.definition_index,
+        example_index=quiz.example_index,
     )
     storage.save_review_record(record)
 

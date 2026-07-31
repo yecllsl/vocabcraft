@@ -568,6 +568,37 @@ def test_generate_non_classical_definition_uses_default_prompt(isolated_storage,
     assert "题型：释义" in prompt
 
 
+def test_grade_quiz_transfers_example_index(isolated_storage):
+    """grade_quiz 应将 Quiz.example_index 透传到 ReviewRecord"""
+    from vocabcraft_mcp.tools.crud import save_vocab
+    data = {
+        "id": "vocab_exgrad_001",
+        "structured": {
+            "word": "兵",
+            "phonetic": "",
+            "part_of_speech": "n.",
+            "language": "zh_classical",
+            "definitions": [
+                {"text": "兵器", "examples": ["收天下之兵", "兵者国之大事"]},
+            ],
+        },
+    }
+    save_vocab(data)
+
+    result = generate_quiz("vocab_exgrad_001", "释义")
+    quizzes = result["quizzes"]
+    assert len(quizzes) == 2
+
+    # 评分第一道（example_index=0）
+    grade_result = grade_quiz(quizzes[0]["quiz_id"], "n.|兵器")
+    assert grade_result["grade"] == 5
+
+    # 检查 ReviewRecord 包含 example_index
+    records = get_storage().list_all_review_records()
+    ex_indices = [r.example_index for r in records if r.vocab_id == "vocab_exgrad_001"]
+    assert 0 in ex_indices
+
+
 def test_least_reviewed_definition_index_by_example(isolated_storage):
     """_least_reviewed_definition_index 应统计 (def_idx, ex_idx) 覆盖"""
     from vocabcraft_mcp.tools.quiz import _least_reviewed_definition_index
