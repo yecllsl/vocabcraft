@@ -165,9 +165,9 @@ def test_generate_quiz_multi_sense_definition_index_in_range(isolated_storage):
     save_vocab(data)
     result = generate_quiz("vocab_001", "释义")
     quizzes = result["quizzes"]
-    assert len(quizzes) == 1
-    idx = quizzes[0]["quiz"]["definition_index"]
-    assert idx in (0, 1, 2)
+    assert len(quizzes) == 3
+    indices = set(q["quiz"]["definition_index"] for q in quizzes)
+    assert indices == {0, 1, 2}
 
 
 def test_generate_quiz_multi_sense_prompt_only_contains_selected_def(isolated_storage):
@@ -190,16 +190,17 @@ def test_generate_quiz_multi_sense_prompt_only_contains_selected_def(isolated_st
     save_vocab(data)
     result = generate_quiz("vocab_001", "释义")
     quizzes = result["quizzes"]
-    assert len(quizzes) == 1
-    prompt = quizzes[0]["generate_prompt"]
-    idx = quizzes[0]["quiz"]["definition_index"]
-    selected_text = ["疾病", "生病", "担心"][idx]
-    # 选中义项必须在 prompt 中
-    assert selected_text in prompt
-    # 未选中的两个义项不应同时出现在 prompt 的义项列表中
-    other_texts = [t for i, t in enumerate(["疾病", "生病", "担心"]) if i != idx]
-    not_selected_count = sum(1 for t in other_texts if t in prompt)
-    assert not_selected_count == 0, f"未选中义项出现在 prompt 中: {other_texts}"
+    assert len(quizzes) == 3
+    all_texts = ["疾病", "生病", "担心"]
+    for q in quizzes:
+        idx = q["quiz"]["definition_index"]
+        prompt = q["generate_prompt"]
+        # 当前义项在 prompt 中
+        assert all_texts[idx] in prompt
+        # 其他义项不在 prompt 中
+        for oi, t in enumerate(all_texts):
+            if oi != idx:
+                assert t not in prompt, f"义项 {t} 不应出现在 quiz[{idx}] 的 prompt 中"
 
 
 def test_generate_quiz_multi_sense_answer_is_selected_def(isolated_storage):
@@ -221,9 +222,9 @@ def test_generate_quiz_multi_sense_answer_is_selected_def(isolated_storage):
     save_vocab(data)
     result = generate_quiz("vocab_001", "释义")
     quizzes = result["quizzes"]
-    assert len(quizzes) == 1
-    idx = quizzes[0]["quiz"]["definition_index"]
-    assert quizzes[0]["quiz"]["answer"] == f"n.|{['疾病', '生病'][idx]}"
+    assert len(quizzes) == 2
+    assert quizzes[0]["quiz"]["answer"] == "n.|疾病"
+    assert quizzes[1]["quiz"]["answer"] == "n.|生病"
 
 
 def test_generate_quiz_non_classical_multi_sense_answer_is_plain_text(isolated_storage):
@@ -268,9 +269,9 @@ def test_generate_quiz_classical_empty_pos_uses_placeholder(isolated_storage):
     save_vocab(data)
     result = generate_quiz("vocab_001", "释义")
     quizzes = result["quizzes"]
-    assert len(quizzes) == 1
-    idx = quizzes[0]["quiz"]["definition_index"]
-    assert quizzes[0]["quiz"]["answer"] == f"?|{['兵器', '士兵'][idx]}"
+    assert len(quizzes) == 2
+    assert quizzes[0]["quiz"]["answer"] == "?|兵器"
+    assert quizzes[1]["quiz"]["answer"] == "?|士兵"
 
 
 def test_grade_quiz_propagates_definition_index(isolated_storage):
@@ -292,7 +293,7 @@ def test_grade_quiz_propagates_definition_index(isolated_storage):
     save_vocab(data)
     gen = generate_quiz("vocab_001", "释义")
     quizzes = gen["quizzes"]
-    assert len(quizzes) == 1
+    assert len(quizzes) == 2
     expected_idx = quizzes[0]["quiz"]["definition_index"]
 
     grade_quiz(quizzes[0]["quiz_id"], "疾病")
@@ -484,7 +485,7 @@ def test_grade_quiz_classical_definition_updates_sm2(isolated_storage):
 
 
 def test_generate_classical_quiz_uses_round_robin_definition(isolated_storage):
-    """多次生成 zh_classical 释义题应轮询不同义项"""
+    """zh_classical 释义题对所有义项各生成一道题"""
     save_vocab({
         "id": "vocab_test_001",
         "structured": {
@@ -499,9 +500,11 @@ def test_generate_classical_quiz_uses_round_robin_definition(isolated_storage):
         },
     })
 
-    # 第一次：无复习记录，应选 definition_index=0
+    # 第一次：无复习记录，生成 2 道题，覆盖全部义项
     r1 = generate_quiz("vocab_test_001", "释义")
-    assert r1["quizzes"][0]["quiz"]["definition_index"] == 0
+    assert len(r1["quizzes"]) == 2
+    indices = set(q["quiz"]["definition_index"] for q in r1["quizzes"])
+    assert indices == {0, 1}
 
     # 模拟 definition_index=0 已复习一次
     from datetime import datetime, timezone
@@ -517,9 +520,11 @@ def test_generate_classical_quiz_uses_round_robin_definition(isolated_storage):
     )
     get_storage().save_review_record(rec)
 
-    # 第二次：应选复习次数更少的 definition_index=1
+    # 第二次：仍生成 2 道题，覆盖全部义项
     r2 = generate_quiz("vocab_test_001", "释义")
-    assert r2["quizzes"][0]["quiz"]["definition_index"] == 1
+    assert len(r2["quizzes"]) == 2
+    indices = set(q["quiz"]["definition_index"] for q in r2["quizzes"])
+    assert indices == {0, 1}
 
 
 def test_classical_generate_prompt_exists():
@@ -599,30 +604,7 @@ def test_grade_quiz_transfers_example_index(isolated_storage):
     assert 0 in ex_indices
 
 
-def test_least_reviewed_definition_index_by_example(isolated_storage):
-    """_least_reviewed_definition_index 应统计 (def_idx, ex_idx) 覆盖"""
-    from vocabcraft_mcp.tools.quiz import _least_reviewed_definition_index
-    from vocabcraft_mcp.models import Definition, ReviewRecord
-    from datetime import datetime, timezone
 
-    defs = [
-        Definition(text="兵器", examples=["收天下之兵", "兵者国之大事"], part_of_speech="n."),
-        Definition(text="士兵", examples=["赵兵果败"], part_of_speech="n."),
-    ]
-
-    # 模拟：义项0例句0已复习1次，其余为0
-    rec = ReviewRecord(
-        record_id="rec_ex_001",
-        vocab_id="vocab_ex_001",
-        review_time=datetime.now(timezone.utc),
-        grade=5, prev_ease=2.5, new_ease=2.6,
-        definition_index=0, example_index=0,
-    )
-    get_storage().save_review_record(rec)
-
-    result = _least_reviewed_definition_index("vocab_ex_001", defs, get_storage())
-    # 义项0有1次复习，义项1有0次 → 应返回义项1
-    assert result == 1
 
 
 
@@ -688,18 +670,20 @@ def test_generate_classical_quiz_expands_examples(isolated_storage):
     # 应返回 quizzes 列表（非 quiz_id）
     assert "quizzes" in result
     quizzes = result["quizzes"]
-    # 义项0有2个例句 → 2道题
-    assert len(quizzes) == 2
+    # 义项0有2个例句 + 义项1有1个例句 → 3道题
+    assert len(quizzes) == 3
     # 每道题有独立的 quiz_id 和 generate_prompt
     for q in quizzes:
         assert "quiz_id" in q
         assert "generate_prompt" in q
         assert "quiz" in q
-    # definition_index 一致（同一义项）
-    assert quizzes[0]["quiz"]["definition_index"] == quizzes[1]["quiz"]["definition_index"]
-    # example_index 分别为 0 和 1
+    # definition_index 和 example_index 按义项+例句排列
+    assert quizzes[0]["quiz"]["definition_index"] == 0
     assert quizzes[0]["quiz"]["example_index"] == 0
+    assert quizzes[1]["quiz"]["definition_index"] == 0
     assert quizzes[1]["quiz"]["example_index"] == 1
+    assert quizzes[2]["quiz"]["definition_index"] == 1
+    assert quizzes[2]["quiz"]["example_index"] == 0
 
 
 def test_generate_classical_quiz_no_examples_fallback(isolated_storage):

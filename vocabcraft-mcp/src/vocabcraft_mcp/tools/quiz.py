@@ -12,7 +12,7 @@
 """
 import random
 
-from vocabcraft_mcp.models import Definition, Quiz, ReviewRecord
+from vocabcraft_mcp.models import Quiz, ReviewRecord
 from vocabcraft_mcp.algorithms import compute_next_review
 from vocabcraft_mcp.prompts.quiz_generate_prompt import CLASSICAL_GENERATE_PROMPT, GENERATE_PROMPT
 from vocabcraft_mcp.prompts.quiz_grade_prompt import GRADE_PROMPT
@@ -73,32 +73,6 @@ def _generate_record_id(storage) -> str:
 _CLASSICAL_POS_POOL = ["n.", "v.", "adj.", "adv.", "pron.", "num.", "量", "连", "介", "助", "叹"]
 
 
-def _least_reviewed_definition_index(vocab_id: str, defs: list[Definition], storage) -> int:
-    """返回复习次数最少的义项下标；次数相同按下标升序取第一个。
-
-    统计粒度为 (definition_index, example_index) 对，
-    按义项聚合后选择总复习次数最少的义项。
-    """
-    counts: dict[tuple[int, int], int] = {}
-    for i, d in enumerate(defs):
-        for j in range(len(d.examples)):
-            counts[(i, j)] = 0
-    if not counts:
-        return 0
-
-    for r in storage.list_all_review_records():
-        if r.vocab_id == vocab_id and r.definition_index is not None:
-            key = (r.definition_index, r.example_index or 0)
-            if key in counts:
-                counts[key] += 1
-
-    def_counts: dict[int, int] = {i: 0 for i in range(len(defs))}
-    for (di, _ei), c in counts.items():
-        def_counts[di] = def_counts.get(di, 0) + c
-
-    return min(def_counts, key=lambda i: (def_counts[i], i))
-
-
 def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
     """为指定词汇生成考题
 
@@ -124,38 +98,40 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
     else:
         qtype = "释义" if v.structured.language.startswith("zh") else "拼写"
 
-    # 渲染命题 prompt 交宿主 LLM（含语言上下文，命题语言与词汇匹配）
-    # ponytail: 多义词随机选一个义项考查并记录 definition_index，
-    #           为 Phase 2 义项级掌握度可视化采集数据；
-    #           zh_classical 释义题改为按复习次数轮询，保证义项覆盖。
+    # zh_classical 释义题：遍历所有义项的所有例句，每条例句生成独立 quiz
+    # 确保每个义项的所有例句都被考查到，避免只考一个义项的部分例句
     defs = v.structured.definitions
-    if defs:
-        if qtype == "释义" and v.structured.language == "zh_classical":
-            definition_index = _least_reviewed_definition_index(vocab_id, defs, storage)
-        elif len(defs) > 1:
-            definition_index = random.randrange(len(defs))
-        else:
-            definition_index = 0
-        selected = defs[definition_index]
-        defs_block = f"1. {selected.text}" + "".join(f"\n   - {e}" for e in selected.examples)
-    else:
-        definition_index = None
-        defs_block = "（无）"
-    # zh_classical 释义题：为每个例句生成独立 quiz
     if qtype == "释义" and v.structured.language == "zh_classical":
+        if not defs:
+            return {"error": "词汇无释义，无法生成考题"}
         quizzes = []
-        if defs and definition_index is not None:
-            selected = defs[definition_index]
-            pos = selected.part_of_speech or v.structured.part_of_speech.strip()
+        for di, d in enumerate(defs):
+            pos = d.part_of_speech or v.structured.part_of_speech.strip()
             pos = zh_to_en_pos(pos) if pos else "?"
-            answer = f"{pos}|{selected.text}"
-        else:
-            selected = None
-            answer = "?|"
-
-        if selected and selected.examples:
-            for ex_idx, example in enumerate(selected.examples):
-                defs_block = f"1. {selected.text}\n   - {example}"
+            answer = f"{pos}|{d.text}"
+            if d.examples:
+                for ex_idx, example in enumerate(d.examples):
+                    defs_block = f"1. {d.text}\n   - {example}"
+                    prompt = CLASSICAL_GENERATE_PROMPT.format(
+                        word=v.structured.word,
+                        part_of_speech=v.structured.part_of_speech,
+                        definitions_block=defs_block,
+                    )
+                    quiz = Quiz(
+                        id=_generate_quiz_id(storage),
+                        vocab_id=vocab_id,
+                        quiz_type=qtype,
+                        question="（占位题干，请用 generate_prompt 调用 LLM 生成真实题干）",
+                        answer=answer,
+                        generated_at=_now_utc(),
+                        definition_index=di,
+                        example_index=ex_idx,
+                    )
+                    storage.save_quiz(quiz)
+                    quizzes.append({"quiz_id": quiz.id, "quiz": quiz.model_dump(), "generate_prompt": prompt})
+            else:
+                # 无例句的义项也考释义
+                defs_block = f"1. {d.text}\n   （无例句）"
                 prompt = CLASSICAL_GENERATE_PROMPT.format(
                     word=v.structured.word,
                     part_of_speech=v.structured.part_of_speech,
@@ -168,31 +144,24 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
                     question="（占位题干，请用 generate_prompt 调用 LLM 生成真实题干）",
                     answer=answer,
                     generated_at=_now_utc(),
-                    definition_index=definition_index,
-                    example_index=ex_idx,
+                    definition_index=di,
+                    example_index=None,
                 )
                 storage.save_quiz(quiz)
                 quizzes.append({"quiz_id": quiz.id, "quiz": quiz.model_dump(), "generate_prompt": prompt})
-        else:
-            prompt = CLASSICAL_GENERATE_PROMPT.format(
-                word=v.structured.word,
-                part_of_speech=v.structured.part_of_speech,
-                definitions_block=defs_block,
-            )
-            quiz = Quiz(
-                id=_generate_quiz_id(storage),
-                vocab_id=vocab_id,
-                quiz_type=qtype,
-                question="（占位题干，请用 generate_prompt 调用 LLM 生成真实题干）",
-                answer=answer,
-                generated_at=_now_utc(),
-                definition_index=definition_index,
-                example_index=None,
-            )
-            storage.save_quiz(quiz)
-            quizzes.append({"quiz_id": quiz.id, "quiz": quiz.model_dump(), "generate_prompt": prompt})
-
         return {"quizzes": quizzes}
+
+    # 非 zh_classical：选一个义项，单个 quiz
+    if defs:
+        if len(defs) > 1:
+            definition_index = random.randrange(len(defs))
+        else:
+            definition_index = 0
+        selected = defs[definition_index]
+        defs_block = f"1. {selected.text}" + "".join(f"\n   - {e}" for e in selected.examples)
+    else:
+        definition_index = None
+        defs_block = "（无）"
 
     # 非 zh_classical：单 quiz 返回
     prompt = GENERATE_PROMPT.format(
