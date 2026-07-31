@@ -191,6 +191,10 @@ class Quiz(BaseModel):
         default=None,
         description="考查的义项索引（definitions 列表下标），单词义词为 0"
     )
+    example_index: Optional[int] = Field(
+        default=None,
+        description="考查的例句索引（definitions[i].examples 列表下标）"
+    )
 
     @field_validator("quiz_type")
     @classmethod
@@ -223,6 +227,10 @@ class ReviewRecord(BaseModel):
     definition_index: Optional[int] = Field(
         default=None,
         description="本次复习考查的义项索引，透传自 Quiz"
+    )
+    example_index: Optional[int] = Field(
+        default=None,
+        description="本次复习考查的例句索引，透传自 Quiz"
     )
 
     @field_validator("grade")
