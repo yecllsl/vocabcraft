@@ -351,27 +351,80 @@ def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> Optional[dict]:
         answer = word
         options = None
     elif qtype == "释义" and vocab.structured.language == "zh_classical":
-        # 文言文释义题：题干高亮目标词，选项为 4 个词性，答案编码为 "词性|释义"
-        definition_index = quiz.definition_index if quiz.definition_index is not None else 0
-        selected_def = defs[definition_index] if 0 <= definition_index < len(defs) else (defs[0] if defs else None)
+        if "quizzes" not in result:
+            # Fallback: single quiz (shouldn't happen for zh_classical)
+            definition_index = quiz.definition_index if quiz.definition_index is not None else 0
+            selected_def = defs[definition_index] if 0 <= definition_index < len(defs) else (defs[0] if defs else None)
 
-        pos_zh = ""
-        meaning = selected_def.text if selected_def else ""
-        if selected_def is not None:
-            pos_zh = selected_def.part_of_speech or vocab.structured.part_of_speech.strip()
-        if pos_zh and not pos_zh.startswith("【"):
-            pos_zh = en_to_zh_pos(pos_zh)
-        correct_pos_en = zh_to_en_pos(pos_zh) if pos_zh else "?"
+            pos_zh = ""
+            meaning = selected_def.text if selected_def else ""
+            if selected_def is not None:
+                pos_zh = selected_def.part_of_speech or vocab.structured.part_of_speech.strip()
+            if pos_zh and not pos_zh.startswith("【"):
+                pos_zh = en_to_zh_pos(pos_zh)
+            correct_pos_en = zh_to_en_pos(pos_zh) if pos_zh else "?"
 
-        if selected_def and selected_def.examples:
-            sentence = selected_def.examples[0]
-            highlighted = sentence.replace(word, f"<mark>{word}</mark>")
-            prompt = highlighted if highlighted != sentence else f"请写出「{word}」的词性与释义"
-        else:
-            prompt = f"请写出「{word}」的词性与释义"
+            if selected_def and selected_def.examples:
+                sentence = selected_def.examples[0]
+                highlighted = sentence.replace(word, f"<mark>{word}</mark>")
+                prompt = highlighted if highlighted != sentence else f"请写出「{word}」的词性与释义"
+            else:
+                prompt = f"请写出「{word}」的词性与释义"
 
-        answer = f"{correct_pos_en}|{meaning}" if meaning else f"{correct_pos_en}|"
-        options = _build_classical_pos_options(correct_pos_en)
+            answer = f"{correct_pos_en}|{meaning}" if meaning else f"{correct_pos_en}|"
+            options = _build_classical_pos_options(correct_pos_en)
+
+            updated_quiz = quiz.model_copy(update={
+                "question": prompt,
+                "answer": answer,
+                "options": options,
+            })
+            storage.save_quiz(updated_quiz)
+            quiz_dict = updated_quiz.model_dump()
+            quiz_dict["language"] = vocab.structured.language
+            return {"quiz_id": quiz_id, "quiz": quiz_dict}
+
+        quiz_ids_out = []
+        for quiz_entry in result["quizzes"]:
+            qid = quiz_entry["quiz_id"]
+            q = storage.load_quiz(qid)
+            if q is None:
+                continue
+
+            definition_index = q.definition_index if q.definition_index is not None else 0
+            selected_def = defs[definition_index] if 0 <= definition_index < len(defs) else (defs[0] if defs else None)
+
+            pos_zh = ""
+            meaning = selected_def.text if selected_def else ""
+            if selected_def is not None:
+                pos_zh = selected_def.part_of_speech or vocab.structured.part_of_speech.strip()
+            if pos_zh and not pos_zh.startswith("【"):
+                pos_zh = en_to_zh_pos(pos_zh)
+            correct_pos_en = zh_to_en_pos(pos_zh) if pos_zh else "?"
+
+            answer = f"{correct_pos_en}|{meaning}" if meaning else f"{correct_pos_en}|"
+            options = _build_classical_pos_options(correct_pos_en)
+
+            if selected_def and selected_def.examples and q.example_index is not None:
+                ex_idx = q.example_index
+                if ex_idx < len(selected_def.examples):
+                    sentence = selected_def.examples[ex_idx]
+                    highlighted = sentence.replace(word, f"<mark>{word}</mark>")
+                    prompt = highlighted if highlighted != sentence else f"请写出「{word}」的词性与释义"
+                else:
+                    prompt = f"请写出「{word}」的词性与释义"
+            else:
+                prompt = f"请写出「{word}」的词性与释义"
+
+            updated_q = q.model_copy(update={
+                "question": prompt,
+                "answer": answer,
+                "options": options,
+            })
+            storage.save_quiz(updated_q)
+            quiz_ids_out.append(qid)
+
+        return {"quiz_ids": quiz_ids_out}
     else:  # 释义
         prompt = f"请写出单词「{word}」的释义"
         answer = first_def_text if defs else word

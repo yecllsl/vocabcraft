@@ -213,14 +213,15 @@ def test_generate_web_classical_quiz_with_example(temp_storage):
 
     result = services.generate_web_quiz("vocab_001", "释义")
     assert result is not None
-    quiz = result["quiz"]
-    assert quiz["quiz_type"] == "释义"
-    assert "<mark>兵</mark>" in quiz["question"]
-    assert quiz["options"] is not None
-    assert len(quiz["options"]) == 4
-    assert "n." in quiz["options"]
-    assert quiz["answer"] == "n.|兵器"
-    assert quiz["language"] == "zh_classical"
+    assert "quiz_ids" in result
+    assert len(result["quiz_ids"]) == 1
+    quiz = temp_storage.load_quiz(result["quiz_ids"][0])
+    assert quiz.quiz_type == "释义"
+    assert "<mark>兵</mark>" in quiz.question
+    assert quiz.options is not None
+    assert len(quiz.options) == 4
+    assert "n." in quiz.options
+    assert quiz.answer == "n.|兵器"
 
 
 def test_generate_web_classical_quiz_uses_def_pos(temp_storage):
@@ -231,9 +232,10 @@ def test_generate_web_classical_quiz_uses_def_pos(temp_storage):
     temp_storage.save_vocab(_make_classical_vocab("步", "vocab_001", part_of_speech="n.", definitions=definitions))
 
     result = services.generate_web_quiz("vocab_001", "释义")
-    quiz = result["quiz"]
-    assert quiz["answer"] == "v.|行走"
-    assert "v." in quiz["options"]
+    assert "quiz_ids" in result
+    quiz = temp_storage.load_quiz(result["quiz_ids"][0])
+    assert quiz.answer == "v.|行走"
+    assert "v." in quiz.options
 
 
 def test_generate_web_classical_quiz_without_example(temp_storage):
@@ -243,11 +245,11 @@ def test_generate_web_classical_quiz_without_example(temp_storage):
 
     result = services.generate_web_quiz("vocab_001", "释义")
     assert result is not None
-    quiz = result["quiz"]
-    assert "请写出" in quiz["question"]
-    assert "<mark>" not in quiz["question"]
-    assert quiz["answer"] == "n.|兵器"
-    assert quiz["language"] == "zh_classical"
+    assert "quiz_ids" in result
+    quiz = temp_storage.load_quiz(result["quiz_ids"][0])
+    assert "请写出" in quiz.question
+    assert "<mark>" not in quiz.question
+    assert quiz.answer == "n.|兵器"
 
 
 def test_generate_web_classical_quiz_options_format(temp_storage):
@@ -256,12 +258,35 @@ def test_generate_web_classical_quiz_options_format(temp_storage):
     temp_storage.save_vocab(_make_classical_vocab("兵", "vocab_001", part_of_speech="n.", definitions=definitions))
 
     result = services.generate_web_quiz("vocab_001", "释义")
-    quiz = result["quiz"]
-    assert isinstance(quiz["options"], list)
-    assert len(set(quiz["options"])) == 4
-    assert "n." in quiz["options"]
-    assert quiz["answer"] == "n.|兵器"
-    assert quiz["language"] == "zh_classical"
+    assert "quiz_ids" in result
+    quiz = temp_storage.load_quiz(result["quiz_ids"][0])
+    assert isinstance(quiz.options, list)
+    assert len(set(quiz.options)) == 4
+    assert "n." in quiz.options
+    assert quiz.answer == "n.|兵器"
+
+
+def test_generate_web_quiz_classical_expands_examples(temp_storage):
+    """Web 端 zh_classical 释义题应为每个例句生成独立 quiz"""
+    definitions = [
+        Definition(text="兵器", examples=["收天下之兵", "兵者国之大事"]),
+    ]
+    temp_storage.save_vocab(_make_classical_vocab("兵", "vocab_web_multi", part_of_speech="n.", definitions=definitions))
+
+    result = services.generate_web_quiz("vocab_web_multi", "释义")
+    assert "quiz_ids" in result
+    assert len(result["quiz_ids"]) == 2
+
+    q1 = temp_storage.load_quiz(result["quiz_ids"][0])
+    q2 = temp_storage.load_quiz(result["quiz_ids"][1])
+    assert "收天下之" in q1.question
+    assert "者国之大事" in q2.question
+    assert q1.example_index == 0
+    assert q2.example_index == 1
+    assert q1.answer == "n.|兵器"
+    assert q2.answer == "n.|兵器"
+    assert q1.options is not None
+    assert q2.options is not None
 
 
 # ──────────────────────────────────────────
