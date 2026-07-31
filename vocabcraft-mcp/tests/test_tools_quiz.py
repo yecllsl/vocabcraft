@@ -164,7 +164,9 @@ def test_generate_quiz_multi_sense_definition_index_in_range(isolated_storage):
     }
     save_vocab(data)
     result = generate_quiz("vocab_001", "释义")
-    idx = result["quiz"]["definition_index"]
+    quizzes = result["quizzes"]
+    assert len(quizzes) == 1
+    idx = quizzes[0]["quiz"]["definition_index"]
     assert idx in (0, 1, 2)
 
 
@@ -187,8 +189,10 @@ def test_generate_quiz_multi_sense_prompt_only_contains_selected_def(isolated_st
     }
     save_vocab(data)
     result = generate_quiz("vocab_001", "释义")
-    prompt = result["generate_prompt"]
-    idx = result["quiz"]["definition_index"]
+    quizzes = result["quizzes"]
+    assert len(quizzes) == 1
+    prompt = quizzes[0]["generate_prompt"]
+    idx = quizzes[0]["quiz"]["definition_index"]
     selected_text = ["疾病", "生病", "担心"][idx]
     # 选中义项必须在 prompt 中
     assert selected_text in prompt
@@ -216,8 +220,10 @@ def test_generate_quiz_multi_sense_answer_is_selected_def(isolated_storage):
     }
     save_vocab(data)
     result = generate_quiz("vocab_001", "释义")
-    idx = result["quiz"]["definition_index"]
-    assert result["quiz"]["answer"] == f"n.|{['疾病', '生病'][idx]}"
+    quizzes = result["quizzes"]
+    assert len(quizzes) == 1
+    idx = quizzes[0]["quiz"]["definition_index"]
+    assert quizzes[0]["quiz"]["answer"] == f"n.|{['疾病', '生病'][idx]}"
 
 
 def test_generate_quiz_non_classical_multi_sense_answer_is_plain_text(isolated_storage):
@@ -261,8 +267,10 @@ def test_generate_quiz_classical_empty_pos_uses_placeholder(isolated_storage):
     }
     save_vocab(data)
     result = generate_quiz("vocab_001", "释义")
-    idx = result["quiz"]["definition_index"]
-    assert result["quiz"]["answer"] == f"?|{['兵器', '士兵'][idx]}"
+    quizzes = result["quizzes"]
+    assert len(quizzes) == 1
+    idx = quizzes[0]["quiz"]["definition_index"]
+    assert quizzes[0]["quiz"]["answer"] == f"?|{['兵器', '士兵'][idx]}"
 
 
 def test_grade_quiz_propagates_definition_index(isolated_storage):
@@ -283,9 +291,11 @@ def test_grade_quiz_propagates_definition_index(isolated_storage):
     }
     save_vocab(data)
     gen = generate_quiz("vocab_001", "释义")
-    expected_idx = gen["quiz"]["definition_index"]
+    quizzes = gen["quizzes"]
+    assert len(quizzes) == 1
+    expected_idx = quizzes[0]["quiz"]["definition_index"]
 
-    grade_quiz(gen["quiz_id"], "疾病")
+    grade_quiz(quizzes[0]["quiz_id"], "疾病")
     records = get_storage().list_all_review_records()
     assert len(records) == 1
     assert records[0].definition_index == expected_idx
@@ -339,8 +349,9 @@ def test_grade_quiz_classical_definition_correct(isolated_storage):
 
     save_vocab(_make_classical_vocab())
     gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
 
-    result = grade_quiz(gen["quiz_id"], gen["quiz"]["answer"])
+    result = grade_quiz(q["quiz_id"], q["quiz"]["answer"])
     assert result["grade"] == 5
     assert result["correct"] is True
     assert "grade_prompt" not in result
@@ -352,8 +363,9 @@ def test_grade_quiz_classical_definition_wrong(isolated_storage):
 
     save_vocab(_make_classical_vocab())
     gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
 
-    result = grade_quiz(gen["quiz_id"], "兵器")
+    result = grade_quiz(q["quiz_id"], "兵器")
     assert result["grade"] == 0
     assert result["correct"] is False
 
@@ -364,8 +376,9 @@ def test_grade_quiz_classical_definition_case_insensitive_pos(isolated_storage):
 
     save_vocab(_make_classical_vocab(pos="N."))
     gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
     # answer 编码为 "N.|兵器"，用户小写输入仍应判对
-    result = grade_quiz(gen["quiz_id"], "n.|兵器")
+    result = grade_quiz(q["quiz_id"], "n.|兵器")
     assert result["grade"] == 5
     assert result["correct"] is True
 
@@ -376,9 +389,10 @@ def test_grade_quiz_classical_definition_strict_meaning(isolated_storage):
 
     save_vocab(_make_classical_vocab())
     gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
 
     # 释义不同则判错
-    result = grade_quiz(gen["quiz_id"], "n.|武器")
+    result = grade_quiz(q["quiz_id"], "n.|武器")
     assert result["grade"] == 0
     assert result["correct"] is False
 
@@ -389,9 +403,10 @@ def test_grade_quiz_classical_definition_empty_pos_placeholder(isolated_storage)
 
     save_vocab(_make_classical_vocab(pos=""))
     gen = generate_quiz("vocab_001", "释义")
-    assert gen["quiz"]["answer"].startswith("?|")
+    q = gen["quizzes"][0]
+    assert q["quiz"]["answer"].startswith("?|")
 
-    result = grade_quiz(gen["quiz_id"], gen["quiz"]["answer"])
+    result = grade_quiz(q["quiz_id"], q["quiz"]["answer"])
     assert result["grade"] == 5
     assert result["correct"] is True
 
@@ -413,9 +428,10 @@ def test_grade_quiz_classical_definition_pipe_in_meaning(isolated_storage):
         },
     })
     gen = generate_quiz("vocab_001", "释义")
-    assert gen["quiz"]["answer"] == "n.|a|b|c"
+    q = gen["quizzes"][0]
+    assert q["quiz"]["answer"] == "n.|a|b|c"
 
-    result = grade_quiz(gen["quiz_id"], "n.|a|b|c")
+    result = grade_quiz(q["quiz_id"], "n.|a|b|c")
     assert result["grade"] == 5
     assert result["correct"] is True
 
@@ -438,10 +454,11 @@ def test_grade_quiz_classical_definition_quote_mismatch(isolated_storage):
         },
     })
     gen = generate_quiz("vocab_001", "释义")
-    assert gen["quiz"]["answer"] == "adj.|与\"短\"相对"
+    q = gen["quizzes"][0]
+    assert q["quiz"]["answer"] == "adj.|与\"短\"相对"
 
     # 用户输入中文单引号，应判错
-    result = grade_quiz(gen["quiz_id"], "adj.|与'短'相对")
+    result = grade_quiz(q["quiz_id"], "adj.|与'短'相对")
     assert result["grade"] == 0
     assert result["correct"] is False
 
@@ -452,8 +469,9 @@ def test_grade_quiz_classical_definition_updates_sm2(isolated_storage):
 
     save_vocab(_make_classical_vocab())
     gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
 
-    result = grade_quiz(gen["quiz_id"], gen["quiz"]["answer"])
+    result = grade_quiz(q["quiz_id"], q["quiz"]["answer"])
     assert result["grade"] == 5
 
     v = get_storage().load_vocab("vocab_001")
@@ -462,7 +480,7 @@ def test_grade_quiz_classical_definition_updates_sm2(isolated_storage):
 
     records = get_storage().list_all_review_records()
     assert len(records) == 1
-    assert records[0].definition_index == gen["quiz"]["definition_index"]
+    assert records[0].definition_index == q["quiz"]["definition_index"]
 
 
 def test_generate_classical_quiz_uses_round_robin_definition(isolated_storage):
@@ -483,7 +501,7 @@ def test_generate_classical_quiz_uses_round_robin_definition(isolated_storage):
 
     # 第一次：无复习记录，应选 definition_index=0
     r1 = generate_quiz("vocab_test_001", "释义")
-    assert r1["quiz"]["definition_index"] == 0
+    assert r1["quizzes"][0]["quiz"]["definition_index"] == 0
 
     # 模拟 definition_index=0 已复习一次
     from datetime import datetime, timezone
@@ -501,7 +519,7 @@ def test_generate_classical_quiz_uses_round_robin_definition(isolated_storage):
 
     # 第二次：应选复习次数更少的 definition_index=1
     r2 = generate_quiz("vocab_test_001", "释义")
-    assert r2["quiz"]["definition_index"] == 1
+    assert r2["quizzes"][0]["quiz"]["definition_index"] == 1
 
 
 def test_classical_generate_prompt_exists():
@@ -528,7 +546,9 @@ def test_generate_classical_quiz_uses_classical_prompt(isolated_storage):
     })
 
     result = generate_quiz("vocab_prompt_001", "释义")
-    prompt = result["generate_prompt"]
+    quizzes = result["quizzes"]
+    assert len(quizzes) == 1
+    prompt = quizzes[0]["generate_prompt"]
     # 专用 prompt 的占位符应已被渲染
     assert "词汇：兵" in prompt
     assert "词性：n." in prompt
@@ -583,8 +603,9 @@ def test_grade_quiz_classical_definition_with_pos_prefix(isolated_storage):
 
     save_vocab(_make_classical_vocab())
     gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
 
-    result = grade_quiz(gen["quiz_id"], "n.|兵器")
+    result = grade_quiz(q["quiz_id"], "n.|兵器")
     assert result["grade"] == 5
     assert result["correct"] is True
 
@@ -595,8 +616,9 @@ def test_grade_quiz_classical_definition_with_zh_pos_prefix(isolated_storage):
 
     save_vocab(_make_classical_vocab(pos="名词"))
     gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
 
-    result = grade_quiz(gen["quiz_id"], "名词|兵器")
+    result = grade_quiz(q["quiz_id"], "名词|兵器")
     assert result["grade"] == 5
     assert result["correct"] is True
 
@@ -607,8 +629,64 @@ def test_grade_quiz_classical_definition_mixed_pos_style(isolated_storage):
 
     save_vocab(_make_classical_vocab(pos="n."))
     gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
 
     # 期望 n.|兵器，用户用中文词性回答
-    result = grade_quiz(gen["quiz_id"], "名词|兵器")
+    result = grade_quiz(q["quiz_id"], "名词|兵器")
     assert result["grade"] == 5
     assert result["correct"] is True
+
+
+def test_generate_classical_quiz_expands_examples(isolated_storage):
+    """zh_classical 释义题应为每个例句生成独立 quiz"""
+    save_vocab({
+        "id": "vocab_multi_001",
+        "structured": {
+            "word": "兵",
+            "phonetic": "",
+            "part_of_speech": "n.",
+            "language": "zh_classical",
+            "definitions": [
+                {"text": "兵器", "examples": ["收天下之兵", "兵者国之大事"]},
+                {"text": "士兵", "examples": ["赵兵果败"]},
+            ],
+        },
+    })
+
+    result = generate_quiz("vocab_multi_001", "释义")
+    # 应返回 quizzes 列表（非 quiz_id）
+    assert "quizzes" in result
+    quizzes = result["quizzes"]
+    # 义项0有2个例句 → 2道题
+    assert len(quizzes) == 2
+    # 每道题有独立的 quiz_id 和 generate_prompt
+    for q in quizzes:
+        assert "quiz_id" in q
+        assert "generate_prompt" in q
+        assert "quiz" in q
+    # definition_index 一致（同一义项）
+    assert quizzes[0]["quiz"]["definition_index"] == quizzes[1]["quiz"]["definition_index"]
+    # example_index 分别为 0 和 1
+    assert quizzes[0]["quiz"]["example_index"] == 0
+    assert quizzes[1]["quiz"]["example_index"] == 1
+
+
+def test_generate_classical_quiz_no_examples_fallback(isolated_storage):
+    """zh_classical 义项无例句时降级为单道题"""
+    save_vocab({
+        "id": "vocab_noex_001",
+        "structured": {
+            "word": "兵",
+            "phonetic": "",
+            "part_of_speech": "n.",
+            "language": "zh_classical",
+            "definitions": [
+                {"text": "兵器", "examples": []},
+            ],
+        },
+    })
+
+    result = generate_quiz("vocab_noex_001", "释义")
+    assert "quizzes" in result
+    assert len(result["quizzes"]) == 1
+    assert result["quizzes"][0]["quiz"]["example_index"] is None

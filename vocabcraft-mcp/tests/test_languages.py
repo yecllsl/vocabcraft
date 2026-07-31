@@ -206,9 +206,11 @@ def test_generate_quiz_default_type_classical_chinese(isolated_storage, make_voc
     """文言文词汇默认题型为'释义'（汉字无拼写概念），answer 编码为 '词性|释义'"""
     save_vocab(make_vocab_data("之", "vocab_lzh_01", language="zh_classical"))
     result = generate_quiz("vocab_lzh_01")
-    assert result["quiz"]["quiz_type"] == "释义"
+    quizzes = result["quizzes"]
+    assert len(quizzes) == 1
+    assert quizzes[0]["quiz"]["quiz_type"] == "释义"
     # zh_classical 释义题 answer 编码为 "词性|释义"（make_vocab_data 默认 part_of_speech="int."、definitions[0]="你好"）
-    assert result["quiz"]["answer"] == "int.|你好"
+    assert quizzes[0]["quiz"]["answer"] == "int.|你好"
 
 
 def test_generate_quiz_default_type_modern_chinese(isolated_storage, make_vocab_data):

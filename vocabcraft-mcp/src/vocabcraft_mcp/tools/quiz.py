@@ -141,34 +141,70 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
     else:
         definition_index = None
         defs_block = "（无）"
-    # zh_classical 释义题使用专用 prompt，要求 LLM 输出「例句 + 词性选项 + 词性|释义」格式
+    # zh_classical 释义题：为每个例句生成独立 quiz
     if qtype == "释义" and v.structured.language == "zh_classical":
-        prompt = CLASSICAL_GENERATE_PROMPT.format(
-            word=v.structured.word,
-            part_of_speech=v.structured.part_of_speech,
-            definitions_block=defs_block,
-        )
-    else:
-        prompt = GENERATE_PROMPT.format(
-            word=v.structured.word,
-            phonetic=v.structured.phonetic,
-            definitions_block=defs_block,
-            quiz_type=qtype,
-            language=v.structured.language,
-        )
-
-    # 占位 Quiz：answer 取词形（拼写题）或选中释义文本，宿主 LLM 输出后可回写
-    # zh_classical 释义题编码为 "词性|释义"，词性缺失时用 "?" 占位
-    if qtype == "拼写":
-        answer = v.structured.word
-    elif qtype == "释义" and v.structured.language == "zh_classical":
-        selected = defs[definition_index] if defs else None
-        if selected is not None:
+        quizzes = []
+        if defs and definition_index is not None:
+            selected = defs[definition_index]
             pos = selected.part_of_speech or v.structured.part_of_speech.strip()
             pos = zh_to_en_pos(pos) if pos else "?"
             answer = f"{pos}|{selected.text}"
         else:
+            selected = None
             answer = "?|"
+
+        if selected and selected.examples:
+            for ex_idx, example in enumerate(selected.examples):
+                defs_block = f"1. {selected.text}\n   - {example}"
+                prompt = CLASSICAL_GENERATE_PROMPT.format(
+                    word=v.structured.word,
+                    part_of_speech=v.structured.part_of_speech,
+                    definitions_block=defs_block,
+                )
+                quiz = Quiz(
+                    id=_generate_quiz_id(storage),
+                    vocab_id=vocab_id,
+                    quiz_type=qtype,
+                    question="（占位题干，请用 generate_prompt 调用 LLM 生成真实题干）",
+                    answer=answer,
+                    generated_at=_now_utc(),
+                    definition_index=definition_index,
+                    example_index=ex_idx,
+                )
+                storage.save_quiz(quiz)
+                quizzes.append({"quiz_id": quiz.id, "quiz": quiz.model_dump(), "generate_prompt": prompt})
+        else:
+            prompt = CLASSICAL_GENERATE_PROMPT.format(
+                word=v.structured.word,
+                part_of_speech=v.structured.part_of_speech,
+                definitions_block=defs_block,
+            )
+            quiz = Quiz(
+                id=_generate_quiz_id(storage),
+                vocab_id=vocab_id,
+                quiz_type=qtype,
+                question="（占位题干，请用 generate_prompt 调用 LLM 生成真实题干）",
+                answer=answer,
+                generated_at=_now_utc(),
+                definition_index=definition_index,
+                example_index=None,
+            )
+            storage.save_quiz(quiz)
+            quizzes.append({"quiz_id": quiz.id, "quiz": quiz.model_dump(), "generate_prompt": prompt})
+
+        return {"quizzes": quizzes}
+
+    # 非 zh_classical：单 quiz 返回
+    prompt = GENERATE_PROMPT.format(
+        word=v.structured.word,
+        phonetic=v.structured.phonetic,
+        definitions_block=defs_block,
+        quiz_type=qtype,
+        language=v.structured.language,
+    )
+
+    if qtype == "拼写":
+        answer = v.structured.word
     else:
         answer = defs[definition_index].text if defs else ""
     quiz = Quiz(

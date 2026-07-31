@@ -308,7 +308,11 @@ def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> Optional[dict]:
     if "error" in result:
         return None
 
-    quiz_id = result["quiz_id"]
+    # zh_classical 释义题返回 {"quizzes": [...]}，取第一个
+    if "quizzes" in result:
+        quiz_id = result["quizzes"][0]["quiz_id"]
+    else:
+        quiz_id = result["quiz_id"]
     quiz = storage.load_quiz(quiz_id)
     if quiz is None:
         return None
