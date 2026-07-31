@@ -78,3 +78,36 @@ def test_schedule_review_is_due_flag(isolated_storage, make_vocab_data):
 
     assert schedule_review("vocab_001")["is_due"] is True
     assert schedule_review("vocab_002")["is_due"] is False
+
+
+def test_schedule_review_filters_by_language(isolated_storage, make_vocab_data):
+    """schedule_review(language=xx) 应只返回该语种到期词汇"""
+    today = datetime.now(timezone.utc).date().isoformat()
+
+    # 英语词汇，今天到期
+    data_en = make_vocab_data(word="hello", vocab_id="vocab_lang_en", language="en")
+    data_en["review_state"] = {"next_review": today}
+    save_vocab(data_en)
+
+    # 中文词汇，今天到期
+    data_zh = make_vocab_data(word="你好", vocab_id="vocab_lang_zh", language="zh")
+    data_zh["review_state"] = {"next_review": today}
+    save_vocab(data_zh)
+
+    # 不过滤：返回全部
+    all_result = schedule_review()
+    assert all_result["due_count"] == 2
+
+    # 过滤英语
+    en_result = schedule_review(language="en")
+    assert en_result["due_count"] == 1
+    assert en_result["due_words"][0]["vocab_id"] == "vocab_lang_en"
+
+    # 过滤中文
+    zh_result = schedule_review(language="zh")
+    assert zh_result["due_count"] == 1
+    assert zh_result["due_words"][0]["vocab_id"] == "vocab_lang_zh"
+
+    # 过滤不存在的语种
+    de_result = schedule_review(language="de")
+    assert de_result["due_count"] == 0

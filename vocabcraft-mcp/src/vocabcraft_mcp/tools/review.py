@@ -12,7 +12,7 @@ from vocabcraft_mcp.algorithms import _now_utc
 from vocabcraft_mcp.tools.crud import get_storage
 
 
-def schedule_review(vocab_id: str = "") -> dict:
+def schedule_review(vocab_id: str = "", language: str = "") -> dict:
     """生成复习计划
 
     - 指定 vocab_id：返回该词汇的复习状态与到期日
@@ -20,6 +20,7 @@ def schedule_review(vocab_id: str = "") -> dict:
 
     Args:
         vocab_id: 指定词汇 ID，空串则查询全部到期词
+        language: 按语种过滤（en/zh 等），空串则不过滤
 
     Returns:
         指定 vocab_id 时: {vocab_id, word, review_state, due_date, is_due}
@@ -48,6 +49,7 @@ def schedule_review(vocab_id: str = "") -> dict:
     due = [
         v for v in all_vocabs
         if v.review_state.next_review and v.review_state.next_review <= today
+        and (not language or v.structured.language == language)
     ]
     # 按到期日升序，早到期的优先
     due.sort(key=lambda v: v.review_state.next_review)
