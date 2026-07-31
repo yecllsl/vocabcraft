@@ -13,12 +13,20 @@ router = APIRouter()
 
 
 @router.get("/partials/review", response_class=HTMLResponse)
-async def review_partial(request: Request):
+async def review_partial(request: Request, language: str = ""):
     """返回复习追踪页片段"""
-    upcoming = services.get_upcoming_reviews()
+    upcoming = services.get_upcoming_reviews(language=language)
     calendar = services.get_review_calendar()
     progress = services.get_language_progress()
     forgetting_curve = services.get_forgetting_curve()
+
+    # 计算各语种到期数量（用于标签栏）
+    all_upcoming = services.get_upcoming_reviews()
+    lang_counts = {}
+    for item in all_upcoming:
+        lang = item["language"]
+        lang_counts[lang] = lang_counts.get(lang, 0) + 1
+    total_count = len(all_upcoming)
 
     return templates.TemplateResponse(
         request,
@@ -29,6 +37,10 @@ async def review_partial(request: Request):
             "current_month": calendar["current_month"],
             "language_progress": progress,
             "forgetting_curve": forgetting_curve,
+            "language": language,
+            "lang_counts": lang_counts,
+            "total_count": total_count,
+            "supported_languages": services.SUPPORTED_LANGUAGES,
         },
     )
 
@@ -44,15 +56,22 @@ async def upcoming_reviews_api():
 # ──────────────────────────────────────────
 
 @router.post("/api/review/batch/start", response_class=HTMLResponse)
-async def start_batch_review_partial(request: Request):
+async def start_batch_review_partial(request: Request, language: str = ""):
     """开始今日批量复习，返回批量复习页面"""
-    batch = services.start_batch_review()
+    batch = services.start_batch_review(language=language)
     if batch is None:
         # 无到期词汇：返回复习页并提示
-        upcoming = services.get_upcoming_reviews()
+        upcoming = services.get_upcoming_reviews(language=language)
         calendar = services.get_review_calendar()
         progress = services.get_language_progress()
         forgetting_curve = services.get_forgetting_curve()
+
+        all_upcoming = services.get_upcoming_reviews()
+        lang_counts = {}
+        for item in all_upcoming:
+            lang = item["language"]
+            lang_counts[lang] = lang_counts.get(lang, 0) + 1
+
         return templates.TemplateResponse(
             request,
             "partials/review.html",
@@ -63,6 +82,10 @@ async def start_batch_review_partial(request: Request):
                 "language_progress": progress,
                 "forgetting_curve": forgetting_curve,
                 "batch_error": "今天没有需要复习的单词",
+                "language": language,
+                "lang_counts": lang_counts,
+                "total_count": len(all_upcoming),
+                "supported_languages": services.SUPPORTED_LANGUAGES,
             },
         )
 
