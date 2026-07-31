@@ -3,21 +3,43 @@
 
 提供生成 Web 考题、展示考题、提交评分、显示结果的路由。
 """
+from uuid import uuid4
+
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse
 
 from vocabcraft_mcp.web.app import templates
 from vocabcraft_mcp.web import services
+from vocabcraft_mcp.web.services import _BatchReviewSession, _batch_sessions
 
 router = APIRouter()
 
 
 @router.post("/api/quiz/{vocab_id}/generate", response_class=HTMLResponse)
 async def generate_quiz_partial(request: Request, vocab_id: str, quiz_type: str = ""):
-    """为词汇生成考题并返回考题片段"""
+    """为词汇生成考题并返回考题片段
+
+    如果词汇有多道考题（如 zh_classical 每条例句生成一题），
+    自动创建批量复习会话逐题展示，而非只显示第一题。
+    """
     result = services.generate_web_quiz(vocab_id, quiz_type)
     if result is None:
         raise HTTPException(status_code=404, detail="词汇不存在或无法生成考题")
+
+    quiz_ids = result.get("quiz_ids") or []
+    if len(quiz_ids) > 1:
+        # 多题模式：创建批量复习会话，走 batch review 流程
+        batch_id = f"batch_{uuid4().hex[:8]}"
+        _batch_sessions[batch_id] = _BatchReviewSession(batch_id=batch_id, quiz_ids=quiz_ids)
+        batch = {"batch_id": batch_id, "total": len(quiz_ids)}
+        item = services.get_batch_review_item(batch_id, 0)
+        return templates.TemplateResponse(
+            request,
+            "partials/batch_review.html",
+            {"batch": batch, "item": item},
+        )
+
+    # 单题模式：直接渲染
     return templates.TemplateResponse(
         request,
         "partials/quiz.html",
