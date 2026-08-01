@@ -244,3 +244,17 @@ def test_import_xlsx_empty_file(isolated_storage):
     assert result["error_count"] == 0
     assert result["errors"] == []
     assert result["imported_vocabs"] == []
+
+
+# ──────────────────────────────────────────
+# MCP 工具注册
+# ──────────────────────────────────────────
+
+def test_import_xlsx_vocab_registered_as_mcp_tool():
+    """import_xlsx_vocab 已注册为 MCP 工具"""
+    import asyncio
+    from vocabcraft_mcp.server import mcp
+
+    tools = asyncio.run(mcp.list_tools())
+    tool_names = [tool.name for tool in tools]
+    assert "import_xlsx_vocab" in tool_names

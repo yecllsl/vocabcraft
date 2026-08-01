@@ -90,6 +90,17 @@ def export_data(format: str = "json", filters: dict = None) -> dict:
     return export.export_data(format, filters or {})
 
 
+@mcp.tool()
+def import_xlsx_vocab(
+    xlsx_path: str,
+    sheet_name: str = "",
+    language: str = "en",
+) -> dict:
+    """从 .xlsx 文件批量导入词汇"""
+    from vocabcraft_mcp.tools.xlsx_import import import_xlsx_vocab as _import
+    return _import(xlsx_path, sheet_name or None, language)
+
+
 def main():
     """启动 MCP Server（stdio 传输模式）"""
     mcp.run(transport="stdio")
