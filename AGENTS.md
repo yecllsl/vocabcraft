@@ -195,6 +195,11 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 9. 若 AI 解析未能完成结构化，必须使用占位值填充并提示用户在确认时修改：word 标记"待确认"、definitions 标记"待确认"
 10. 保存词汇时必须同时初始化 SM-2 记忆状态（repetitions=0、easiness=2.5、next_review_date=次日）
 11. **多义词必须按义项关联例句**：每条例句挂在对应义项的 `definitions[i].examples` 字段下，禁止所有例句堆在某一条释义下或顶层
+12. **Excel 文件批量导入（新增）**：支持从 .xlsx 文件批量导入词汇，使用 `import_xlsx_vocab` 工具
+    - 表格格式：word（词汇）、phonetic（音标）、part_of_speech（词性）、definitions（释义）、examples（例句）、language（语言）
+    - 多义词处理：每个义项占一行，相同 word 标识同一词汇
+    - 必填字段：word 和 definitions 不能为空
+    - 错误处理：跳过格式错误的词汇，继续处理其他词汇，最后报告错误详情
 
 ### 复习规则
 
@@ -240,6 +245,11 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 - **降级流程**: 对话多模态不可用 → 本地路径多模态 → `ocr_recognize` OCR 识别 → `parse_vocab(ocr_text=...)` 文本解析 → 手动输入
 - **关键 MCP Tools**: `parse_vocab`(三模式：无参数对话多模态/`image_path`本地路径多模态/`ocr_text`文本解析)、`ocr_recognize`(OCR 后备)、`save_vocab`(保存并初始化复习)
 - **约束**: 对话多模态 LLM 解析为首选，本地路径为次选，OCR 为降级后备；解析结果必须经用户确认后才保存；OCR 失败必须降级手动输入，不报错终止；必填字段 word + definitions 不允许为空
+- **新增模式**: Excel 文件批量导入
+  - **触发条件**: 用户说"导入Excel文件"、"从表格添加词汇"、"导入词汇表"
+  - **调用 Tool**: `import_xlsx_vocab`
+  - **执行流程**: 获取.xlsx文件路径 → `import_xlsx_vocab` 解析文件 → 展示解析结果 → 用户确认 → 保存记录
+  - **约束**: 表格必须包含 word 和definitions列；多义词每个义项占一行；错误词汇跳过并报告
 
 ### /review — 复习排程
 
