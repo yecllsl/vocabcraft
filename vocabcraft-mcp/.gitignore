@@ -39,3 +39,5 @@ data/images/*
 !data/images/.gitkeep
 data/exports/*
 !data/exports/.gitkeep
+data/imports/*
+!data/imports/.gitkeep
