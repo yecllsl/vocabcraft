@@ -17,7 +17,6 @@ from vocabcraft_mcp.tools.xlsx_import import import_xlsx_vocab
 @pytest.fixture
 def isolated_storage(tmp_path, monkeypatch):
     """隔离数据目录到 tmp_path"""
-    monkeypatch.setattr("vocabcraft_mcp.tools.xlsx_import._DEFAULT_DATA_DIR", tmp_path)
     monkeypatch.setattr("vocabcraft_mcp.tools.crud._DEFAULT_DATA_DIR", tmp_path)
     return tmp_path
 
@@ -219,6 +218,22 @@ def test_import_xlsx_duplicate_word_same_language(isolated_storage):
     result = import_xlsx_vocab(str(path))
     assert result["success_count"] == 1
     assert result["error_count"] == 0
+
+
+def test_import_xlsx_duplicate_word_different_language(isolated_storage):
+    """相同 word 不同 language 保持独立条目"""
+    path = _create_xlsx(
+        isolated_storage, "test.xlsx",
+        ["word", "definitions", "language"],
+        [
+            ["hello", "你好", "zh"],
+            ["hello", "greeting", "en"],
+        ],
+    )
+    result = import_xlsx_vocab(str(path))
+    assert result["success_count"] == 2
+    assert result["error_count"] == 0
+    assert len(result["imported_vocabs"]) == 2
 
 
 def test_import_xlsx_empty_file(isolated_storage):

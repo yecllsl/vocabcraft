@@ -9,8 +9,6 @@ from pathlib import Path
 from vocabcraft_mcp.models import normalize_language
 from vocabcraft_mcp.tools.crud import save_vocab
 
-_DEFAULT_DATA_DIR = Path(__file__).parent.parent.parent.parent / "data"
-
 
 def import_xlsx_vocab(
     xlsx_path: str,
@@ -99,7 +97,7 @@ def import_xlsx_vocab(
             "imported_vocabs": [],
         }
 
-    vocab_groups: dict[str, list[dict]] = {}
+    vocab_groups: dict[tuple[str, str], list[dict]] = {}
     errors: list[str] = []
 
     for row_idx, row in enumerate(worksheet.iter_rows(min_row=2, values_only=True), start=2):
@@ -123,9 +121,13 @@ def import_xlsx_vocab(
             continue
 
         word = str(word).strip()
-        if word not in vocab_groups:
-            vocab_groups[word] = []
-        vocab_groups[word].append(row_data)
+        row_language = lang
+        if row_data.get("language"):
+            row_language = normalize_language(str(row_data["language"]))
+        group_key = (word, row_language)
+        if group_key not in vocab_groups:
+            vocab_groups[group_key] = []
+        vocab_groups[group_key].append(row_data)
 
     workbook.close()
 
@@ -133,19 +135,16 @@ def import_xlsx_vocab(
     error_count = 0
     imported_vocabs: list[str] = []
 
-    for word, rows in vocab_groups.items():
+    for (word, word_language), rows in vocab_groups.items():
         definitions: list[dict] = []
         phonetic = ""
         part_of_speech = ""
-        word_language = lang
 
         for row in rows:
             if not phonetic and row.get("phonetic"):
                 phonetic = str(row["phonetic"]).strip()
             if not part_of_speech and row.get("part_of_speech"):
                 part_of_speech = str(row["part_of_speech"]).strip()
-            if row.get("language"):
-                word_language = normalize_language(str(row["language"]))
 
             def_text = str(row.get("definitions", "")).strip()
             if def_text:
