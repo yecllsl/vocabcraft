@@ -33,7 +33,6 @@ Rules 约束层 (AGENTS.md — 统一规则源，三个运行时共用)
 
 - **MCP Server**: Python 3.12+ / FastMCP / Pydantic v2
 - **复习算法**: SM-2 遗忘曲线（SuperMemo 2）
-
 - **数据存储**: JSON 文件（本地存储，原子写入）
 - **包管理**: uv（现代高速 Python 包管理器）
 - **测试**: pytest + pytest-asyncio + pytest-cov
