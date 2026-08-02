@@ -24,7 +24,7 @@ Skills 编排层 (.trae/skills/vocabcraft-*: capture / review / quiz / stats / e
 MCP Tools 层 (vocabcraft-mcp)
 ├── 结构化解析 → 存储 → SM-2 排程 → 考题生成 → 评分 → 统计 → 导出
     ↓
-Rules 约束层 (AGENTS.md — 统一规则源，三个运行时共用)
+Rules 约束层 (AGENTS.md — 统一规则源，四个运行时共用)
     ↓
 数据存储层 (本地 JSON 文件，原子写入)
 ```
@@ -44,13 +44,13 @@ Rules 约束层 (AGENTS.md — 统一规则源，三个运行时共用)
 
 - Python 3.12+
 - [uv 包管理器](https://docs.astral.sh/uv/)（Windows: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`）
-- Trae IDE CN / Trae Work CN、WorkBuddy (CodeBuddy) 或 opencode（三选一或全部）
+- Trae IDE CN / Trae Work CN、WorkBuddy (CodeBuddy) 或 opencode（任选其一或全部）
 
 ### 安装步骤
 
 #### 1. 下载并解压
 
-下载 `VocabCraft-v0.3.0.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
+下载 `VocabCraft-v0.5.0.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
 
 #### 2. 运行安装脚本
 
@@ -177,7 +177,7 @@ chmod +x install.sh
 
 ```
 vocabcraft/
-├── AGENTS.md                                 # 统一规则源（三个运行时共用）
+├── AGENTS.md                                 # 统一规则源（四个运行时共用）
 ├── vocabcraft-mcp/                           # MCP Server 服务层（Python）
 │   ├── src/vocabcraft_mcp/
 │   │   ├── server.py                         # FastMCP 服务入口（main 函数）
@@ -206,7 +206,6 @@ vocabcraft/
 │   │   ├── vocabcraft-quiz/                  # /quiz 考题与评分
 │   │   ├── vocabcraft-stats/                 # /stats 统计
 │   │   └── vocabcraft-export/                # /export 导出
-│   └── 开发流程规范.md                        # 开发流程统一手册
 │
 ├── .opencode/                                # opencode 配置（sync-agent-configs 生成）
 ├── .workbuddy/                               # WorkBuddy 配置（sync-agent-configs 生成）
@@ -242,20 +241,20 @@ vocabcraft/
 
 ### AGENTS.md 统一规则源
 
-`AGENTS.md` 是三个运行时共用的统一规则源，包含：
+`AGENTS.md` 是四个运行时共用的统一规则源，包含：
 
 - **业务规则** — 采集规则、复习规则、交互规则、数据安全规则
 - **开发规范** — 代码规范、安全规则、合规规则、质量规则、流程规则
-- **架构定义** — 系统架构、MCP Tools 参考、Agent 行为约束
+- **架构定义** — 系统架构、MCP Tools 参考
 - **命令参考** — /capture、/review、/quiz、/stats、/export 的触发条件与约束
 
-三个运行时（Trae / WorkBuddy / opencode）都读取 `AGENTS.md`，保证行为一致。
+四个运行时（Trae / WorkBuddy / opencode）都读取 `AGENTS.md`，保证行为一致。
 
 ### 多运行时适配
 
-项目同时支持 **Trae IDE CN / Trae Work CN**、**WorkBuddy (CodeBuddy)** 和 **opencode** 三个 Agent Runtime，核心机制：
+项目同时支持 **Trae IDE CN / Trae Work CN**、**WorkBuddy (CodeBuddy)** 和 **opencode** 四个 Agent Runtime，核心机制：
 
-1. **统一规则源** — `AGENTS.md` 是唯一的规则与行为定义文件，三个运行时共用
+1. **统一规则源** — `AGENTS.md` 是唯一的规则与行为定义文件，四个运行时共用
 2. **开发时源文件** — `.trae/` 是 Skills 和 MCP 配置的开发时源文件（编辑在这里进行）
 3. **同步生成** — 运行 `.\scripts\sync-agent-configs.ps1`（或 `.\scripts\sync-agent-configs.sh`）将 `.trae/skills/` 同步到 `.opencode/` 和 `.workbuddy/` 对应目录
 4. **各运行时独立配置目录** — `.trae/`（Trae）、`.opencode/`（opencode）、`.workbuddy/`（WorkBuddy）各自独立，互不干扰
@@ -266,7 +265,7 @@ vocabcraft/
 2. **可复用**: `vocabcraft-mcp/` 可单独在任何 MCP 客户端中使用
 3. **单一真相源**: `AGENTS.md` 是唯一的规则与行为定义，Skills 配置在 `.trae/` 下编辑，同步到其他运行时
 4. **Git 友好**: 项目结构一目了然，`.trae/` 即 Trae 配置根目录
-5. **多运行时友好**: 一份 AGENTS.md，三个运行时共用，同步脚本自动生成各运行时配置
+5. **多运行时友好**: 一份 AGENTS.md，四个运行时共用，同步脚本自动生成各运行时配置
 
 ## 数据安全
 
@@ -295,7 +294,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ### Q: 多个 Agent Runtime 能否同时使用？
 
-可以。三个运行时（Trae IDE CN / Trae Work CN、WorkBuddy、opencode）共用同一份 `AGENTS.md` 规则源，各自有独立的配置目录。首次运行或修改 Skills 后，执行同步脚本确保各运行时配置一致：
+可以。四个运行时（Trae IDE CN / Trae Work CN、WorkBuddy、opencode）共用同一份 `AGENTS.md` 规则源，各自有独立的配置目录。首次运行或修改 Skills 后，执行同步脚本确保各运行时配置一致：
 
 ```powershell
 .\scripts\sync-agent-configs.ps1          # Windows
@@ -328,15 +327,15 @@ uv run pytest tests/ -m "not e2e"
 
 ```powershell
 # Windows
-pwsh .\scripts\build-release.ps1 -Version 0.3.0
+pwsh .\scripts\build-release.ps1 -Version 0.5.0
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.3.0
+bash scripts/build-release.sh 0.5.0
 ```
 
-产物：`dist/VocabCraft-v0.3.0.{zip,tar.zst,tar.gz}`。
+产物：`dist/VocabCraft-v0.5.0.{zip,tar.zst,tar.gz}`。
 
 ### CI/CD
 

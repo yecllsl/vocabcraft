@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-VERSION="${1:-0.3.0}"
+VERSION="${1:-0.5.0}"
 
 # ──────────────────────────────────────────
 # 路径定义
@@ -76,7 +76,7 @@ log_step "[3/6] Copy .trae config..."
     cp "$PROJECT_ROOT/.trae/hooks.json" "$STAGING_DIR/.trae/hooks.json"
 
 # 写入发布版 mcp.json（使用 ${workspaceFolder} 变量，解压到任意位置均可工作）
-# 双环境（TRAEWORK CN + TRAEIDE CN）共用此配置
+# 多运行时（TRAEWORK CN + TRAEIDE CN）共用此配置
 cat > "$STAGING_DIR/.trae/mcp.json" <<'EOF'
 {
   "mcpServers": {

@@ -2,13 +2,13 @@
 # 从源码生成可分发的 zip 包（白名单复制策略，避免误打包 .venv）
 #
 # 使用方法：
-#   pwsh .\scripts\build-release.ps1 [-Version "0.3.0"]
+#   pwsh .\scripts\build-release.ps1 [-Version "0.5.0"]
 #
 # 输出：
-#   dist\VocabCraft-v0.3.0.zip
+#   dist\VocabCraft-v0.5.0.zip
 
 param(
-    [string]$Version = "0.3.0"
+    [string]$Version = "0.5.0"
 )
 
 $ErrorActionPreference = "Stop"
@@ -96,7 +96,7 @@ foreach ($f in $traeTopFiles) {
 }
 
 # 写入发布版 mcp.json（使用 ${workspaceFolder} 变量，解压到任意位置均可工作）
-# 双环境（TRAEWORK CN + TRAEIDE CN）共用此配置
+# 多运行时（TRAEWORK CN + TRAEIDE CN）共用此配置
 $releaseMcpJson = @'
 {
   "mcpServers": {

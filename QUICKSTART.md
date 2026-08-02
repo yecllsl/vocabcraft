@@ -24,11 +24,9 @@
 chmod +x install.sh && ./install.sh
 ```
 
-> ⏱️ 首次安装会询问是否安装 OCR 引擎（PaddleOCR + PaddlePaddle 约 1.5GB）。**仅当需要 `/capture` 拍照录入词汇时才需要**。手动录入、复习、考题等功能无需 OCR。
->
-> 跳过 OCR 后若需要补装：`cd vocabcraft-mcp && uv sync --extra ocr`
+> 📷 图片词汇采集由**宿主 LLM 多模态直接解析**（对话上传图片优先、本地路径次之、文本兜底），无需安装任何 OCR 引擎。手动录入、复习、考题、统计、导出均不依赖额外模型。
 
-### 第 3 步：在 Trae 中配置（双环境操作一致）
+### 第 3 步：在 Trae 中配置（多运行时操作一致）
 
 VocabCraft 同时支持 **Trae IDE CN** 与 **Trae Work CN**，两个环境共用同一份配置：
 
@@ -62,7 +60,7 @@ VocabCraft 同时支持 **Trae IDE CN** 与 **Trae Work CN**，两个环境共�
 **操作流程:**
 1. 执行 `/capture` 命令
 2. 输入或粘贴词汇图片路径
-3. OCR 识别 + AI 结构化解析（单词、音标、词性、释义、例句）
+3. AI 多模态结构化解析（宿主 LLM 直接读图，输出单词、音标、词性、释义、例句）
 4. 确认或修改解析结果
 5. 保存词汇记录
 
@@ -251,11 +249,11 @@ Q3. 例句填空
 | 安装脚本报错 "uv 未安装" | 安装 uv：`irm https://astral.sh/uv/install.ps1 \| iex` |
 | MCP Server 不生效 | 确认启用项目级 MCP → 重启 Trae |
 | 路径变量不替换 | 运行 `.\install.ps1 -FixPath` 修复路径 |
-| PaddleOCR 安装失败 | 确认 Python >= 3.12 + 网络畅通 → `cd vocabcraft-mcp && uv sync --extra ocr` |
+| 依赖安装失败 / `uv sync` 报错 | 删除 `.venv` 后重试 `uv sync`；确认 Python ≥ 3.12；网络问题检查代理 |
 | Skills 不生效 | 重启 Trae → 检查 .trae/skills/vocabcraft-* 目录 |
-| 两个环境配置冲突 | 不会冲突，共用同一份 `.trae/mcp.json`，详见 [DEPLOY.md](DEPLOY.md) |
+| 多运行时配置冲突 | 不会冲突，共用同一份 `.trae/mcp.json`，详见 [DEPLOY.md](DEPLOY.md) |
 
 ## 下一步
 
-- 📖 查看 [完整部署指南](DEPLOY.md)（含双环境详细配置）
+- 📖 查看 [完整部署指南](DEPLOY.md)（含多运行时详细配置）
 - 📚 查看 [项目 README](README.md)
