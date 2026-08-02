@@ -13,13 +13,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# OCR 引擎依赖 — paddleocr/paddlepaddle 体积大且与 Python 3.13 兼容性较差，
-# 拆为可选依赖。运行 `uv sync --extra ocr` 安装。
-# OCR 工具内部使用懒加载，未安装时调用 OCR 会得到友好错误提示。
-ocr = [
-    "paddleocr>=2.7.0",
-    "paddlepaddle>=2.5.0",
-]
 xlsx = [
     "openpyxl>=3.1.0",
 ]

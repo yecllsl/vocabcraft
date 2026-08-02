@@ -1,10 +1,9 @@
 # src/vocabcraft_mcp/server.py
 """VocabCraft MCP Server 入口
 
-注册所有 MCP 工具（4 个 CRUD + 7 个业务工具），通过 FastMCP 框架对外提供服务。
-ocr_recognize 保留懒导入（PaddleOCR 启动重，加载开销仅在首次调用时发生）。
+注册所有 MCP 工具（4 个 CRUD + 6 个业务工具），通过 FastMCP 框架对外提供服务。
 
-业务流程: 拍照 → OCR → 结构化解析 → 保存词汇 → 遗忘曲线排程 → 到期提醒 → 出考题 → 评分 → 更新记忆状态
+业务流程: 拍照 → 结构化解析 → 保存词汇 → 遗忘曲线排程 → 到期提醒 → 出考题 → 评分 → 更新记忆状态
 """
 
 from fastmcp import FastMCP
@@ -43,15 +42,8 @@ def delete_vocab(vocab_id: str) -> dict:
 
 
 # ──────────────────────────────────────────
-# 业务工具（ocr_recognize 保留懒导入）
+# 业务工具
 # ──────────────────────────────────────────
-
-@mcp.tool()
-def ocr_recognize(image_path: str, language: str = "") -> dict:
-    """OCR 识别词汇图片，返回原始文本"""
-    from vocabcraft_mcp.tools.ocr_recognize import ocr_recognize as _ocr
-    return _ocr(image_path, language)
-
 
 @mcp.tool()
 def parse_vocab(image_path: str = "", ocr_text: str = "", language: str = "en") -> dict:

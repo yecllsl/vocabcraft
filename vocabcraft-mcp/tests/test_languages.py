@@ -4,9 +4,8 @@
 覆盖中/德/英三语完整处理链路:
     - normalize_language: 别名归一化、未知值保留、None 默认
     - StructuredVocab.language 校验器触发归一化
-    - OCR PaddleOCR lang 映射覆盖所有支持语言
     - render_parse_prompt 按语言分支（文言文实词/虚词/通假字、德语词性 der/die/das）
-    - parse_vocab / ocr_recognize language 参数透传与归一化
+    - parse_vocab language 参数透传与归一化
     - generate_quiz 默认题型按语言（中文/文言文→释义，英语/德语→拼写）
 """
 
@@ -21,7 +20,6 @@ from vocabcraft_mcp.prompts.vocab_parse_prompt import (
     render_parse_prompt,
     _LANGUAGE_GUIDE,
 )
-from vocabcraft_mcp.tools.ocr_recognize import _PADDLE_LANG, ocr_recognize
 from vocabcraft_mcp.tools.parse_vocab import parse_vocab
 from vocabcraft_mcp.tools.crud import save_vocab
 from vocabcraft_mcp.tools.quiz import generate_quiz
@@ -86,41 +84,6 @@ def test_structured_vocab_language_default_en():
     """未传 language 默认 en"""
     v = StructuredVocab(word="hello")
     assert v.language == "en"
-
-
-# ──────────────────────────────────────────
-# OCR PaddleOCR lang 映射
-# ──────────────────────────────────────────
-
-def test_paddle_lang_covers_all_supported():
-    """每个支持的语言都必须有 PaddleOCR lang 映射"""
-    for lang in SUPPORTED_LANGUAGES:
-        assert lang in _PADDLE_LANG, f"语言 {lang} 缺少 PaddleOCR lang 映射"
-
-
-@pytest.mark.parametrize("lang,paddle", [
-    ("en", "en"),
-    ("zh", "ch"),
-    ("zh_classical", "ch"),  # 文言文与现代中文共用中英混合模型
-    ("de", "german"),
-])
-def test_paddle_lang_mapping(lang, paddle):
-    """canonical 语言 → PaddleOCR lang 正确映射"""
-    assert _PADDLE_LANG[lang] == paddle
-
-
-def test_ocr_recognize_normalizes_language():
-    """ocr_recognize 归一化 language 并回显（走文件不存在分支，不触发真实 OCR）"""
-    result = ocr_recognize("nonexistent_classical_test.jpg", language="文言文")
-    assert result["language"] == "zh_classical"
-    assert "error" in result  # 文件不存在降级
-    assert "不存在" in result["error"]
-
-
-def test_ocr_recognize_german_language_echo():
-    """ocr_recognize 德语语言回显"""
-    result = ocr_recognize("nonexistent_de_test.jpg", language="Deutsch")
-    assert result["language"] == "de"
 
 
 # ──────────────────────────────────────────
