@@ -1,6 +1,6 @@
 # VocabCraft - 词汇学习与制作一体 MCP 工具
 
-基于 Trae IDE CN / Trae Work CN / WorkBuddy / Opencode 的词汇学习与制作一体化解决方案。核心流程：拍照 → **多模态 LLM 直接解析图片（对话上传 > 本地路径）** / OCR 识别（后备）→ 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。**TRAE配置可通过脚本生成适合 WorkBuddy和Opencode的配置**。
+基于 Trae IDE CN / Trae Work CN / WorkBuddy / Opencode 的词汇学习与制作一体化解决方案。核心流程：拍照 → **多模态 LLM 直接解析图片（对话上传 > 本地路径）** → 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。**TRAE配置可通过脚本生成适合 WorkBuddy和Opencode的配置**。
 
 ## 系统架构
 
@@ -31,7 +31,6 @@ Rules 约束层 (业务规则 + 安全/合规/质量/流程规则)
 - **MCP Server**: Python 3.12+ / FastMCP / Pydantic v2
 - **复习算法**: SM-2 遗忘曲线（SuperMemo 2）
 - **多模态 LLM 解析（首选）**: 宿主 LLM 直接读取图片，无需额外依赖
-- **OCR 引擎（可选后备）**: PaddleOCR（本地部署，无需 API Key；仅在多模态不可用时使用）
 - **数据存储**: JSON 文件（本地存储，原子写入）
 - **包管理**: uv（现代高速 Python 包管理器）
 - **测试**: pytest + pytest-asyncio + pytest-cov
@@ -185,17 +184,15 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 1. **对话多模态 LLM 直接解析图片（首选）**：优先使用 `parse_vocab()` 无参数调用，宿主 LLM 直接读取对话上下文中的图片完成结构化解析
 2. **本地路径多模态（次选）**：对话上传不可用时，使用 `parse_vocab(image_path=...)` 读取本地图片
-3. **OCR 为降级后备**：多模态模式不可用时，降级为 OCR 识别 + 文本解析流程
-4. OCR 失败时降级为手动输入，禁止直接报错终止流程
-5. 图片文件存储在本地 `data/images/`，禁止上传到任何外部服务
-6. vocab_id 格式：`vocab_YYYYMMDD_NNN`，NNN 按当日已有编号递增
-7. 解析结果需用户确认后才调用 `save_vocab` 保存
-8. **word（词形）和 definitions（释义）为必填字段**，不允许为 null 保存——缺失会导致后续出题与复习不可用
+3. 图片文件存储在本地 `data/images/`，禁止上传到任何外部服务
+4. vocab_id 格式：`vocab_YYYYMMDD_NNN`，NNN 按当日已有编号递增
+5. 解析结果需用户确认后才调用 `save_vocab` 保存
+6. **word（词形）和 definitions（释义）为必填字段**，不允许为 null 保存——缺失会导致后续出题与复习不可用
    - `definitions` 为 `list[Definition]`，每项 `{text, examples}` 内嵌该释义的关联例句
-9. 若 AI 解析未能完成结构化，必须使用占位值填充并提示用户在确认时修改：word 标记"待确认"、definitions 标记"待确认"
-10. 保存词汇时必须同时初始化 SM-2 记忆状态（repetitions=0、easiness=2.5、next_review_date=次日）
-11. **多义词必须按义项关联例句**：每条例句挂在对应义项的 `definitions[i].examples` 字段下，禁止所有例句堆在某一条释义下或顶层
-12. **Excel 文件批量导入（新增）**：支持从 .xlsx 文件批量导入词汇，使用 `import_xlsx_vocab` 工具
+7. 若 AI 解析未能完成结构化，必须使用占位值填充并提示用户在确认时修改：word 标记"待确认"、definitions 标记"待确认"
+8. 保存词汇时必须同时初始化 SM-2 记忆状态（repetitions=0、easiness=2.5、next_review_date=次日）
+9. **多义词必须按义项关联例句**：每条例句挂在对应义项的 `definitions[i].examples` 字段下，禁止所有例句堆在某一条释义下或顶层
+10. **Excel 文件批量导入（新增）**：支持从 .xlsx 文件批量导入词汇，使用 `import_xlsx_vocab` 工具
     - 表格格式：word（词汇）、phonetic（音标）、part_of_speech（词性）、definitions（释义）、examples（例句）、language（语言）
     - 多义词处理：每个义项占一行，相同 word 标识同一词汇
     - 必填字段：word 和 definitions 不能为空
@@ -220,7 +217,7 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 2. 自然语言关键词：录词/复习/出题/统计/导出
 3. 每次操作结果必须给出明确反馈（成功/失败/降级提示）
 4. 错误发生时提供降级方案而非直接报错
-5. 多模态 LLM 解析失败时允许降级为 OCR 或手动输入词汇文本
+5. 多模态 LLM 解析失败时允许降级为手动输入词汇文本
 6. AI 解析异常时提供友好提示和重试机制
 7. 解析结果、分类、导出操作必须经用户确认后才执行
 8. 长流程（如批量复习）应展示进度，避免用户困惑
@@ -231,9 +228,8 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 2. 图片文件存储在项目目录下 `data/images/`，不外传
 3. 导出数据前必须经用户确认，导出文件保存到本地 `data/exports/`
 4. 不记录用户姓名等个人身份信息
-5. OCR 本地部署，不调用外部 OCR API
-6. 导出失败不得损坏原数据（导出为只读原数据操作）
-7. 记忆状态（repetitions/easiness/next_review_date）属于用户学习数据，仅本地存储与更新
+5. 导出失败不得损坏原数据（导出为只读原数据操作）
+6. 记忆状态（repetitions/easiness/next_review_date）属于用户学习数据，仅本地存储与更新
 
 ## 命令参考
 
@@ -242,9 +238,9 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 - **触发条件**: 命令 `/capture` 或自然语言"录词/录入词汇/添加词汇/拍照录词/采集词汇"
 - **调用 Skill**: `vocabcraft-capture`
 - **执行流程**: 获取输入(对话上传图片优先 → 本地路径次选) → **多模态 LLM 直接解析图片（首选：`parse_vocab()` 无参数对话模式 / 次选：`parse_vocab(image_path=...)` 本地路径模式）** → 用户确认 → `save_vocab` 保存(生成 `vocab_id`: `vocab_YYYYMMDD_NNN`) → 初始化 SM-2 记忆状态(repetitions=0, easiness=2.5, next_review_date=次日)
-- **降级流程**: 对话多模态不可用 → 本地路径多模态 → `ocr_recognize` OCR 识别 → `parse_vocab(ocr_text=...)` 文本解析 → 手动输入
-- **关键 MCP Tools**: `parse_vocab`(三模式：无参数对话多模态/`image_path`本地路径多模态/`ocr_text`文本解析)、`ocr_recognize`(OCR 后备)、`save_vocab`(保存并初始化复习)
-- **约束**: 对话多模态 LLM 解析为首选，本地路径为次选，OCR 为降级后备；解析结果必须经用户确认后才保存；OCR 失败必须降级手动输入，不报错终止；必填字段 word + definitions 不允许为空
+- **降级流程**: 对话多模态不可用 → 本地路径多模态 → 手动输入
+- **关键 MCP Tools**: `parse_vocab`(双模式：无参数对话多模态/`image_path`本地路径多模态)、`save_vocab`(保存并初始化复习)
+- **约束**: 对话多模态 LLM 解析为首选，本地路径为次选；解析结果必须经用户确认后才保存；必填字段 word + definitions 不允许为空
 - **新增模式**: Excel 文件批量导入
   - **触发条件**: 用户说"导入Excel文件"、"从表格添加词汇"、"导入词汇表"
   - **调用 Tool**: `import_xlsx_vocab`
@@ -287,8 +283,7 @@ Not lazy about: understanding the problem (read it fully and trace the real flow
 
 | Tool | 用途 | 关键参数 |
 |------|------|----------|
-| `parse_vocab` | 结构化解析词汇(词形/音标/释义/例句)，**三模式：对话多模态 > 本地路径多模态 > OCR 文本** | 无参数(对话多模态)/`image_path`(本地路径多模态)/`ocr_text`(文本后备) |
-| `ocr_recognize` | OCR 识别图片中的词汇文本（降级后备） | `image_path` |
+| `parse_vocab` | 结构化解析词汇(词形/音标/释义/例句)，**双模式：对话多模态 > 本地路径多模态** | 无参数(对话多模态)/`image_path`(本地路径多模态) |
 | `save_vocab` | 保存词汇并初始化记忆状态 | 解析后的结构化数据 |
 | `schedule_review` | 查询到期需复习的词汇列表 | 截止日期(默认今天) |
 | `generate_quiz` | 为单个词汇生成指定题型的考题 | `vocab_id`、`quiz_type` |
