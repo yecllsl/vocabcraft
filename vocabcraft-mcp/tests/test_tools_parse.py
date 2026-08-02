@@ -4,7 +4,7 @@
 验证三模式解析（按优先级）：
 1. 对话多模态模式（dialog）— 无参数，宿主 LLM 读取对话上下文中的图片
 2. 本地路径多模态模式（multimodal）— 传入 image_path
-3. OCR 文本模式（ocr）— 传入 ocr_text
+3. 文本模式（text）— 传入 text
 """
 
 from vocabcraft_mcp.tools.parse_vocab import parse_vocab
@@ -60,29 +60,29 @@ def test_parse_multimodal_with_language():
     assert result["language"] == "zh_classical"
 
 
-def test_parse_multimodal_priority_over_ocr():
-    """同时提供 image_path 和 ocr_text 时，image_path 优先"""
+def test_parse_multimodal_priority_over_text():
+    """同时提供 image_path 和 text 时，image_path 优先"""
     result = parse_vocab(
         image_path="/tmp/vocab.jpg",
-        ocr_text="hello /həˈləʊ/ int. 你好",
+        text="hello /həˈləʊ/ int. 你好",
     )
     assert result["mode"] == "multimodal"
 
 
-# ── 模式 3：OCR 文本（后备） ──
+# ── 模式 3：文本模式（后备） ──
 
-def test_parse_ocr_fallback_mode():
-    """无 image_path 但有 ocr_text 时使用 OCR 文本模式"""
-    result = parse_vocab(ocr_text="hello /həˈləʊ/ int. 你好")
-    assert result["mode"] == "ocr"
+def test_parse_text_fallback_mode():
+    """无 image_path 但有 text 时使用文本模式"""
+    result = parse_vocab(text="hello /həˈləʊ/ int. 你好")
+    assert result["mode"] == "text"
     assert "parse_prompt" in result
     assert result["structured_vocab"] is None
 
 
-def test_parse_ocr_empty_image_path():
-    """image_path 为空字符串但 ocr_text 非空时回退到 OCR 文本模式"""
-    result = parse_vocab(image_path="", ocr_text="test word")
-    assert result["mode"] == "ocr"
+def test_parse_text_empty_image_path():
+    """image_path 为空字符串但 text 非空时回退到文本模式"""
+    result = parse_vocab(image_path="", text="test word")
+    assert result["mode"] == "text"
     assert "parse_prompt" in result
 
 
