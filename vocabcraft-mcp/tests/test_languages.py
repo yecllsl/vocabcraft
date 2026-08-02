@@ -140,21 +140,21 @@ def test_parse_prompt_unknown_language_falls_back():
 
 def test_parse_vocab_normalizes_language():
     """parse_vocab 归一化 language 并透传到 prompt"""
-    result = parse_vocab(ocr_text="之乎者也", language="文言")
+    result = parse_vocab(text="之乎者也", language="文言")
     assert result["language"] == "zh_classical"
     assert "通假" in result["parse_prompt"]
 
 
 def test_parse_vocab_german_branch():
     """parse_vocab 德语分支渲染"""
-    result = parse_vocab(ocr_text="Haus", language="deutsch")
+    result = parse_vocab(text="Haus", language="deutsch")
     assert result["language"] == "de"
     assert "der" in result["parse_prompt"]
 
 
 def test_parse_vocab_empty_text_with_language():
     """空文本时进入对话多模态模式（dialog），language 仍归一化"""
-    result = parse_vocab(ocr_text="", language="Deutsch")
+    result = parse_vocab(text="", language="Deutsch")
     assert result["language"] == "de"
     assert result["mode"] == "dialog"
     assert "parse_prompt" in result
