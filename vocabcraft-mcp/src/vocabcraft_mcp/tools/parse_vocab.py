@@ -1,7 +1,7 @@
 # src/vocabcraft_mcp/tools/parse_vocab.py
 """AI 结构化解析词汇 Tool
 
-两模式解析（按优先级排列）：
+三模式解析（按优先级排列）：
 1. **对话多模态模式（首选）**：无参数调用，宿主 LLM 读取对话上下文中的图片
 2. **本地路径多模态模式**：传入 image_path，宿主 LLM 读取指定路径的图片
 3. **文本模式（后备）**：传入 text，宿主 LLM 基于文本完成解析
@@ -16,7 +16,7 @@ from vocabcraft_mcp.prompts.vocab_parse_prompt import (
 
 
 def parse_vocab(image_path: str = "", text: str = "", language: str = "en") -> dict:
-    """AI 结构化解析词汇（两模式）
+    """AI 结构化解析词汇（三模式）
 
     优先级：对话多模态 > 本地路径多模态 > 文本模式。
 
