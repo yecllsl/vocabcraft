@@ -1,17 +1,18 @@
-﻿{
-    "instructions":  [
-                         "AGENTS.md"
-                     ],
-    "$schema":  "https://opencode.ai/config.json",
-    "mcp":  {
-                "vocabcraft-mcp":  {
-                                       "command":  [
-                                                       "uv",
-                                                       "run",
-                                                       "vocabcraft-mcp"
-                                                   ],
-                                       "cwd":  "vocabcraft-mcp",
-                                       "type":  "local"
-                                   }
-            }
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "vocabcraft-mcp": {
+      "cwd": "vocabcraft-mcp",
+      "type": "local",
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "vocabcraft-mcp"
+      ]
+    }
+  },
+  "instructions": [
+    "AGENTS.md"
+  ]
 }

@@ -1,0 +1,56 @@
+#!/bin/sh
+# scripts/pre-commit — 配置同步强约束的机械防线
+#
+# 原则（见 AGENTS.md「流程规则 > 配置同步」）：
+#   .trae/ 是配置层唯一真相源；.opencode/、.workbuddy/ 由
+#   scripts/sync-agent-configs(.ps1/.sh) 单向生成，禁止直接编辑。
+#   例外：.workbuddy/memory/** 由运行时自行写入，不经过同步。
+#
+# 本钩子拦截的违规：暂存区含 .opencode/** 或 .workbuddy/**（非 memory）
+# 的改动，但 .trae/** 无任何对应改动 —— 即「直接改生成目录」。
+#
+# 正确做法：改 .trae/ → 跑 scripts/sync-agent-configs → 三目录一起提交。
+# 紧急绕过（不推荐，会破坏单一真相源）：git commit --no-verify
+
+set -eu
+
+# 承接暂存区改动清单（换行分隔；本项目路径不含空格，足够稳健）
+tmp=$(mktemp)
+git diff --cached --name-only --diff-filter=AMD > "$tmp"
+
+has_source=0
+gen_list=$(mktemp)
+trap 'rm -f "$tmp" "$gen_list"' EXIT
+
+while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    case "$f" in
+        .trae/*) has_source=1 ;;
+    esac
+    case "$f" in
+        .opencode/*|.workbuddy/*)
+            case "$f" in
+                .workbuddy/memory/*) ;;   # 例外：运行时自有目录，不参与同步
+                *)
+                    printf '%s\n' "- $f" >> "$gen_list"
+                    ;;
+            esac
+            ;;
+    esac
+done < "$tmp"
+
+if [ -s "$gen_list" ] && [ "$has_source" -ne 1 ]; then
+    echo "pre-commit: 拒绝提交 — 检测到直接修改生成的配置目录" >&2
+    echo "以下文件属于 .opencode/ 或 .workbuddy/（生成产物），但本次提交未包含 .trae/ 的对应改动：" >&2
+    cat "$gen_list" >&2
+    echo "" >&2
+    echo "正确流程（见 AGENTS.md「流程规则 > 配置同步」）：" >&2
+    echo "  1. 在 .trae/ 下进行修改" >&2
+    echo "  2. 运行 scripts/sync-agent-configs.ps1（或 .sh）" >&2
+    echo "  3. 将 .trae/ 与生成目录的改动一起提交" >&2
+    echo "" >&2
+    echo "紧急绕过（不推荐，会破坏单一真相源）：git commit --no-verify" >&2
+    exit 1
+fi
+
+exit 0

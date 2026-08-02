@@ -2,7 +2,7 @@
   "mcpServers": {
     "vocabcraft-mcp": {
       "command": "uv",
-      "args": ["run", "--directory", "${workspaceFolder}/vocabcraft-mcp", "vocabcraft-mcp"]
+      "args": ["run", "--no-sync", "--directory", "${workspaceFolder}/vocabcraft-mcp", "vocabcraft-mcp"]
     }
   }
 }

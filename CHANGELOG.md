@@ -2,6 +2,11 @@
 
 本项目版本号遵循语义化版本。AGENTS.md 要求 `pyproject.toml` / `README.md` / `CHANGELOG.md` 版本号保持一致。
 
+## [Unreleased]
+
+### 工程化 / 防护
+- 新增 `scripts/pre-commit` git 钩子，作为「配置同步」强约束的机械防线：若提交仅修改生成的 `.opencode/**`、`.workbuddy/**`（`.workbuddy/memory/**` 除外）而无 `.trae/**` 对应改动，则拒绝提交。`install.ps1` / `install.sh` 新增 [6/5] 步骤，自动将该钩子安装到 `.git/hooks/pre-commit`。
+
 ## [0.5.0] - 2026-08-02
 
 ### 文档 / 基线对齐

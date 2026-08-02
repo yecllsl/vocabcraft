@@ -209,6 +209,20 @@ if ($FixPath) {
 }
 
 # ──────────────────────────────────────────
+# [6/5] 安装 git pre-commit 钩子（配置同步机械防线）
+# ──────────────────────────────────────────
+Write-Host "[6/5] 安装 git pre-commit 钩子..." -ForegroundColor Yellow
+$HookSrc = Join-Path $projectRoot "scripts/pre-commit"
+$HookDst = Join-Path $projectRoot ".git/hooks/pre-commit"
+if (Test-Path $HookSrc) {
+    Copy-Item -Path $HookSrc -Destination $HookDst -Force
+    Write-Host "  ✓ 已安装 pre-commit 钩子（拦截直接修改 .opencode/.workbuddy 的违规提交）" -ForegroundColor Green
+    Write-Host "    若需手动安装：Copy-Item scripts/pre-commit .git/hooks/pre-commit" -ForegroundColor DarkGray
+} else {
+    Write-Host "  ⚠ 未找到 $HookSrc，跳过钩子安装" -ForegroundColor Yellow
+}
+
+# ──────────────────────────────────────────
 # 安装完成提示
 # ──────────────────────────────────────────
 Write-Host ""
