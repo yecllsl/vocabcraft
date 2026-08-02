@@ -9,7 +9,7 @@
     ├── vocabs/    # 词汇记录 JSON，文件名 {vocab_id}.json
     ├── reviews/   # 复习记录 JSON，文件名 {record_id}.json
     ├── quizzes/   # 考题 JSON，文件名 {quiz_id}.json
-    └── images/    # 词汇原图（由 ocr_recognize 写入）
+    └── images/    # 词汇原图
 
 写入策略：原子写（先写 .tmp，再 os.replace 原子替换），防止中途崩溃损坏数据。
 """

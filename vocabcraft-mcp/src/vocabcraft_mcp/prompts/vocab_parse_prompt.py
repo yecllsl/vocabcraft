@@ -63,10 +63,10 @@ _PARSE_REQUIREMENTS = """解析要求：
 5. 若原文完全无法识别为词汇，返回 word="" 并在 definitions 中说明原因
 6. definitions 每项的 part_of_speech 填该义项的词性；多义词各义项词性不同时必须填写（如文言文"兵"：名词/动词）；各义项词性相同时留空串"""
 
-# 文本解析基础模板（OCR 后备模式使用）
+# 文本解析基础模板（文本模式）
 # ponytail: 保留 PARSE_PROMPT 名字向后兼容，但词性引导已迁移至 _LANGUAGE_GUIDE，
 # 新代码请用 render_parse_prompt；直接 .format 缺 lang_guide 会 KeyError。
-PARSE_PROMPT = """你是一位词汇学专家。请对以下 OCR 识别出的词汇文本进行结构化解析。
+PARSE_PROMPT = """你是一位词汇学专家。请对以下词汇文本进行结构化解析。
 
 原始文本：
 {raw_text}
@@ -99,10 +99,10 @@ MULTIMODAL_PARSE_PROMPT = """你是一位词汇学专家。请直接读取用户
 
 
 def render_parse_prompt(raw_text: str, language: str) -> str:
-    """渲染文本解析提示词（OCR 后备模式），按语言注入专属词性/例句引导
+    """渲染文本解析提示词（文本模式），按语言注入专属词性/例句引导
 
     Args:
-        raw_text: OCR 识别的原始文本
+        raw_text: 词汇文本
         language: canonical 语言代码（en/zh/zh_classical/de；未知值回退英语引导）
 
     Returns:

@@ -29,7 +29,7 @@ VALID_SCHEDULE_STATUS = {"待复习", "已完成", "已跳过"}
 SUPPORTED_LANGUAGES = {"en", "zh", "zh_classical", "de"}
 
 # 语言别名归一化映射：常见同义词/大小写变体/中文别名 → canonical 代码
-# ponytail: 单点归一化，比每个调用点判断省；覆盖 OCR/解析/出题全链路入口
+# ponytail: 单点归一化，比每个调用点判断省；覆盖解析/出题全链路入口
 _LANGUAGE_ALIASES = {
     # 英语
     "en": "en", "eng": "en", "english": "en", "英语": "en", "英文": "en",
