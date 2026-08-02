@@ -556,7 +556,7 @@ def test_generate_classical_quiz_uses_classical_prompt(isolated_storage):
     prompt = quizzes[0]["generate_prompt"]
     # 专用 prompt 的占位符应已被渲染
     assert "词汇：兵" in prompt
-    assert "词性：n." in prompt
+    assert "词性：名词" in prompt
     assert "兵器" in prompt
     assert "收天下之兵" in prompt
     # 不应包含默认 prompt 的「音标」字段

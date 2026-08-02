@@ -31,7 +31,7 @@
                     </div>
                     <div class="vocab-card-meta">
                         <span>{{ v.part_of_speech }}</span>
-                        {% if v.definitions %}
+                        {% if v.language != "zh_classical" and v.definitions %}
                         <span>· {{ v.definitions[0] }}</span>
                         {% endif %}
                     </div>

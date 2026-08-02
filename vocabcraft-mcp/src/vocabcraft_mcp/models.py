@@ -28,6 +28,66 @@ VALID_SCHEDULE_STATUS = {"待复习", "已完成", "已跳过"}
 # 支持的语言 canonical 代码（中/德/英完整处理，其他语言可存储但不保证完整处理）
 SUPPORTED_LANGUAGES = {"en", "zh", "zh_classical", "de"}
 
+# 词性简称→全称映射（标准化导入数据用）
+_POS_ABBR_MAP: dict[str, str] = {
+    # 中文简称
+    "介": "介词", "动": "动词", "名": "名词",
+    "形": "形容词", "副": "副词", "连": "连词",
+    "量": "量词", "代": "代词", "数": "数词",
+    "叹": "叹词", "助": "助词", "拟": "拟声词",
+    "词": "名词",
+    # 英文缩写
+    "n": "名词", "noun": "名词",
+    "v": "动词", "verb": "动词", "vi": "动词", "vt": "动词",
+    "adj": "形容词", "adjective": "形容词",
+    "adv": "副词", "adverb": "副词",
+    "prep": "介词", "conj": "连词",
+    "pron": "代词", "num": "数词",
+    "interj": "叹词", "aux": "助词",
+    "part": "助词", "particle": "助词",
+}
+
+
+def normalize_pos(text: str) -> str:
+    """标准化词性字符串：简称→全称、/→、、去重
+
+    处理 '动、介' → '动词、介词'
+    处理 'n./v./adj.' → '名词、动词、形容词'
+    处理 '名 词、动词' → '名词、动词'
+
+    供 save_vocab / xlsx_import 等所有数据入库路径使用，防止脏数据产生。
+    """
+    import re  # noqa: WPS433 (内联导入，避免 models.py 顶层 import re)
+
+    if not text:
+        return text
+
+    # 1. 替换 / 为 、
+    text = text.replace("/", "、")
+
+    # 2. 按 、分割，再按空格拆分每个子项
+    parts = text.split("、")
+    result_parts: list[str] = []
+    for part in parts:
+        subs = [s.strip() for s in re.split(r"\s+", part) if s.strip()]
+        expanded: list[str] = []
+        for s in subs:
+            key = s.strip().rstrip(".").lower()
+            e = _POS_ABBR_MAP.get(key, s)
+            if e not in expanded:
+                expanded.append(e)
+        result_parts.extend(expanded)
+
+    # 3. 去重保持顺序
+    seen: list[str] = []
+    final: list[str] = []
+    for p in result_parts:
+        if p not in seen:
+            seen.append(p)
+            final.append(p)
+    return "、".join(final)
+
+
 # 语言别名归一化映射：常见同义词/大小写变体/中文别名 → canonical 代码
 # ponytail: 单点归一化，比每个调用点判断省；覆盖解析/出题全链路入口
 _LANGUAGE_ALIASES = {

@@ -9,10 +9,10 @@
 import re
 from pathlib import Path
 
-from vocabcraft_mcp.models import normalize_language
+from vocabcraft_mcp.models import normalize_language, normalize_pos
 from vocabcraft_mcp.tools.crud import save_vocab
 
-# 文言文格式关键字（用于格式检测）
+
 def _cell_str(cell: object) -> str:
     """安全地将单元格值转为字符串，None 返回空字符串"""
     return str(cell).strip() if cell is not None else ""
@@ -161,7 +161,7 @@ def _import_classical_chinese(
 
         # 词性继承：空白则沿用上一行的词性
         if raw_pos:
-            current_pos = raw_pos
+            current_pos = normalize_pos(raw_pos)
 
         # 构建例句文本（含篇名）
         example_text = raw_example
@@ -203,12 +203,19 @@ def _import_classical_chinese(
             "imported_vocabs": [],
         }
 
-    # 4. 保存词汇
+    # 4. 聚合 top-level 词性（从所有义项中提取唯一词性，去重排序）
+    seen_pos: list[str] = []
+    for d in definitions:
+        pos = d.get("part_of_speech", "").strip()
+        if pos and pos not in seen_pos:
+            seen_pos.append(pos)
+    top_pos = "、".join(seen_pos)
+
     vocab_data = {
         "structured": {
             "word": word,
             "phonetic": phonetic,
-            "part_of_speech": "",
+            "part_of_speech": top_pos,
             "definitions": definitions,
             "language": lang,
         }
@@ -381,7 +388,7 @@ def import_xlsx_vocab(
             if not phonetic and row.get("phonetic"):
                 phonetic = str(row["phonetic"]).strip()
             if not part_of_speech and row.get("part_of_speech"):
-                part_of_speech = str(row["part_of_speech"]).strip()
+                part_of_speech = normalize_pos(str(row["part_of_speech"]).strip())
 
             def_text = str(row.get("definitions", "")).strip()
             if def_text:

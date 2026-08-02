@@ -14,7 +14,7 @@
 from pathlib import Path
 
 from vocabcraft_mcp.algorithms import get_initial_schedule, _now_utc
-from vocabcraft_mcp.models import VocabRecord, StructuredVocab, ReviewState
+from vocabcraft_mcp.models import VocabRecord, StructuredVocab, ReviewState, normalize_pos
 from vocabcraft_mcp.storage import Storage
 
 # 默认数据目录：项目根目录下的 data/ 文件夹
@@ -81,7 +81,12 @@ def save_vocab(vocab_data: dict) -> dict:
     structured_data = vocab_data.get("structured")
     if not structured_data or "word" not in structured_data:
         return {"error": "vocab_data.structured.word 为必填项"}
-    structured = StructuredVocab(**structured_data)
+
+    # 标准化词性：简称→全称、/→、、去重（防御性，所有导入路径统一受益）
+    sd = dict(structured_data)
+    if sd.get("part_of_speech"):
+        sd["part_of_speech"] = normalize_pos(sd["part_of_speech"])
+    structured = StructuredVocab(**sd)
 
     # 校验 (word, language) 唯一性，防止同一词重复入库
     existing_id = _find_existing_vocab_id(storage, structured.word, structured.language)
