@@ -1,10 +1,10 @@
 # VocabCraft - 词汇学习与制作一体 MCP 工具
 
-词汇学习与制作一体化解决方案，同时支持 **Trae IDE CN / Trae Work CN**、**WorkBuddy (CodeBuddy)** 和 **opencode** 三个 Agent Runtime。核心流程：拍照 OCR 识别词汇 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。
+词汇学习与制作一体化解决方案，同时支持 **Trae IDE CN / Trae Work CN**、**WorkBuddy (CodeBuddy)** 和 **opencode** 三个 Agent Runtime。核心流程：拍照 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。
 
 ## 核心功能
 
-- 📷 **拍照采集**: 拍照 + OCR 识别 + AI 结构化解析词汇（单词、音标、词性、释义、例句）
+- 📷 **拍照采集**: 拍照 + AI 结构化解析词汇（单词、音标、词性、释义、例句）
 - 🧠 **智能存储**: 词汇记录本地保存，支持释义、例句、标签等多维元数据
 - 📅 **复习排程**: SM-2 遗忘曲线算法，按记忆强度自动排程到期复习
 - ❓ **考题生成**: 到期词汇自动生成考题（选择/填空/拼写/释义/文言文释义五种题型）
@@ -22,7 +22,7 @@
 Skills 编排层 (.trae/skills/vocabcraft-*: capture / review / quiz / stats / export)
     ↓
 MCP Tools 层 (vocabcraft-mcp)
-├── OCR 识别 → 结构化解析 → 存储 → SM-2 排程 → 考题生成 → 评分 → 统计 → 导出
+├── 结构化解析 → 存储 → SM-2 排程 → 考题生成 → 评分 → 统计 → 导出
     ↓
 Rules 约束层 (AGENTS.md — 统一规则源，三个运行时共用)
     ↓
@@ -33,7 +33,7 @@ Rules 约束层 (AGENTS.md — 统一规则源，三个运行时共用)
 
 - **MCP Server**: Python 3.12+ / FastMCP / Pydantic v2
 - **复习算法**: SM-2 遗忘曲线（SuperMemo 2）
-- **OCR 引擎（可选）**: PaddleOCR（本地部署，无需 API Key；不安装也能用基础功能）
+
 - **数据存储**: JSON 文件（本地存储，原子写入）
 - **包管理**: uv（现代高速 Python 包管理器）
 - **测试**: pytest + pytest-asyncio + pytest-cov
@@ -70,8 +70,6 @@ chmod +x install.sh
 
 安装脚本会自动检查环境、创建虚拟环境并安装所有依赖。
 
-> ⏱️ 首次安装会询问是否安装 OCR 引擎（PaddleOCR + PaddlePaddle 约 1.5 GB）。**仅当需要 `/capture` 拍照录入词汇时才需要**。手动录入、复习、考题等功能无需 OCR。
-
 #### 3. 配置 Agent Runtime
 
 ##### Trae
@@ -104,17 +102,6 @@ chmod +x install.sh
 /export   - 导出词汇数据
 ```
 
-### 可选：安装 OCR 引擎
-
-OCR 引擎（PaddleOCR + PaddlePaddle，约 1.5 GB）用于图片词汇识别，**非必需**。仅当使用 `/capture` 拍照录入时才需要安装：
-
-```bash
-cd vocabcraft-mcp
-uv sync --extra ocr
-```
-
-未安装时调用 OCR 会得到友好提示，不影响其他功能。
-
 ## 下载与发布
 
 每次发版会在 GitHub Release 页面提供三种压缩包，按需选择：
@@ -133,7 +120,7 @@ uv sync --extra ocr
 
 | 命令 | 功能 |
 |------|------|
-| `/capture` | 拍照录入词汇（OCR 识别 + AI 结构化） |
+| `/capture` | 拍照录入词汇（AI 结构化） |
 | `/review` | 查看到期复习清单（按 SM-2 排程） |
 | `/quiz` | 出考题并作答评分（更新记忆状态） |
 | `/stats` | 查看词汇统计（词汇量 / 掌握度 / 趋势） |
@@ -150,7 +137,7 @@ uv sync --extra ocr
 ### 核心学习闭环
 
 ```
-拍照 OCR ──→ AI 结构化解析 ──→ 本地保存
+拍照 ──→ AI 结构化解析 ──→ 本地保存
                                       │
                    ┌──────────────────┘
                    ↓
@@ -198,7 +185,7 @@ vocabcraft/
 │   │   ├── models.py                         # Pydantic v2 数据模型（词汇/考题/记忆状态）
 │   │   ├── storage.py                        # JSON 存储引擎（原子写、部分更新）
 │   │   ├── algorithms.py                     # SM-2 遗忘曲线算法
-│   │   ├── tools/                            # MCP Tools（OCR / 解析 / CRUD / 排程 / 考题 / 评分 / 统计 / 导出）
+│   │   ├── tools/                            # MCP Tools（解析 / CRUD / 排程 / 考题 / 评分 / 统计 / 导出）
 │   │   ├── prompts/                          # AI Prompt 模板（词汇解析 / 考题生成 / 评分）
 │   │   └── resources/                        # MCP Resources（遗忘曲线 / 语言包 / 考题模板）
 │   ├── tests/                                # 测试套件（单元 + 集成）
@@ -206,7 +193,7 @@ vocabcraft/
 │   │   ├── vocabs/                           # 词汇记录 JSON
 │   │   ├── reviews/                          # 复习排程 JSON
 │   │   ├── quizzes/                          # 考题与作答 JSON
-│   │   ├── images/                           # OCR 图片
+│   │   ├── images/                           # 图片文件
 │   │   └── exports/                          # 导出文件
 │   ├── pyproject.toml                        # Python 项目配置（入口 vocabcraft-mcp）
 │   └── uv.lock                               # 依赖锁定文件
@@ -235,8 +222,8 @@ vocabcraft/
 │   ├── build-release.sh                      # Linux/macOS 发布包构建（bash，与 .ps1 逻辑对齐）
 │   ├── sync-agent-configs.ps1               # 同步 AGENTS.md 到 opencode/WorkBuddy 配置（PowerShell）
 │   └── sync-agent-configs.sh                # 同步 AGENTS.md 到 opencode/WorkBuddy 配置（bash）
-├── install.ps1                               # Windows 安装脚本（可选装 OCR）
-├── install.sh                                # Linux/macOS 安装脚本（可选装 OCR）
+├── install.ps1                               # Windows 安装脚本
+├── install.sh                                # Linux/macOS 安装脚本
 ├── QUICKSTART.md                             # 5 分钟快速上手
 ├── DEPLOY.md                                 # 详细部署指南
 ├── README.md                                 # 本文件
@@ -285,7 +272,6 @@ vocabcraft/
 ## 数据安全
 
 - ✅ 所有数据仅存储在本地
-- ✅ OCR 本地部署，不调用外部 API
 - ✅ 不收集任何个人身份信息
 - ✅ 图片文件存储在项目目录下
 - ✅ 导出数据前需用户确认
@@ -317,13 +303,6 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 bash scripts/sync-agent-configs.sh        # Linux/macOS
 ```
 
-### Q: OCR / PaddleOCR 安装失败
-
-- 确认 Python 版本 >= 3.12
-- 确认网络畅通（需下载模型文件）
-- OCR 为**可选依赖**，默认 `uv sync` 不会安装。需要时执行：`cd vocabcraft-mcp && uv sync --extra ocr`
-- 若仅使用手动录入、复习、考题等基础功能，**无需安装 OCR**
-
 ## License
 
 MIT License
@@ -339,7 +318,7 @@ MIT License
 ```bash
 cd vocabcraft-mcp
 
-# 单元 + 集成测试（不装 paddleocr，最快）
+# 单元 + 集成测试
 uv sync --extra dev
 uv run pytest tests/ -m "not e2e"
 ```
