@@ -87,7 +87,7 @@
                 <td>{{ w.word }}</td>
                 <td><span class="tag grade-{{ w.last_grade }}">grade {{ w.last_grade }}</span></td>
                 <td>{{ w.repetitions }}</td>
-                <td>{{ w.ease_factor }}</td>
+                <td>{{ "%.2f"|format(w.ease_factor) }}</td>
                 <td>{{ w.last_review_time[:10] if w.last_review_time else '-' }}</td>
             </tr>
             {% endfor %}

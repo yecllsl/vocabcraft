@@ -73,24 +73,34 @@
         });
 
         // ─────────── ECharts 渲染辅助 ───────────
-        // 在 htmx:afterSwap 后自动初始化 [data-echart] 元素
-        document.body.addEventListener('htmx:afterSwap', function(evt) {
-            const containers = evt.detail.target.querySelectorAll('[data-echart]');
+        // 用 htmx:load（新内容入 DOM 后在新节点上触发）而非 htmx:afterSwap：
+        // outerHTML 交换时 afterSwap 在已脱离 DOM 的旧节点上触发，不会冒泡到 body，
+        // 导致语种切换等 outerHTML 场景的图表永远不被初始化。
+        function initECharts(root) {
+            if (!root || !root.querySelectorAll) return;
+            const containers = [];
+            if (root.matches && root.matches('[data-echart]')) containers.push(root);
+            root.querySelectorAll('[data-echart]').forEach(c => containers.push(c));
             containers.forEach(container => {
+                if (container.hasAttribute('data-echart-ready')) return;
                 const chartType = container.getAttribute('data-echart');
                 const dataUrl = container.getAttribute('data-chart-url');
-                if (dataUrl) {
-                    fetch(dataUrl)
-                        .then(r => r.json())
-                        .then(data => {
-                            const fn = window[chartType];
-                            if (fn) fn(container, data);
-                        })
-                        .catch(err => {
-                            container.innerHTML = '<div class="empty-state"><div class="empty-text">图表加载失败</div></div>';
-                        });
-                }
+                if (!dataUrl) return;
+                container.setAttribute('data-echart-ready', '1');
+                fetch(dataUrl)
+                    .then(r => r.json())
+                    .then(data => {
+                        const fn = window[chartType];
+                        if (fn) fn(container, data);
+                    })
+                    .catch(err => {
+                        container.innerHTML = '<div class="empty-state"><div class="empty-text">图表加载失败</div></div>';
+                    });
             });
+        }
+
+        document.body.addEventListener('htmx:load', function(evt) {
+            initECharts(evt.detail.elt || evt.target);
         });
     </script>
 </body>

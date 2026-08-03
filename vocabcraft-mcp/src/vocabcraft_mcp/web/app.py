@@ -2,10 +2,13 @@
 """FastAPI 应用工厂与启动入口
 
 创建 FastAPI 应用实例，挂载静态文件，注册路由。
-提供 main() 作为 CLI 入口，绑定 127.0.0.1:8002 启动 uvicorn。
+提供 main() 作为 CLI 入口，启动 uvicorn。
 
-数据安全: 仅监听本机地址，数据不离开本地文件系统。
+绑定地址通过 VOCABCRAFT_WEB_HOST 配置（默认 0.0.0.0，允许局域网访问）；
+如需仅本机访问可设 VOCABCRAFT_WEB_HOST=127.0.0.1。
+数据始终仅存储于本地文件系统，不离开本机。
 """
+import os
 import re
 from pathlib import Path
 
@@ -46,7 +49,7 @@ def create_app() -> FastAPI:
     """创建 FastAPI 应用实例
 
     配置 Jinja2 模板引擎、挂载静态文件目录、注册所有路由模块。
-    绑定 127.0.0.1 保证仅本机访问，符合数据安全规则。
+    实际监听地址由 main() 中的 VOCABCRAFT_WEB_HOST 决定（默认 0.0.0.0）。
     """
     app = FastAPI(
         title="VocabCraft 可视化",
@@ -82,15 +85,19 @@ def create_app() -> FastAPI:
 def main():
     """CLI 入口：启动 uvicorn 服务
 
-    绑定 127.0.0.1:8002，仅本机访问。
+    绑定地址由 VOCABCRAFT_WEB_HOST 控制，默认 0.0.0.0（允许局域网访问）；
+    端口由 VOCABCRAFT_WEB_PORT 控制，默认 8002。
     """
     import uvicorn
+
+    host = os.environ.get("VOCABCRAFT_WEB_HOST", "0.0.0.0")
+    port = int(os.environ.get("VOCABCRAFT_WEB_PORT", "8002"))
 
     uvicorn.run(
         "vocabcraft_mcp.web.app:create_app",
         factory=True,
-        host="127.0.0.1",
-        port=8002,
+        host=host,
+        port=port,
         reload=False,
     )
 

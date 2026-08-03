@@ -23,6 +23,14 @@
 .language-de { background: #f59e0b; }
 .language-fr { background: #10b981; }
 
+/* 评分色标（薄弱词等 grade 标签，缺失会导致白字白底不可见） */
+.grade-0 { background: #dc2626; }
+.grade-1 { background: #ea580c; }
+.grade-2 { background: #f59e0b; }
+.grade-3 { background: #ca8a04; }
+.grade-4 { background: #16a34a; }
+.grade-5 { background: #15803d; }
+
 /* 题型标签 */
 .tag-quiz-选择 { background: #dbeafe; color: #2563eb; }
 .tag-quiz-填空 { background: #e0e7ff; color: #4f46e5; }
@@ -413,6 +421,23 @@ a:hover { text-decoration: underline; }
 .review-item .review-meta {
     font-size: 12px;
     color: var(--text-muted);
+}
+
+/* ─────────── 数据表格 ─────────── */
+.vocab-table {
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.vocab-table th,
+.vocab-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+.vocab-table th {
+    color: var(--text-muted);
+    font-weight: 600;
+    background: var(--bg);
 }
 
 /* ─────────── 标签 ─────────── */
