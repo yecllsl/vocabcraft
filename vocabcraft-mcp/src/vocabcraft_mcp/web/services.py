@@ -58,16 +58,16 @@ def get_dashboard_summary() -> dict:
     )
     mastered = sum(
         1 for v in vocabs
-        if _mastery_level(v.review_state.repetitions) == "掌握"
+        if _mastery_level(v.review_state.last_word_grade) == "掌握"
     )
 
     # 语言分布
     language_counter = Counter(v.structured.language for v in vocabs)
 
     # 掌握度分布
-    mastery_counter = Counter(_mastery_level(v.review_state.repetitions) for v in vocabs)
+    mastery_counter = Counter(_mastery_level(v.review_state.last_word_grade) for v in vocabs)
     # 固定顺序，保证图表颜色稳定
-    mastery_order = ["新词", "生疏", "熟悉", "掌握"]
+    mastery_order = ["新词", "生疏", "熟悉", "掌握", "精通"]
 
     # 30天创建趋势
     trend_counter = Counter(v.created_at.date().isoformat() for v in vocabs)
@@ -359,10 +359,19 @@ def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> Optional[dict]:
             pos_zh = ""
             meaning = selected_def.text if selected_def else ""
             if selected_def is not None:
-                pos_zh = selected_def.part_of_speech or vocab.structured.part_of_speech.strip()
+                # 优先从义项文本 【词性】 前缀提取词性
+                from vocabcraft_mcp.tools.quiz import extract_pos_from_text
+                pos_zh = extract_pos_from_text(selected_def.text)
+                if not pos_zh:
+                    pos_zh = selected_def.part_of_speech or ""
+                if not pos_zh:
+                    pos_zh = vocab.structured.part_of_speech.strip()
             if pos_zh and not pos_zh.startswith("【"):
                 pos_zh = en_to_zh_pos(pos_zh)
             correct_pos_en = zh_to_en_pos(pos_zh) if pos_zh else "?"
+
+            from vocabcraft_mcp.tools.quiz import strip_pos_prefix
+            meaning = strip_pos_prefix(meaning)
 
             if selected_def and selected_def.examples:
                 sentence = selected_def.examples[0]
@@ -397,11 +406,19 @@ def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> Optional[dict]:
             pos_zh = ""
             meaning = selected_def.text if selected_def else ""
             if selected_def is not None:
-                pos_zh = selected_def.part_of_speech or vocab.structured.part_of_speech.strip()
+                # 优先从义项文本 【词性】 前缀提取词性
+                from vocabcraft_mcp.tools.quiz import extract_pos_from_text
+                pos_zh = extract_pos_from_text(selected_def.text)
+                if not pos_zh:
+                    pos_zh = selected_def.part_of_speech or ""
+                if not pos_zh:
+                    pos_zh = vocab.structured.part_of_speech.strip()
             if pos_zh and not pos_zh.startswith("【"):
                 pos_zh = en_to_zh_pos(pos_zh)
             correct_pos_en = zh_to_en_pos(pos_zh) if pos_zh else "?"
 
+            from vocabcraft_mcp.tools.quiz import strip_pos_prefix
+            meaning = strip_pos_prefix(meaning)
             answer = f"{correct_pos_en}|{meaning}" if meaning else f"{correct_pos_en}|"
             options = _build_classical_pos_options(correct_pos_en)
 
@@ -466,10 +483,14 @@ class _BatchReviewSession:
 
     ponytail: 使用内存字典存储，单用户本地场景足够；
     服务器重启后 session 丢失，但已评分的 quiz/review_state 已持久化。
+
+    vocab_quizzes: vocab_id → [quiz_id, ...]，用于判断某词是否全部评完
+    word_grades: vocab_id → word_grade，词级综合评分（SM-2 已更新）
     """
     batch_id: str
     quiz_ids: list[str]
-    graded: dict[int, dict] = field(default_factory=dict)
+    vocab_quizzes: dict[str, list[str]] = field(default_factory=dict)
+    word_grades: dict[str, int] = field(default_factory=dict)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -494,19 +515,29 @@ def start_batch_review(language: str = "") -> Optional[dict]:
         return None
 
     quiz_ids: list[str] = []
+    vocab_quizzes: dict[str, list[str]] = {}
     for item in due_words:
-        result = generate_web_quiz(item["vocab_id"], "")
+        vid = item["vocab_id"]
+        result = generate_web_quiz(vid, "")
         if result:
+            v_quiz_ids: list[str] = []
             if "quiz_ids" in result:
-                quiz_ids.extend(result["quiz_ids"])
+                v_quiz_ids = result["quiz_ids"]
             elif "quiz_id" in result:
-                quiz_ids.append(result["quiz_id"])
+                v_quiz_ids = [result["quiz_id"]]
+            quiz_ids.extend(v_quiz_ids)
+            if v_quiz_ids:
+                vocab_quizzes[vid] = v_quiz_ids
 
     if not quiz_ids:
         return None
 
     batch_id = f"batch_{uuid4().hex[:8]}"
-    _batch_sessions[batch_id] = _BatchReviewSession(batch_id=batch_id, quiz_ids=quiz_ids)
+    _batch_sessions[batch_id] = _BatchReviewSession(
+        batch_id=batch_id,
+        quiz_ids=quiz_ids,
+        vocab_quizzes=vocab_quizzes,
+    )
     return {"batch_id": batch_id, "total": len(quiz_ids)}
 
 
@@ -540,6 +571,10 @@ def grade_batch_review_item(batch_id: str, index: int, response: str) -> Optiona
     Returns:
         {"result": dict, "is_last": bool, "next_index": int|None}
         题目不存在返回 None
+
+    grade_quiz 返回格式：
+    - 未评完: {individual_grade, remaining}
+    - 全部评完: {word_grade, details, grade, ...}
     """
     session = _batch_sessions.get(batch_id)
     if session is None or index < 0 or index >= len(session.quiz_ids):
@@ -547,7 +582,11 @@ def grade_batch_review_item(batch_id: str, index: int, response: str) -> Optiona
 
     quiz_id = session.quiz_ids[index]
     result = grade_web_quiz(quiz_id, response)
-    session.graded[index] = result
+
+    # 如果该词全部评完，记录词级 grade
+    if "word_grade" in result:
+        vocab_id = result["vocab_id"]
+        session.word_grades[vocab_id] = result["word_grade"]
 
     is_last = index == len(session.quiz_ids) - 1
     return {
@@ -558,50 +597,69 @@ def grade_batch_review_item(batch_id: str, index: int, response: str) -> Optiona
 
 
 def get_batch_review_summary(batch_id: str) -> Optional[dict]:
-    """获取批量复习汇总
+    """获取批量复习汇总（词粒度）
 
-    返回：题数、均分、grade<3 薄弱词列表、下次复习日期分布
+    返回：题数、词数、词级均分、按掌握度分组的词汇列表、下次复习日期分布
     """
     session = _batch_sessions.get(batch_id)
     if session is None:
         return None
 
     storage = _get_storage()
-    total = len(session.quiz_ids)
-    graded_count = len(session.graded)
-    grades = [r["grade"] for r in session.graded.values()]
+    total_quizzes = len(session.quiz_ids)
+    total_words = len(session.vocab_quizzes)
+    word_grades = session.word_grades
+    graded_words = len(word_grades)
+
+    # 词级均分
+    grades = list(word_grades.values())
     avg_grade = round(sum(grades) / len(grades), 2) if grades else 0.0
 
-    weak_words: list[dict] = []
-    for idx, result in session.graded.items():
-        if result["grade"] < 3:
-            quiz = storage.load_quiz(session.quiz_ids[idx])
-            if quiz:
-                vocab = storage.load_vocab(quiz.vocab_id)
-                if vocab:
-                    weak_words.append({
-                        "vocab_id": vocab.id,
-                        "word": vocab.structured.word,
-                        "grade": result["grade"],
-                    })
+    # 按掌握度分组
+    TIER_LABELS = {0: "待重学", 1: "待重学", 2: "待重学", 3: "需巩固", 4: "已掌握", 5: "已精通"}
+    TIER_MARKS = {0: "red", 1: "red", 2: "red", 3: "yellow", 4: "green", 5: "star"}
+    grouped: dict[str, list[dict]] = {"red": [], "yellow": [], "green": [], "star": []}
 
-    # 下次复习日期分布
+    for vid, wg in word_grades.items():
+        tier = TIER_MARKS.get(wg, "red")
+        vocab = storage.load_vocab(vid)
+        if not vocab:
+            continue
+        # 收集该词各义项的 individual_grade
+        v_quiz_ids = session.vocab_quizzes.get(vid, [])
+        details = []
+        for qid in v_quiz_ids:
+            q = storage.load_quiz(qid)
+            if q and q.graded:
+                details.append({
+                    "definition_index": q.definition_index,
+                    "example_index": q.example_index,
+                    "grade": q.individual_grade,
+                })
+        grouped[tier].append({
+            "vocab_id": vid,
+            "word": vocab.structured.word,
+            "word_grade": wg,
+            "details": details,
+        })
+
+    # 下次复习日期分布（词粒度，同一词只出现一次）
     next_review_distribution: dict[str, int] = {}
-    for quiz_id in session.quiz_ids:
-        quiz = storage.load_quiz(quiz_id)
-        if quiz:
-            vocab = storage.load_vocab(quiz.vocab_id)
-            if vocab:
-                date = vocab.review_state.next_review
-                if date:
-                    next_review_distribution[date] = next_review_distribution.get(date, 0) + 1
+    for vid in session.vocab_quizzes:
+        vocab = storage.load_vocab(vid)
+        if vocab:
+            date = vocab.review_state.next_review
+            if date:
+                next_review_distribution[date] = next_review_distribution.get(date, 0) + 1
 
     return {
         "batch_id": batch_id,
-        "total": total,
-        "graded_count": graded_count,
+        "total_quizzes": total_quizzes,
+        "total_words": total_words,
+        "graded_words": graded_words,
         "avg_grade": avg_grade,
-        "weak_words": weak_words,
+        "grouped": grouped,
+        "grouped_counts": {k: len(v) for k, v in grouped.items()},
         "next_review_distribution": dict(sorted(next_review_distribution.items())),
     }
 
@@ -627,6 +685,8 @@ def get_vocab_detail(vocab_id: str) -> Optional[dict]:
         "definitions": [d.model_dump() for d in vocab.structured.definitions],
         "language": vocab.structured.language,
         "review_state": vocab.review_state.model_dump(),
+        "mastery_level": _mastery_level(vocab.review_state.last_word_grade),
+        "last_word_grade": vocab.review_state.last_word_grade,
         "created_at": vocab.created_at.isoformat(),
         "updated_at": vocab.updated_at.isoformat(),
     }
@@ -637,10 +697,11 @@ def get_vocab_detail(vocab_id: str) -> Optional[dict]:
 # ──────────────────────────────────────────
 
 SUPPORTED_LANGUAGES = [("en", "英语"), ("zh", "中文"), ("zh_classical", "文言文"), ("de", "德语")]
+MASTERY_OPTIONS = [("", "全部掌握度"), ("新词", "新词"), ("生疏", "生疏"), ("熟悉", "熟悉"), ("掌握", "掌握"), ("精通", "精通")]
 
 
-def list_vocabs_for_web(language: str = "", keyword: str = "") -> list[dict]:
-    """获取词汇列表，支持按语言和关键词过滤
+def list_vocabs_for_web(language: str = "", keyword: str = "", mastery: str = "") -> list[dict]:
+    """获取词汇列表，支持按语言、关键词和掌握度过滤
 
     返回按创建时间倒序排列的词汇摘要列表。
     """
@@ -652,22 +713,27 @@ def list_vocabs_for_web(language: str = "", keyword: str = "") -> list[dict]:
         filters["word"] = keyword
 
     result = storage.query_vocabs(filters)
-    return [
-        {
+    items = []
+    for v in result["vocabs"]:
+        last_wg = v["review_state"].get("last_word_grade")
+        ml = _mastery_level(last_wg)
+        if mastery and ml != mastery:
+            continue
+        items.append({
             "vocab_id": v["id"],
             "word": v["structured"]["word"],
             "language": v["structured"]["language"],
             "part_of_speech": v["structured"]["part_of_speech"],
-            # 列表卡片只显示释义文本摘要（不含例句，保持轻量）
             "definitions": [
                 f"【{d.get('part_of_speech', '')}】{d['text']}" if d.get("part_of_speech") else d["text"]
                 for d in v["structured"]["definitions"]
             ],
             "next_review": v["review_state"]["next_review"],
             "repetitions": v["review_state"]["repetitions"],
-        }
-        for v in result["vocabs"]
-    ]
+            "mastery_level": ml,
+            "last_word_grade": last_wg,
+        })
+    return items
 
 
 def delete_vocab(vocab_id: str) -> bool:
@@ -888,11 +954,11 @@ def _mastery_distribution_by_language(language: str) -> list[dict]:
     复用 _mastery_level，固定顺序保证图表颜色稳定。
     """
     storage = _get_storage()
-    mastery_counter: dict[str, int] = {"新词": 0, "生疏": 0, "熟悉": 0, "掌握": 0}
+    mastery_counter: dict[str, int] = {"新词": 0, "生疏": 0, "熟悉": 0, "掌握": 0, "精通": 0}
     for v in storage.get_all_vocabs_for_statistics():
         if v.structured.language != language:
             continue
-        level = _mastery_level(v.review_state.repetitions)
+        level = _mastery_level(v.review_state.last_word_grade)
         mastery_counter[level] += 1
     return [{"name": k, "value": v} for k, v in mastery_counter.items()]
 
@@ -930,7 +996,7 @@ def get_insights_summary(language: str) -> dict:
         1 for v in vocabs
         if v.review_state.next_review and v.review_state.next_review <= today
     )
-    mastered = sum(1 for v in vocabs if _mastery_level(v.review_state.repetitions) == "掌握")
+    mastered = sum(1 for v in vocabs if _mastery_level(v.review_state.last_word_grade) == "掌握")
     avg_ease = (sum(v.review_state.ease_factor for v in vocabs) / total) if total > 0 else 0.0
 
     return {

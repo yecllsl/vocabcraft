@@ -17,9 +17,10 @@ async def vocab_list_partial(
     request: Request,
     language: str = "",
     keyword: str = "",
+    mastery: str = "",
 ):
     """返回词汇列表片段"""
-    vocabs = services.list_vocabs_for_web(language=language, keyword=keyword)
+    vocabs = services.list_vocabs_for_web(language=language, keyword=keyword, mastery=mastery)
     return templates.TemplateResponse(
         request,
         "partials/vocab_list.html",
@@ -27,7 +28,9 @@ async def vocab_list_partial(
             "vocabs": vocabs,
             "language": language,
             "keyword": keyword,
+            "mastery": mastery,
             "language_options": services.SUPPORTED_LANGUAGES,
+            "mastery_options": services.MASTERY_OPTIONS,
         },
     )
 

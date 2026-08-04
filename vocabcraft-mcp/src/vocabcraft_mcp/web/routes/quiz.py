@@ -30,7 +30,11 @@ async def generate_quiz_partial(request: Request, vocab_id: str, quiz_type: str 
     if len(quiz_ids) > 1:
         # 多题模式：创建批量复习会话，走 batch review 流程
         batch_id = f"batch_{uuid4().hex[:8]}"
-        _batch_sessions[batch_id] = _BatchReviewSession(batch_id=batch_id, quiz_ids=quiz_ids)
+        _batch_sessions[batch_id] = _BatchReviewSession(
+            batch_id=batch_id,
+            quiz_ids=quiz_ids,
+            vocab_quizzes={vocab_id: quiz_ids},
+        )
         batch = {"batch_id": batch_id, "total": len(quiz_ids)}
         item = services.get_batch_review_item(batch_id, 0)
         return templates.TemplateResponse(

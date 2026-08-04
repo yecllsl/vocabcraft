@@ -104,6 +104,12 @@
                     { name: '数量', type: 'bar', stack: 'total', data: items.map(d => d.value || d.count), itemStyle: { color: '#4f46e5' } }
                 ]
             });
+            chart.on('click', function (params) {
+                const mastery = params.name || params.key;
+                if (mastery) {
+                    htmx.ajax('GET', '/partials/vocab?mastery=' + encodeURIComponent(mastery), { target: '#content', swap: 'innerHTML' });
+                }
+            });
             window.addEventListener('resize', () => chart.resize());
         }
 

@@ -11,6 +11,11 @@
                 <option value="{{ code }}" {% if language == code %}selected{% endif %}>{{ name }}</option>
                 {% endfor %}
             </select>
+            <select name="mastery" aria-label="掌握度">
+                {% for value, label in mastery_options %}
+                <option value="{{ value }}" {% if mastery == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
             <input type="text" name="keyword" placeholder="搜索词形..." value="{{ keyword }}">
             <button type="submit" class="btn btn-primary btn-sm">筛选</button>
             <button type="button" class="btn btn-secondary btn-sm"
@@ -28,6 +33,17 @@
                     <div class="vocab-card-header">
                         <span class="vocab-word">{{ v.word }}</span>
                         <span class="tag language-{{ v.language }}">{{ v.language }}</span>
+                        {% if v.mastery_level == "精通" %}
+                        <span class="tag mastery-star">⭐ {{ v.mastery_level }}</span>
+                        {% elif v.mastery_level == "掌握" %}
+                        <span class="tag mastery-green">🟢 {{ v.mastery_level }}</span>
+                        {% elif v.mastery_level == "熟悉" %}
+                        <span class="tag mastery-yellow">🟡 {{ v.mastery_level }}</span>
+                        {% elif v.mastery_level == "生疏" %}
+                        <span class="tag mastery-red">🔴 {{ v.mastery_level }}</span>
+                        {% else %}
+                        <span class="tag mastery-new">新词</span>
+                        {% endif %}
                     </div>
                     <div class="vocab-card-meta">
                         <span>{{ v.part_of_speech }}</span>

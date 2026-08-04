@@ -5,32 +5,59 @@
 
         <div class="kpi-grid" style="margin-top: 16px;">
             <div class="kpi-card">
-                <div class="kpi-label">完成题数</div>
-                <div class="kpi-value">{{ summary.total }}</div>
+                <div class="kpi-label">完成词数</div>
+                <div class="kpi-value">{{ summary.graded_words }}/{{ summary.total_words }}</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-label">平均评分</div>
+                <div class="kpi-label">总题数</div>
+                <div class="kpi-value">{{ summary.total_quizzes }}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">词级均分</div>
                 <div class="kpi-value">{{ summary.avg_grade }}</div>
             </div>
-            <div class="kpi-card">
-                <div class="kpi-label">薄弱词数</div>
-                <div class="kpi-value">{{ summary.weak_words | length }}</div>
-            </div>
         </div>
 
-        {% if summary.weak_words %}
-        <div class="detail-section">
-            <div class="detail-label">薄弱词（grade < 3）</div>
-            <ul class="detail-list">
-                {% for w in summary.weak_words %}
-                <li>{{ w.word }} · 评分 {{ w.grade }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
+        {# 按掌握度分组展示 #}
+        {% set tier_config = [
+            ("red", "🔴 待重学", "word_grade < 3，需要重新学习"),
+            ("yellow", "🟡 需巩固", "勉强记住，需加强"),
+            ("green", "🟢 已掌握", "记忆良好"),
+            ("star", "⭐ 已精通", "完美记忆"),
+        ] %}
+        {% for tier_key, tier_title, tier_desc in tier_config %}
+            {% set words = summary.grouped[tier_key] %}
+            {% if words %}
+            <div class="detail-section" style="margin-top: 12px;">
+                <details {% if tier_key == "red" %}open{% endif %}>
+                    <summary style="cursor: pointer; font-weight: 600; padding: 6px 0;">
+                        {{ tier_title }}
+                        <span style="font-weight: normal; color: #888; font-size: 0.9em;">
+                            {{ words | length }} 词
+                        </span>
+                    </summary>
+                    <ul class="detail-list" style="margin-top: 6px;">
+                        {% for w in words %}
+                        <li>
+                            <strong>{{ w.word }}</strong>
+                            <span style="color: #888; font-size: 0.9em;">词级 {{ w.word_grade }}</span>
+                            {% if tier_key == "red" and w.details %}
+                            <ul>
+                                {% for d in w.details %}
+                                <li>义项{{ d.definition_index }}{% if d.example_index is not none %}/例句{{ d.example_index }}{% endif %}：{{ d.grade }}分</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </details>
+            </div>
+            {% endif %}
+        {% endfor %}
 
         {% if summary.next_review_distribution %}
-        <div class="detail-section">
+        <div class="detail-section" style="margin-top: 12px;">
             <div class="detail-label">下次复习日期分布</div>
             <ul class="detail-list">
                 {% for date, count in summary.next_review_distribution.items() %}

@@ -1,17 +1,26 @@
 {# partials/batch_review_item.html — 批量复习单题片段 #}
 <div class="batch-item" data-index="{{ item.index }}">
     {% if prev_result %}
-    <div class="quiz-result {{ 'correct' if prev_result.correct else ('wrong' if prev_result.correct is sameas false else 'needs-review') }}">
+    {% set ig = prev_result.get("individual_grade") %}
+    {% set is_full = ig == 5 if ig is not none else prev_result.correct %}
+    {% set is_wrong = ig == 0 if ig is not none else (prev_result.correct is sameas false) %}
+    <div class="quiz-result {{ 'correct' if is_full else ('wrong' if is_wrong else 'needs-review') }}">
         <div class="quiz-result-icon">
-            {% if prev_result.correct is sameas true %}✅{% elif prev_result.correct is sameas false %}❌{% else %}📝{% endif %}
+            {% if is_full %}✅{% elif is_wrong %}❌{% else %}⚠️{% endif %}
         </div>
         <div class="quiz-result-title">
-            {% if prev_result.correct is sameas true %}回答正确{% elif prev_result.correct is sameas false %}回答错误{% else %}已记录{% endif %}
+            {% if prev_result.get("remaining") is not none and prev_result.get("remaining", 1) == 0 and prev_result.get("word_grade") is not none %}
+                词级评分：{{ prev_result.word_grade }}
+            {% elif ig is not none %}
+                义项评分：{{ ig }}{% if prev_result.get("remaining") is not none %}（还有 {{ prev_result.remaining }} 道题）{% endif %}
+            {% elif prev_result.correct is sameas true %}回答正确{% elif prev_result.correct is sameas false %}回答错误{% else %}已记录{% endif %}
         </div>
+        {% if prev_result.get("updated_review_state") is not none %}
         <div class="quiz-result-detail">
-            评分：{{ prev_result.grade }} · 难度系数：{{ "%.2f" | format(prev_result.updated_review_state.ease_factor) }}
+            词级 {{ prev_result.grade }} · 难度系数：{{ "%.2f" | format(prev_result.updated_review_state.ease_factor) }}
             · 下次复习：{{ prev_result.updated_review_state.next_review_date }}
         </div>
+        {% endif %}
     </div>
     {% endif %}
 

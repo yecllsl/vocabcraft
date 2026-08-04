@@ -209,6 +209,7 @@ class ReviewState(BaseModel):
     repetitions: int = Field(default=0, description="已连续答对次数")
     next_review: str = Field(default="", description="下次到期复习日期 YYYY-MM-DD，空串=未排程")
     last_review: Optional[str] = Field(default=None, description="上次复习日期 YYYY-MM-DD")
+    last_word_grade: Optional[int] = Field(default=None, description="上次词级综合评分 0-5，用于掌握度判定")
 
 
 class VocabRecord(BaseModel):
@@ -247,6 +248,10 @@ class Quiz(BaseModel):
     answer: str = Field(description="正确答案")
     generated_at: datetime = Field(description="生成时间")
     graded: bool = Field(default=False, description="是否已评分")
+    individual_grade: Optional[int] = Field(
+        default=None,
+        description="义项级评分 5/3/2/0，仅 zh_classical 释义题填充"
+    )
     definition_index: Optional[int] = Field(
         default=None,
         description="考查的义项索引（definitions 列表下标），单词义词为 0"

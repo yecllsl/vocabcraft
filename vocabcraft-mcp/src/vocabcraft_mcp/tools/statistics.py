@@ -16,19 +16,25 @@ from vocabcraft_mcp.tools.crud import get_storage
 _VALID_GROUPS = {"language", "mastery", "date", "quiz_type"}
 
 
-def _mastery_level(repetitions: int) -> str:
-    """按连续答对次数划分掌握度
+def _mastery_level(word_grade: int | None) -> str:
+    """按词级综合评分划分掌握度
 
-    ponytail: 简化分档，未结合 EF；上限为高频复习词被误判为"掌握"，
-    升级路径：综合 EF + repetitions + last_review 距今天数计算连续掌握度。
+    基于 grade_quiz 计算的 word_grade（0-5）：
+        None / 0-1: 新词（未评分或完全不会）
+        2:         生疏（需重学）
+        3:         熟悉（勉强记住）
+        4:         掌握（记忆良好）
+        5:         精通（完美记忆）
     """
-    if repetitions == 0:
+    if word_grade is None or word_grade <= 1:
         return "新词"
-    if repetitions <= 2:
+    if word_grade == 2:
         return "生疏"
-    if repetitions <= 5:
+    if word_grade == 3:
         return "熟悉"
-    return "掌握"
+    if word_grade == 4:
+        return "掌握"
+    return "精通"
 
 
 def get_statistics(group_by: str) -> dict:
@@ -60,7 +66,7 @@ def get_statistics(group_by: str) -> dict:
         counter = Counter(v.structured.language for v in vocabs)
         total = len(vocabs)
     elif group_by == "mastery":
-        counter = Counter(_mastery_level(v.review_state.repetitions) for v in vocabs)
+        counter = Counter(_mastery_level(v.review_state.last_word_grade) for v in vocabs)
         total = len(vocabs)
     elif group_by == "date":
         counter = Counter(v.created_at.date().isoformat() for v in vocabs)

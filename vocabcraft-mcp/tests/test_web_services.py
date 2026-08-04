@@ -20,7 +20,7 @@ def temp_storage(tmp_path, monkeypatch):
     return storage
 
 
-def _make_vocab(word, vid, language="en", repetitions=0, next_review=""):
+def _make_vocab(word, vid, language="en", repetitions=0, next_review="", last_word_grade=None):
     """构造完整测试词汇（definitions 内嵌 examples 新格式）"""
     return VocabRecord(
         id=vid,
@@ -34,6 +34,7 @@ def _make_vocab(word, vid, language="en", repetitions=0, next_review=""):
         review_state=ReviewState(
             repetitions=repetitions,
             next_review=next_review,
+            last_word_grade=last_word_grade,
         ),
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
@@ -79,6 +80,7 @@ def test_dashboard_summary_empty(temp_storage):
         {"name": "生疏", "value": 0},
         {"name": "熟悉", "value": 0},
         {"name": "掌握", "value": 0},
+        {"name": "精通", "value": 0},
     ]
     assert len(summary["trends"]) == 30
     assert all(v == 0 for v in summary["trends"].values())
@@ -88,7 +90,7 @@ def test_dashboard_summary_with_data(temp_storage):
     """有数据时应正确统计"""
     today = datetime.now(timezone.utc).date().isoformat()
     temp_storage.save_vocab(_make_vocab("hello", "vocab_001", language="en", next_review=today))
-    temp_storage.save_vocab(_make_vocab("世界", "vocab_002", language="zh", repetitions=6))
+    temp_storage.save_vocab(_make_vocab("世界", "vocab_002", language="zh", last_word_grade=4))
 
     summary = services.get_dashboard_summary()
     assert summary["total"] == 2
@@ -448,7 +450,7 @@ def test_grade_batch_review_item(temp_storage):
 
 
 def test_get_batch_review_summary(temp_storage):
-    """汇总应包含题数、均分、薄弱词、下次复习分布"""
+    """汇总应包含题数、词数、词级均分、薄弱词、下次复习分布"""
     today = _today_iso()
     temp_storage.save_vocab(_make_vocab("hello", "vocab_001", next_review=today))
     temp_storage.save_vocab(_make_vocab("world", "vocab_002", next_review=today))
@@ -460,11 +462,13 @@ def test_get_batch_review_summary(temp_storage):
 
     summary = services.get_batch_review_summary(batch_id)
     assert summary is not None
-    assert summary["total"] == 2
-    assert summary["graded_count"] == 2
+    assert summary["total_quizzes"] == 2
+    assert summary["total_words"] == 2
+    assert summary["graded_words"] == 2
     assert summary["avg_grade"] == 2.5
-    assert len(summary["weak_words"]) == 1
-    assert summary["weak_words"][0]["word"] == "hello"
+    # 按掌握度分组：hello(word_grade=0) → red, world(word_grade=5) → star
+    assert len(summary["grouped"]["red"]) == 1
+    assert summary["grouped"]["red"][0]["word"] == "hello"
     assert summary["next_review_distribution"] != {}
 
 
@@ -605,13 +609,14 @@ def test_weak_words_by_language_empty_when_no_records(temp_storage):
 def test_mastery_distribution_by_language(temp_storage):
     """按语言统计掌握度分布"""
     from vocabcraft_mcp.web.services import _mastery_distribution_by_language
-    # de: 1 新词(rep=0), 1 生疏(rep=2), 1 熟悉(rep=4), 1 掌握(rep=6)
-    temp_storage.save_vocab(_make_vocab("w1", "vocab_001", language="de", repetitions=0))
-    temp_storage.save_vocab(_make_vocab("w2", "vocab_002", language="de", repetitions=2))
-    temp_storage.save_vocab(_make_vocab("w3", "vocab_003", language="de", repetitions=4))
-    temp_storage.save_vocab(_make_vocab("w4", "vocab_004", language="de", repetitions=6))
+    # de: 1 新词(grade=None), 1 生疏(grade=2), 1 熟悉(grade=3), 1 掌握(grade=4), 1 精通(grade=5)
+    temp_storage.save_vocab(_make_vocab("w1", "vocab_001", language="de", last_word_grade=None))
+    temp_storage.save_vocab(_make_vocab("w2", "vocab_002", language="de", last_word_grade=2))
+    temp_storage.save_vocab(_make_vocab("w3", "vocab_003", language="de", last_word_grade=3))
+    temp_storage.save_vocab(_make_vocab("w4", "vocab_004", language="de", last_word_grade=4))
+    temp_storage.save_vocab(_make_vocab("w5", "vocab_005", language="de", last_word_grade=5))
     # zh_classical: 1 新词（不应出现在 de 分布中）
-    temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical", repetitions=0))
+    temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical", last_word_grade=None))
 
     dist = _mastery_distribution_by_language("de")
     assert dist == [
@@ -619,6 +624,7 @@ def test_mastery_distribution_by_language(temp_storage):
         {"name": "生疏", "value": 1},
         {"name": "熟悉", "value": 1},
         {"name": "掌握", "value": 1},
+        {"name": "精通", "value": 1},
     ]
 
 
@@ -631,6 +637,7 @@ def test_mastery_distribution_by_language_empty(temp_storage):
         {"name": "生疏", "value": 0},
         {"name": "熟悉", "value": 0},
         {"name": "掌握", "value": 0},
+        {"name": "精通", "value": 0},
     ]
 
 
@@ -681,7 +688,7 @@ def test_insights_summary_normal_sample(temp_storage):
     assert "theoretical" in summary["forgetting_curve"]
     assert "real" in summary["forgetting_curve"]
     assert isinstance(summary["weak_words"], list)
-    assert len(summary["mastery_distribution"]) == 4
+    assert len(summary["mastery_distribution"]) == 5
 
 
 def test_insights_summary_small_sample(temp_storage):

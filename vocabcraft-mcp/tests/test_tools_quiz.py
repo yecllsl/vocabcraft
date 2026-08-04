@@ -275,7 +275,7 @@ def test_generate_quiz_classical_empty_pos_uses_placeholder(isolated_storage):
 
 
 def test_grade_quiz_propagates_definition_index(isolated_storage):
-    """评分后 ReviewRecord.definition_index 透传自 Quiz"""
+    """评分后 ReviewRecord 在所有义项评完后创建，记录词级 grade"""
     from vocabcraft_mcp.tools.crud import save_vocab
     data = {
         "id": "vocab_001",
@@ -294,12 +294,20 @@ def test_grade_quiz_propagates_definition_index(isolated_storage):
     gen = generate_quiz("vocab_001", "释义")
     quizzes = gen["quizzes"]
     assert len(quizzes) == 2
-    expected_idx = quizzes[0]["quiz"]["definition_index"]
 
-    grade_quiz(quizzes[0]["quiz_id"], "疾病")
+    # 评第一题：还有未答题，不创建 review record
+    r1 = grade_quiz(quizzes[0]["quiz_id"], "n.|疾病")
+    assert r1["remaining"] == 1
+    records = get_storage().list_all_review_records()
+    assert len(records) == 0
+
+    # 评第二题：全部评完，创建 review record
+    r2 = grade_quiz(quizzes[1]["quiz_id"], "n.|生病")
+    assert r2["remaining"] == 0
+    assert "word_grade" in r2
     records = get_storage().list_all_review_records()
     assert len(records) == 1
-    assert records[0].definition_index == expected_idx
+    assert records[0].definition_index is None  # 词级 record 不绑定单一义项
 
 
 def test_grade_quiz_definition_index_none_for_legacy_quiz(isolated_storage, make_vocab_data):
@@ -345,7 +353,7 @@ def _make_classical_vocab(vocab_id: str = "vocab_001", pos: str = "n."):
 
 
 def test_grade_quiz_classical_definition_correct(isolated_storage):
-    """zh_classical 释义题答对：grade=5, correct=True"""
+    """zh_classical 释义题答对：individual_grade=5, correct=True"""
     from vocabcraft_mcp.tools.crud import save_vocab
 
     save_vocab(_make_classical_vocab())
@@ -353,13 +361,14 @@ def test_grade_quiz_classical_definition_correct(isolated_storage):
     q = gen["quizzes"][0]
 
     result = grade_quiz(q["quiz_id"], q["quiz"]["answer"])
-    assert result["grade"] == 5
+    assert result["individual_grade"] == 5
     assert result["correct"] is True
     assert "grade_prompt" not in result
+    assert result["remaining"] == 1  # 还有1道未答
 
 
 def test_grade_quiz_classical_definition_wrong(isolated_storage):
-    """zh_classical 释义题答错：grade=0, correct=False"""
+    """zh_classical 释义题答错：individual_grade=0, correct=False"""
     from vocabcraft_mcp.tools.crud import save_vocab
 
     save_vocab(_make_classical_vocab())
@@ -367,7 +376,7 @@ def test_grade_quiz_classical_definition_wrong(isolated_storage):
     q = gen["quizzes"][0]
 
     result = grade_quiz(q["quiz_id"], "兵器")
-    assert result["grade"] == 0
+    assert result["individual_grade"] == 0
     assert result["correct"] is False
 
 
@@ -380,21 +389,21 @@ def test_grade_quiz_classical_definition_case_insensitive_pos(isolated_storage):
     q = gen["quizzes"][0]
     # answer 编码为 "N.|兵器"，用户小写输入仍应判对
     result = grade_quiz(q["quiz_id"], "n.|兵器")
-    assert result["grade"] == 5
+    assert result["individual_grade"] == 5
     assert result["correct"] is True
 
 
 def test_grade_quiz_classical_definition_strict_meaning(isolated_storage):
-    """zh_classical 释义题释义严格一致"""
+    """zh_classical 释义题释义模糊匹配：核心义素出现即匹配"""
     from vocabcraft_mcp.tools.crud import save_vocab
 
     save_vocab(_make_classical_vocab())
     gen = generate_quiz("vocab_001", "释义")
     q = gen["quizzes"][0]
 
-    # 释义不同则判错
+    # 释义不同且不包含核心义素则判错（词性对但释义不匹配 → grade=3）
     result = grade_quiz(q["quiz_id"], "n.|武器")
-    assert result["grade"] == 0
+    assert result["individual_grade"] == 3  # 词性对但释义不匹配
     assert result["correct"] is False
 
 
@@ -408,7 +417,7 @@ def test_grade_quiz_classical_definition_empty_pos_placeholder(isolated_storage)
     assert q["quiz"]["answer"].startswith("?|")
 
     result = grade_quiz(q["quiz_id"], q["quiz"]["answer"])
-    assert result["grade"] == 5
+    assert result["individual_grade"] == 5
     assert result["correct"] is True
 
 
@@ -458,22 +467,31 @@ def test_grade_quiz_classical_definition_quote_mismatch(isolated_storage):
     q = gen["quizzes"][0]
     assert q["quiz"]["answer"] == "adj.|与\"短\"相对"
 
-    # 用户输入中文单引号，应判错
+    # 用户输入中文单引号，应判错（词性对但释义不匹配 → 义项 grade=3，词级 grade=3）
     result = grade_quiz(q["quiz_id"], "adj.|与'短'相对")
-    assert result["grade"] == 0
+    assert result["grade"] == 3
     assert result["correct"] is False
 
 
 def test_grade_quiz_classical_definition_updates_sm2(isolated_storage):
-    """zh_classical 释义题评分后仍更新 SM-2 状态与复习记录"""
+    """zh_classical 释义题全部评完后更新 SM-2 状态与复习记录"""
     from vocabcraft_mcp.tools.crud import save_vocab, get_storage
 
     save_vocab(_make_classical_vocab())
     gen = generate_quiz("vocab_001", "释义")
-    q = gen["quizzes"][0]
+    quizzes = gen["quizzes"]
 
-    result = grade_quiz(q["quiz_id"], q["quiz"]["answer"])
-    assert result["grade"] == 5
+    # 评第一题：不更新 SM-2
+    r1 = grade_quiz(quizzes[0]["quiz_id"], quizzes[0]["quiz"]["answer"])
+    assert r1["individual_grade"] == 5
+    assert r1["remaining"] == 1
+    v = get_storage().load_vocab("vocab_001")
+    assert v.review_state.repetitions == 0  # 未更新
+
+    # 评第二题：全部评完，更新 SM-2
+    r2 = grade_quiz(quizzes[1]["quiz_id"], quizzes[1]["quiz"]["answer"])
+    assert r2["word_grade"] == 5
+    assert r2["remaining"] == 0
 
     v = get_storage().load_vocab("vocab_001")
     assert v.review_state.repetitions == 1
@@ -481,7 +499,7 @@ def test_grade_quiz_classical_definition_updates_sm2(isolated_storage):
 
     records = get_storage().list_all_review_records()
     assert len(records) == 1
-    assert records[0].definition_index == q["quiz"]["definition_index"]
+    assert records[0].definition_index is None  # 词级 record
 
 
 def test_generate_classical_quiz_uses_round_robin_definition(isolated_storage):
@@ -574,7 +592,7 @@ def test_generate_non_classical_definition_uses_default_prompt(isolated_storage,
 
 
 def test_grade_quiz_transfers_example_index(isolated_storage):
-    """grade_quiz 应将 Quiz.example_index 透传到 ReviewRecord"""
+    """grade_quiz 评分后 Quiz.example_index 保留，ReviewRecord 为词级（不绑定义项）"""
     from vocabcraft_mcp.tools.crud import save_vocab
     data = {
         "id": "vocab_exgrad_001",
@@ -594,14 +612,25 @@ def test_grade_quiz_transfers_example_index(isolated_storage):
     quizzes = result["quizzes"]
     assert len(quizzes) == 2
 
-    # 评分第一道（example_index=0）
+    # 评第一道（example_index=0）
     grade_result = grade_quiz(quizzes[0]["quiz_id"], "n.|兵器")
-    assert grade_result["grade"] == 5
+    assert grade_result["individual_grade"] == 5
+    assert grade_result["remaining"] == 1
 
-    # 检查 ReviewRecord 包含 example_index
-    records = get_storage().list_all_review_records()
-    ex_indices = [r.example_index for r in records if r.vocab_id == "vocab_exgrad_001"]
-    assert 0 in ex_indices
+    # 检查 Quiz 保留 example_index
+    storage = get_storage()
+    q0 = storage.load_quiz(quizzes[0]["quiz_id"])
+    assert q0 is not None
+    assert q0.example_index == 0
+
+    # 评第二道（example_index=1），全部评完
+    grade_result2 = grade_quiz(quizzes[1]["quiz_id"], "n.|兵器")
+    assert grade_result2["word_grade"] == 5
+
+    # 词级 ReviewRecord 不绑定义项
+    records = storage.list_all_review_records()
+    assert len(records) == 1
+    assert records[0].example_index is None
 
 
 
@@ -619,7 +648,7 @@ def test_grade_quiz_classical_definition_with_pos_prefix(isolated_storage):
     q = gen["quizzes"][0]
 
     result = grade_quiz(q["quiz_id"], "n.|兵器")
-    assert result["grade"] == 5
+    assert result["individual_grade"] == 5
     assert result["correct"] is True
 
 
@@ -632,7 +661,7 @@ def test_grade_quiz_classical_definition_with_zh_pos_prefix(isolated_storage):
     q = gen["quizzes"][0]
 
     result = grade_quiz(q["quiz_id"], "名词|兵器")
-    assert result["grade"] == 5
+    assert result["individual_grade"] == 5
     assert result["correct"] is True
 
 
@@ -646,7 +675,7 @@ def test_grade_quiz_classical_definition_mixed_pos_style(isolated_storage):
 
     # 期望 n.|兵器，用户用中文词性回答
     result = grade_quiz(q["quiz_id"], "名词|兵器")
-    assert result["grade"] == 5
+    assert result["individual_grade"] == 5
     assert result["correct"] is True
 
 

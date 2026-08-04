@@ -68,7 +68,8 @@
             </table>
             {% else %}
             <div class="chart-body" data-echart="renderMasteryBarByLang"
-                 data-chart-url="/api/insights?language={{ current_language }}"></div>
+                 data-chart-url="/api/insights?language={{ current_language }}"
+                 data-language="{{ current_language }}"></div>
             {% endif %}
         </div>
     </div>
@@ -144,6 +145,7 @@
         function renderMasteryBarByLang(container, data) {
             const chart = echarts.init(container);
             const items = data.mastery_distribution;
+            const lang = container.dataset.language || '';
             chart.setOption({
                 tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
                 grid: { left: '10%', right: '10%', top: '10%', bottom: '15%' },
@@ -154,6 +156,13 @@
                     data: items.map(i => i.value),
                     itemStyle: { color: '#4f46e5' }
                 }]
+            });
+            chart.on('click', function (params) {
+                const mastery = params.name;
+                if (mastery) {
+                    const url = '/partials/vocab?mastery=' + encodeURIComponent(mastery) + (lang ? '&language=' + encodeURIComponent(lang) : '');
+                    htmx.ajax('GET', url, { target: '#content', swap: 'innerHTML' });
+                }
             });
             window.addEventListener('resize', () => chart.resize());
         }

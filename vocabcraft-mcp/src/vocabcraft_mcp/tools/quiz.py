@@ -12,11 +12,14 @@
 """
 import random
 
-from vocabcraft_mcp.models import Quiz, ReviewRecord
 from vocabcraft_mcp.algorithms import compute_next_review
-from vocabcraft_mcp.prompts.quiz_generate_prompt import CLASSICAL_GENERATE_PROMPT, GENERATE_PROMPT
+from vocabcraft_mcp.models import Quiz, ReviewRecord
+from vocabcraft_mcp.prompts.quiz_generate_prompt import (
+    CLASSICAL_GENERATE_PROMPT,
+    GENERATE_PROMPT,
+)
 from vocabcraft_mcp.prompts.quiz_grade_prompt import GRADE_PROMPT
-from vocabcraft_mcp.tools.crud import get_storage, update_vocab, _now_utc
+from vocabcraft_mcp.tools.crud import _now_utc, get_storage, update_vocab
 
 # 客观题：工具内精确匹配评分；zh_classical 释义题按 "词性|释义" 客观评分；
 # 其他释义题为主观题交 LLM
@@ -72,6 +75,148 @@ def _generate_record_id(storage) -> str:
 
 _CLASSICAL_POS_POOL = ["n.", "v.", "adj.", "adv.", "pron.", "num.", "量", "连", "介", "助", "叹"]
 
+# 义项文本中的 【词性】 前缀模式
+_POS_PREFIX_RE = __import__("re").compile(r"^[【\[](.*?)[】\]]\s*")
+
+
+def strip_pos_prefix(text: str) -> str:
+    """去除义项文本开头的 【词性】 前缀
+
+    '【动词】放逐,流放' → '放逐,流放'
+    '放逐,流放' → '放逐,流放'  (无前缀不变)
+    """
+    return _POS_PREFIX_RE.sub("", text)
+
+
+def extract_pos_from_text(text: str) -> str:
+    """从义项文本提取 【词性】 前缀中的词性
+
+    '【动词】放逐,流放' → '动词'
+    '【副词】曾经' → '副词'
+    '放逐,流放' → ''  (无前缀返回空串)
+    """
+    m = _POS_PREFIX_RE.match(text)
+    return m.group(1) if m else ""
+
+# ──────────────────────────────────────────
+# 义项级评分（fuzzy matching）
+# ──────────────────────────────────────────
+
+# 组合词性分隔符
+_POS_SEP_RE = __import__("re").compile(r"[/、,，]")
+
+
+def _normalize_pos(pos_str: str) -> set[str]:
+    """将词性字符串标准化为英文简写集合
+
+    "v./adj." → {"v.", "adj."}
+    "动词/使动" → {"v."}  (忽略使动/意动等修饰)
+    """
+    parts = _POS_SEP_RE.split(pos_str.strip().lower())
+    result: set[str] = set()
+    modifiers = {"使动", "意动", "为动", "被动", "主动", "及物", "不及物"}
+    for p in parts:
+        p = p.strip()
+        if not p:
+            continue
+        en = _POS_ZH_TO_EN.get(p, p)
+        # 去除修饰前缀
+        for prefix in modifiers:
+            if en.startswith(prefix):
+                en = en[len(prefix):]
+                break
+        en = en.strip()
+        if en:
+            result.add(en)
+    return result
+
+
+def _match_pos(expected: str, actual: str) -> bool:
+    """词性模糊匹配：集合相等即匹配"""
+    return _normalize_pos(expected) == _normalize_pos(actual)
+
+
+# 释义分隔符
+_MEANING_SEP_RE = __import__("re").compile(r"[，、；;,]")
+
+
+def _normalize_meaning(meaning: str) -> set[str]:
+    """将释义拆分为义素集合"""
+    parts = _MEANING_SEP_RE.split(meaning.strip())
+    return {p.strip().strip("也矣乎哉之").strip() for p in parts if p.strip()}
+
+
+def _match_meaning(expected: str, actual: str) -> bool:
+    """释义模糊匹配
+
+    规则：
+    - 多义项（含分隔符如 '放逐，流放'）：任一义素匹配即可
+    - 单义项（如 '兵器也'）：义素去虚词后严格子串匹配
+    - 双向子串：义素⊂答案 或 答案⊂义素
+    """
+    raw_parts = _MEANING_SEP_RE.split(expected.strip())
+    # 去除文言虚词后缀，统一比较基准
+    _PARTICLES = "也矣乎哉之者"
+    parts = [p.strip().strip(_PARTICLES).strip() for p in raw_parts if p.strip()]
+    actual_text = actual.strip()
+    if not parts or not actual_text:
+        return False
+
+    if len(parts) > 1:
+        # 多义项：任一义素匹配即可（双向子串，但反向匹配要求答案>=2字且>=义素一半长度）
+        return any(
+            ep in actual_text
+            or (actual_text in ep and len(actual_text) >= 2 and len(actual_text) >= len(ep) // 2)
+            for ep in parts
+        )
+    else:
+        # 单义项：严格匹配（义素是答案的子串，或答案是义素的子串）
+        # 但不允许太短的匹配（如 '草' 匹配 '草本植物名'）
+        ep = parts[0]
+        if ep in actual_text:
+            return True
+        if actual_text in ep and len(actual_text) >= len(ep) // 2:
+            return True
+        return False
+
+
+def _grade_definition(expected_answer: str, user_response: str) -> int:
+    """义项级评分：按词性和释义两个维度分别匹配
+
+    Returns:
+        5: 词性+释义都对
+        3: 词性对但释义错
+        2: 词性错但释义对
+        0: 都错
+    """
+    exp_pos, _, exp_meaning = expected_answer.partition("|")
+    act_pos, _, act_meaning = user_response.partition("|")
+
+    pos_ok = _match_pos(exp_pos, act_pos)
+    meaning_ok = _match_meaning(exp_meaning, act_meaning)
+
+    if pos_ok and meaning_ok:
+        return 5
+    if pos_ok:
+        return 3
+    if meaning_ok:
+        return 2
+    return 0
+
+
+def _composite_word_grade(definition_grades: list[int]) -> int:
+    """从义项级 grade 列表计算词级综合 grade
+
+    公式: round((min + avg) / 2)
+    - min 捕捉最薄弱义项
+    - avg 反映整体掌握度
+    """
+    if not definition_grades:
+        return 0
+    min_g = min(definition_grades)
+    avg_g = round(sum(definition_grades) / len(definition_grades), 1)
+    return round((min_g + avg_g) / 2)
+
 
 def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
     """为指定词汇生成考题
@@ -108,10 +253,11 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
         for di, d in enumerate(defs):
             pos = d.part_of_speech or v.structured.part_of_speech.strip()
             pos = zh_to_en_pos(pos) if pos else "?"
-            answer = f"{pos}|{d.text}"
+            meaning = strip_pos_prefix(d.text)
+            answer = f"{pos}|{meaning}"
             if d.examples:
                 for ex_idx, example in enumerate(d.examples):
-                    defs_block = f"1. {d.text}\n   - {example}"
+                    defs_block = f"1. {meaning}\n   - {example}"
                     prompt = CLASSICAL_GENERATE_PROMPT.format(
                         word=v.structured.word,
                         part_of_speech=v.structured.part_of_speech,
@@ -131,7 +277,7 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
                     quizzes.append({"quiz_id": quiz.id, "quiz": quiz.model_dump(), "generate_prompt": prompt})
             else:
                 # 无例句的义项也考释义
-                defs_block = f"1. {d.text}\n   （无例句）"
+                defs_block = f"1. {meaning}\n   （无例句）"
                 prompt = CLASSICAL_GENERATE_PROMPT.format(
                     word=v.structured.word,
                     part_of_speech=v.structured.part_of_speech,
@@ -175,12 +321,12 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
     if qtype == "拼写":
         answer = v.structured.word
     else:
-        answer = defs[definition_index].text if defs else ""
+        answer = defs[definition_index].text if defs and definition_index is not None else ""
     quiz = Quiz(
         id=_generate_quiz_id(storage),
         vocab_id=vocab_id,
         quiz_type=qtype,
-        question=f"（占位题干，请用 generate_prompt 调用 LLM 生成真实题干）",
+        question="（占位题干，请用 generate_prompt 调用 LLM 生成真实题干）",
         answer=answer,
         generated_at=_now_utc(),
         definition_index=definition_index,
@@ -198,23 +344,23 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
 def grade_quiz(quiz_id: str, response: str) -> dict:
     """评分并按 SM-2 更新词汇记忆状态
 
-    客观题（选择/填空/拼写）: 精确匹配（忽略大小写与空白），答对 grade=5/答错 grade=0
-    zh_classical 释义题: 按 "词性|释义" 客观精确评分，词性大小写不敏感，释义严格一致
-    其他释义题（主观）: 返回 grade_prompt 交宿主 LLM 评分，骨架阶段默认 grade=3 推进 SM-2
-
-    评分后:
-        1. 调用 compute_next_review 计算新记忆状态
-        2. update_vocab 回写 review_state
-        3. 写入 ReviewRecord 记录评分前后 EF
-        4. 标记 quiz.graded=True
+    评分分两层：
+    1. 义项级（individual_grade）：每道题独立评分
+       - zh_classical 释义题: 按词性+释义两个维度 fuzzy matching → 5/3/2/0
+       - 客观题（选择/填空/拼写）: 精确匹配 → 5/0
+       - 其他释义题（主观）: 交宿主 LLM，骨架阶段默认 3
+    2. 词级（word_grade）：该词所有 quiz 评完后聚合
+       - 公式: round((min + avg) / 2)
+       - 只在所有 quiz 评完后才更新 SM-2
 
     Args:
         quiz_id: 考题 ID
         response: 用户作答文本
 
     Returns:
-        包含 grade/correct/updated_review_state 的字典；
-        主观释义题额外返回 grade_prompt；考题不存在返回 error
+        单题评分阶段: {quiz_id, individual_grade, remaining}
+        词级聚合阶段: {quiz_id, word_grade, details, sm2_updated, ...}
+        考题不存在: {error}
     """
     storage = get_storage()
     quiz = storage.load_quiz(quiz_id)
@@ -225,37 +371,71 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
     if vocab is None:
         return {"error": f"关联词汇不存在: {quiz.vocab_id}"}
 
-    rs = vocab.review_state
     result: dict = {"quiz_id": quiz_id, "vocab_id": quiz.vocab_id}
 
-    # 评分：客观题精确匹配；zh_classical 释义题按 "词性|释义" 客观评分；其他释义题交 LLM
+    # ── 1. 计算义项级 grade ──
     if quiz.quiz_type in _OBJECTIVE_TYPES:
         correct = response.strip().lower() == quiz.answer.strip().lower()
-        grade = 5 if correct else 0
+        individual_grade = 5 if correct else 0
         result["correct"] = correct
     elif quiz.quiz_type == "释义" and vocab.structured.language == "zh_classical":
-        expected_pos, _, expected_meaning = quiz.answer.partition("|")
-        actual_pos, _, actual_meaning = response.partition("|")
-        expected_pos = zh_to_en_pos(expected_pos.strip().lower())
-        actual_pos = zh_to_en_pos(actual_pos.strip().lower())
-        correct = expected_pos == actual_pos and expected_meaning.strip() == actual_meaning.strip()
-        grade = 5 if correct else 0
-        result["correct"] = correct
+        individual_grade = _grade_definition(quiz.answer, response)
+        result["correct"] = individual_grade == 5
     else:
-        # 其他释义题主观题：渲染 grade_prompt 交宿主 LLM，骨架阶段用 grade=3 推进
         result["grade_prompt"] = GRADE_PROMPT.format(
             question=quiz.question,
             reference_answer=quiz.answer,
             user_answer=response,
         )
-        result["correct"] = None  # 主观题正误交 LLM 判定
-        grade = 3  # ponytail: 骨架默认值，宿主 LLM 评分后可调 update_vocab 修正
+        result["correct"] = None
+        individual_grade = 3  # ponytail: 骨架默认值
 
-    # SM-2 更新记忆状态
+    result["individual_grade"] = individual_grade
+
+    # ── 2. 保存当前 quiz 的评分结果 ──
+    storage.save_quiz(quiz.model_copy(update={
+        "graded": True,
+        "individual_grade": individual_grade,
+    }))
+
+    # ── 3. 检查该词所有 quiz 是否全部评完 ──
+    # 只把同一批次（生成时间差≤60s）的 quiz 纳入判定，多次出题不互相污染
+    today_str = _now_utc().date().isoformat()
+    all_quiz_ids = storage.list_all_quiz_ids()
+    vocab_quizzes: list[Quiz] = []
+    for qid in all_quiz_ids:
+        q = storage.load_quiz(qid)
+        if q is not None and q.vocab_id == quiz.vocab_id:
+            gen_date = q.generated_at.date().isoformat() if q.generated_at else ""
+            if gen_date >= today_str:
+                # 同批次判定：生成时间差 ≤ 60s
+                time_diff = abs((q.generated_at - quiz.generated_at).total_seconds()) if q.generated_at and quiz.generated_at else 999
+                if time_diff <= 60:
+                    vocab_quizzes.append(q)
+    ungraded = [q for q in vocab_quizzes if not q.graded]
+    graded = [q for q in vocab_quizzes if q.graded]
+
+    if ungraded:
+        result["remaining"] = len(ungraded)
+        result["message"] = f"还有 {len(ungraded)} 道题未答"
+        return result
+
+    # ── 4. 全部评完 → 计算词级综合 grade ──
+    definition_grades = [q.individual_grade for q in graded if q.individual_grade is not None]
+    word_grade = _composite_word_grade(definition_grades)
+
+    result["word_grade"] = word_grade
+    result["details"] = [
+        {"quiz_id": q.id, "definition_index": q.definition_index,
+         "example_index": q.example_index, "grade": q.individual_grade}
+        for q in graded
+    ]
+
+    # ── 5. SM-2 更新（每词只调一次） ──
+    rs = vocab.review_state
     prev_ease = rs.ease_factor
-    new_state = compute_next_review(prev_ease, rs.interval, rs.repetitions, grade)
+    new_state = compute_next_review(prev_ease, rs.interval, rs.repetitions, word_grade)
 
-    # 回写 review_state（patch 语义，不动 structured）
     update_result = update_vocab({
         "id": quiz.vocab_id,
         "review_state": {
@@ -264,28 +444,27 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
             "repetitions": new_state["repetitions"],
             "next_review": new_state["next_review_date"],
             "last_review": _now_utc().date().isoformat(),
+            "last_word_grade": word_grade,
         },
     })
     if "error" in update_result:
-        return {**result, "error": update_result["error"], "grade": grade}
+        result["error"] = update_result["error"]
+        return result
 
-    # 写复习记录（评分前后 EF；透传 definition_index 为 Phase 2 采集数据）
     record = ReviewRecord(
         record_id=_generate_record_id(storage),
         vocab_id=quiz.vocab_id,
         review_time=_now_utc(),
-        grade=grade,
+        grade=word_grade,
         prev_ease=prev_ease,
         new_ease=new_state["ease_factor"],
-        definition_index=quiz.definition_index,
-        example_index=quiz.example_index,
+        definition_index=None,
+        example_index=None,
     )
     storage.save_review_record(record)
 
-    # 标记考题已评分
-    storage.save_quiz(quiz.model_copy(update={"graded": True}))
-
-    result["grade"] = grade
+    result["grade"] = word_grade
     result["updated_review_state"] = new_state
     result["review_record_id"] = record.record_id
+    result["remaining"] = 0
     return result

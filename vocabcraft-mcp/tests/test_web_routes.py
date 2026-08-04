@@ -384,7 +384,7 @@ def test_batch_review_full_flow(client):
     response = test_client.post(f"/api/review/batch/{batch_id}/item/1/grade", data={"response": "world"})
     assert response.status_code == 200
     assert "复习完成" in response.text
-    assert "完成题数" in response.text
+    assert "完成词数" in response.text
 
 
 def test_batch_review_unknown_item(client):
@@ -439,7 +439,7 @@ def test_grade_batch_review_item_classical_pos_definition(client):
         data={"pos": "n.", "definition": "兵器"},
     )
     assert response.status_code == 200
-    assert "回答正确" in response.text
+    assert "词级评分" in response.text  # 单义项词，评完即出词级评分
 
 
 def test_grade_batch_review_item_falls_back_to_response(client):
@@ -463,7 +463,7 @@ def test_grade_batch_review_item_falls_back_to_response(client):
         data={"response": "n.|兵器"},
     )
     assert response.status_code == 200
-    assert "回答正确" in response.text
+    assert "词级评分" in response.text
 
 
 # ──────────────────────────────────────────

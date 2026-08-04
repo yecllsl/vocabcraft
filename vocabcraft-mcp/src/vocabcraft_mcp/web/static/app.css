@@ -456,6 +456,13 @@ a:hover { text-decoration: underline; }
     border-color: var(--primary);
 }
 
+/* 掌握度标签 */
+.mastery-star { background: #fbbf24; color: #92400e; }
+.mastery-green { background: #22c55e; color: #fff; }
+.mastery-yellow { background: #eab308; color: #fff; }
+.mastery-red { background: #ef4444; color: #fff; }
+.mastery-new { background: #94a3b8; color: #fff; }
+
 /* ─────────── 测验区 ─────────── */
 .quiz-container {
     max-width: 720px;
