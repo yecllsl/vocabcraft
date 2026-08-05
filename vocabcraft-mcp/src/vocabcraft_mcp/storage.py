@@ -130,8 +130,13 @@ class Storage:
             v = self.load_vocab(vid)
             if v and self._matches(v, filters):
                 vocabs.append(v.model_dump())
-        # 按创建时间倒序排列
-        vocabs.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        # 按创建时间倒序排列：用 ISO 字符串比较，避免 offset-naive 与
+        # offset-aware datetime 混存时 Python 拒绝比较（历史脏数据兼容）。
+        # 字符串字典序 == 时间序，对时区敏感场景也安全。
+        def _sort_key(item: dict) -> str:
+            ts = item.get("created_at")
+            return ts.isoformat() if ts else ""
+        vocabs.sort(key=_sort_key, reverse=True)
         return {"vocabs": vocabs, "total_count": len(vocabs)}
 
     def _matches(self, v: VocabRecord, f: dict) -> bool:

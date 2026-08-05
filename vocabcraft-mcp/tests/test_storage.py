@@ -4,6 +4,7 @@
 验证 Storage 基础 CRUD、原子写、查询过滤、部分更新可正常工作。
 """
 
+import json
 import pytest
 from datetime import datetime, timezone
 
@@ -106,3 +107,45 @@ def test_deep_merge():
     patch = {"b": {"y": 99, "z": 30}, "d": 4}
     merged = _deep_merge(base, patch)
     assert merged == {"a": 1, "b": {"x": 10, "y": 99, "z": 30}, "c": 3, "d": 4}
+
+
+def test_query_vocabs_handles_mixed_naive_and_aware_datetimes(tmp_storage):
+    """query_vocabs 排序时，created_at 混合 offset-naive 与 offset-aware 不应抛错
+
+    复现 /partials/vocab 500 错误：历史脏数据（如 xlsx 批量导入或外部脚本）
+    写入了无时区的 ISO 字符串，正常路径（_now_utc）写入的是带 Z 的 ISO 字符串。
+    Pydantic 反序列化后分别为 naive 与 aware datetime，直接用 datetime 对象
+    比较会触发 TypeError。修复后 sort 走字符串比较，行为与时间序一致。
+    """
+    # 直接写两份 JSON：一份 naive，一份 aware（模拟历史脏数据）
+    aware_iso = "2026-07-23T10:30:00.000000Z"  # offset-aware
+    naive_iso = "2026-07-23T11:00:00.000000"    # offset-naive
+
+    (tmp_storage.vocabs_dir / "vocab_20260723_001.json").write_text(
+        json.dumps({
+            "id": "vocab_20260723_001",
+            "structured": {"word": "aware", "definitions": [], "language": "en"},
+            "review_state": {"next_review": ""},
+            "created_at": aware_iso,
+            "updated_at": aware_iso,
+        }, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    (tmp_storage.vocabs_dir / "vocab_20260723_002.json").write_text(
+        json.dumps({
+            "id": "vocab_20260723_002",
+            "structured": {"word": "naive", "definitions": [], "language": "en"},
+            "review_state": {"next_review": ""},
+            "created_at": naive_iso,
+            "updated_at": naive_iso,
+        }, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    # 不应抛 TypeError；按 created_at 倒序，naive (11:00) 排第一
+    result = tmp_storage.query_vocabs(filters={})
+    assert result["total_count"] == 2
+    assert [v["id"] for v in result["vocabs"]] == [
+        "vocab_20260723_002",  # naive 11:00
+        "vocab_20260723_001",  # aware 10:30
+    ]
