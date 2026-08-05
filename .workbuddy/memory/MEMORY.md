@@ -17,6 +17,7 @@ WorkBuddy 不读 `.trae/`，需等价移植：
 - **数据安全**：图片仅存本地 `data/images/`，禁止外传；OCR 失败降级为手动输入而非报错。
 - **vocab_id 格式**：`vocab_YYYYMMDD_NNN`（NNN 当日递增）；quiz 以 `quiz_` 开头。
 - **结构化 vs 记忆状态分离**：`StructuredVocab` 与 `ReviewState` 分离；`grade_quiz` 只 patch `review_state`，不触动用户确认的 `structured`。
+- **采集合并约定（用户明确）**：同词多例句时，语义相同的释义只存**一条** `Definition`，其全部例句聚合进该条 `examples` 列表；不要因为"例句多"就把同义项拆成多条 definition。用户对"不要合并精简"的指令本意是保留同义多条释义（如"回头"与"回头看"可并存），而非把每个例句拆成独立释义项。2026-08-05 顾/观/归/国/过 5 词即按此合并（过由 14 义项合并为 9）。
 
 ## 调度算法实际实现（2026-07-30 核查）
 - 真正驱动排程的是 `src/vocabcraft_mcp/algorithms.py` 的改良版 SM-2（`compute_next_review`：EF 初始 2.5/下限 1.3；通过走 1→6→×EF；失败 reps 归零、间隔=1 天）。
