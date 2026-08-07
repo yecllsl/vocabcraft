@@ -51,8 +51,8 @@ def schedule_review(vocab_id: str = "", language: str = "") -> dict:
         if v.review_state.next_review and v.review_state.next_review <= today
         and (not language or v.structured.language == language)
     ]
-    # 按到期日升序，早到期的优先
-    due.sort(key=lambda v: v.review_state.next_review)
+    # 按到期日升序，同日按 vocab_id 字典序保证确定性
+    due.sort(key=lambda v: (v.review_state.next_review or "", v.id))
 
     return {
         "today": today,
