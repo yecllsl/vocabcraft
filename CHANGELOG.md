@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-08-07
+
 ### Quality / Compliance
 - 引入 ruff 严格集（E,F,W,I,N,UP,B,SIM）并清零；`scripts/` 下 `import_xlsx.py` 一并修复（F401/E501/E741/W292/B905）。
 - 接入 mypy 类型检查（项目源码零错误）。

@@ -50,7 +50,7 @@ Rules 约束层 (AGENTS.md — 统一规则源，四个运行时共用)
 
 #### 1. 下载并解压
 
-下载 `VocabCraft-v0.5.1.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
+下载 `VocabCraft-v0.5.2.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
 
 #### 2. 运行安装脚本
 
@@ -161,7 +161,7 @@ chmod +x install.sh
 **评分规则：**
 - 词性大小写不敏感（`n.` = `N.`）
 - 释义严格匹配（仅去除首尾空白）
-- 词性和释义均正确得 5 分，否则 0 分
+- 按词性 + 释义两个维度评分：都正确 = 4 分，词性对释义错 = 3 分，词性错释义对 = 2 分，都错 = 1 分（grade<3 视为失败，重置复习周期）
 
 **多义词覆盖：**
 - 系统按复习历史轮询不同义项，确保每个释义都被考查
@@ -327,15 +327,15 @@ uv run pytest tests/ -m "not e2e"
 
 ```powershell
 # Windows
-pwsh .\scripts\build-release.ps1 -Version 0.5.1
+pwsh .\scripts\build-release.ps1 -Version 0.5.2
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.5.1
+bash scripts/build-release.sh 0.5.2
 ```
 
-产物：`dist/VocabCraft-v0.5.1.{zip,tar.zst,tar.gz}`。
+产物：`dist/VocabCraft-v0.5.2.{zip,tar.zst,tar.gz}`。
 
 ### CI/CD
 

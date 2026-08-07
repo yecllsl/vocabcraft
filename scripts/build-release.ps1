@@ -2,13 +2,13 @@
 # 从源码生成可分发的 zip 包（白名单复制策略，避免误打包 .venv）
 #
 # 使用方法：
-#   pwsh .\scripts\build-release.ps1 [-Version "0.5.1"]
+#   pwsh .\scripts\build-release.ps1 [-Version "0.5.2"]
 #
 # 输出：
-#   dist\VocabCraft-v0.5.1.zip
+#   dist\VocabCraft-v0.5.2.zip
 
 param(
-    [string]$Version = "0.5.1"
+    [string]$Version = "0.5.2"
 )
 
 $ErrorActionPreference = "Stop"
