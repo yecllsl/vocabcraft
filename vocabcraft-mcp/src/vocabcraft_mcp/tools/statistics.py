@@ -8,7 +8,7 @@
 """
 
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from vocabcraft_mcp.tools.crud import get_storage
 
@@ -19,12 +19,12 @@ _VALID_GROUPS = {"language", "mastery", "date", "quiz_type"}
 def _mastery_level(word_grade: int | None) -> str:
     """按词级综合评分划分掌握度
 
-    基于 grade_quiz 计算的 word_grade（0-5）：
-        None / 0-1: 新词（未评分或完全不会）
-        2:         生疏（需重学）
-        3:         熟悉（勉强记住）
-        4:         掌握（记忆良好）
-        5:         精通（完美记忆）
+    基于 grade_quiz 计算的 word_grade（应用层四级制 4/3/2/1）：
+        None / 1: 新词（未评分或几乎忘）
+        2:        生疏（部分错，需重学）
+        3:        熟悉（勉强记住）
+        4:        掌握（完全记住）
+        5:        精通（历史数据兼容，新评分不再产生）
     """
     if word_grade is None or word_grade <= 1:
         return "新词"
@@ -73,14 +73,14 @@ def get_statistics(group_by: str) -> dict:
         total = len(vocabs)
     else:  # quiz_type
         quizzes = [storage.load_quiz(qid) for qid in storage.list_all_quiz_ids()]
-        quizzes = [q for q in quizzes if q]
-        counter = Counter(q.quiz_type for q in quizzes)
+        quizzes = [q for q in quizzes if q is not None]
+        counter = Counter(q.quiz_type for q in quizzes if q is not None)
         total = len(quizzes)
 
     items = [{"key": k, "count": v} for k, v in sorted(counter.items())]
 
     # 30 天词汇创建趋势（所有维度都返回，便于看增长曲线）
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     trends = []
     for i in range(29, -1, -1):
         day = (today - timedelta(days=i)).isoformat()

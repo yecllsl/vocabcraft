@@ -6,22 +6,24 @@
 """
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from random import sample, shuffle
-from typing import Optional
 from uuid import uuid4
-import re
 
 from vocabcraft_mcp.algorithms import INITIAL_INTERVALS_DAYS, _now_utc
-from vocabcraft_mcp.models import Quiz, ReviewRecord, VocabRecord
+from vocabcraft_mcp.models import ReviewRecord, VocabRecord
 from vocabcraft_mcp.storage import Storage
 from vocabcraft_mcp.tools.crud import get_storage as _default_get_storage
 from vocabcraft_mcp.tools.quiz import (
     _CLASSICAL_POS_POOL,
     en_to_zh_pos,
-    generate_quiz as _generate_quiz_tool,
-    grade_quiz as _grade_quiz_tool,
     zh_to_en_pos,
+)
+from vocabcraft_mcp.tools.quiz import (
+    generate_quiz as _generate_quiz_tool,
+)
+from vocabcraft_mcp.tools.quiz import (
+    grade_quiz as _grade_quiz_tool,
 )
 from vocabcraft_mcp.tools.statistics import _mastery_level, get_statistics
 
@@ -44,7 +46,7 @@ def get_dashboard_summary() -> dict:
     vocabs = storage.get_all_vocabs_for_statistics()
 
     today = _now_utc().date().isoformat()
-    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).date().isoformat()
+    week_ago = (datetime.now(UTC) - timedelta(days=7)).date().isoformat()
 
     # KPI 指标
     total = len(vocabs)
@@ -73,7 +75,7 @@ def get_dashboard_summary() -> dict:
     trend_counter = Counter(v.created_at.date().isoformat() for v in vocabs)
     trends = {}
     for i in range(30):
-        day = (datetime.now(timezone.utc) - timedelta(days=29 - i)).date().isoformat()
+        day = (datetime.now(UTC) - timedelta(days=29 - i)).date().isoformat()
         trends[day] = trend_counter.get(day, 0)
 
     return {
@@ -150,7 +152,7 @@ def get_upcoming_reviews(language: str = "") -> list[dict]:
     if language:
         upcoming = [x for x in upcoming if x["language"] == language]
 
-    upcoming.sort(key=lambda x: x["due_date"])
+    upcoming.sort(key=lambda x: str(x["due_date"]))
     return upcoming
 
 
@@ -164,7 +166,7 @@ def get_review_calendar() -> dict:
     返回：当前年月标题、每日复习任务数、是否今天。
     """
     storage = _get_storage()
-    today = datetime.now(timezone.utc)
+    today = datetime.now(UTC)
     month_start = today.replace(day=1)
     if today.month == 12:
         next_month = today.replace(year=today.year + 1, month=1, day=1)
@@ -269,7 +271,7 @@ def _pick_distractors(correct_vocab: VocabRecord, count: int = _MAX_DISTRACTORS)
         if v.id != correct_vocab.id and v.structured.language == correct_vocab.structured.language
     ]
     if len(candidates) >= count:
-        return sample(candidates, count)
+        return sample(candidates, count)  # noqa: B311  # 仅出题干扰项采样，非安全用途
     # 不足时返回全部候选 + 占位符
     return candidates + [f"选项{i + 1}" for i in range(count - len(candidates))]
 
@@ -284,7 +286,7 @@ def _build_classical_pos_options(correct_pos: str) -> list[str]:
     # 候选池：去掉与正确词性大小写相同的项
     pool = [p for p in _CLASSICAL_POS_POOL if p.lower() != correct.lower()]
     # 随机取 3 个干扰项
-    distractors = sample(pool, min(3, len(pool))) if pool else []
+    distractors = sample(pool, min(3, len(pool))) if pool else []  # noqa: B311  # 仅出题干扰项采样，非安全用途
     options = [correct] + distractors
     # 不足 4 个时用占位符补齐
     while len(options) < 4:
@@ -293,7 +295,7 @@ def _build_classical_pos_options(correct_pos: str) -> list[str]:
     return options
 
 
-def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> Optional[dict]:
+def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> dict | None:
     """生成可在 Web 上直接作答的考题
 
     复用 tools.generate_quiz 创建 quiz 记录，再由 Web 层填充真实题干/选项/答案。
@@ -313,10 +315,7 @@ def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> Optional[dict]:
         return None
 
     # zh_classical 释义题返回 {"quizzes": [...]}，取第一个
-    if "quizzes" in result:
-        quiz_id = result["quizzes"][0]["quiz_id"]
-    else:
-        quiz_id = result["quiz_id"]
+    quiz_id = result["quizzes"][0]["quiz_id"] if "quizzes" in result else result["quiz_id"]
     quiz = storage.load_quiz(quiz_id)
     if quiz is None:
         return None
@@ -491,7 +490,7 @@ class _BatchReviewSession:
     quiz_ids: list[str]
     vocab_quizzes: dict[str, list[str]] = field(default_factory=dict)
     word_grades: dict[str, int] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 # 批量复习会话缓存：batch_id -> _BatchReviewSession
@@ -500,7 +499,7 @@ class _BatchReviewSession:
 _batch_sessions: dict[str, _BatchReviewSession] = {}
 
 
-def start_batch_review(language: str = "") -> Optional[dict]:
+def start_batch_review(language: str = "") -> dict | None:
     """为今日到期词汇创建批量复习会话
 
     language 参数可选，传入时只复习该语种到期词汇。
@@ -541,7 +540,7 @@ def start_batch_review(language: str = "") -> Optional[dict]:
     return {"batch_id": batch_id, "total": len(quiz_ids)}
 
 
-def get_batch_review_item(batch_id: str, index: int) -> Optional[dict]:
+def get_batch_review_item(batch_id: str, index: int) -> dict | None:
     """获取批量复习中的指定题目"""
     session = _batch_sessions.get(batch_id)
     if session is None or index < 0 or index >= len(session.quiz_ids):
@@ -565,7 +564,7 @@ def get_batch_review_item(batch_id: str, index: int) -> Optional[dict]:
     }
 
 
-def grade_batch_review_item(batch_id: str, index: int, response: str) -> Optional[dict]:
+def grade_batch_review_item(batch_id: str, index: int, response: str) -> dict | None:
     """评批量复习中的指定题目
 
     Returns:
@@ -596,7 +595,7 @@ def grade_batch_review_item(batch_id: str, index: int, response: str) -> Optiona
     }
 
 
-def get_batch_review_summary(batch_id: str) -> Optional[dict]:
+def get_batch_review_summary(batch_id: str) -> dict | None:
     """获取批量复习汇总（词粒度）
 
     返回：题数、词数、词级均分、按掌握度分组的词汇列表、下次复习日期分布
@@ -616,12 +615,11 @@ def get_batch_review_summary(batch_id: str) -> Optional[dict]:
     avg_grade = round(sum(grades) / len(grades), 2) if grades else 0.0
 
     # 按掌握度分组
-    TIER_LABELS = {0: "待重学", 1: "待重学", 2: "待重学", 3: "需巩固", 4: "已掌握", 5: "已精通"}
-    TIER_MARKS = {0: "red", 1: "red", 2: "red", 3: "yellow", 4: "green", 5: "star"}
+    tier_marks = {0: "red", 1: "red", 2: "red", 3: "yellow", 4: "green", 5: "star"}
     grouped: dict[str, list[dict]] = {"red": [], "yellow": [], "green": [], "star": []}
 
     for vid, wg in word_grades.items():
-        tier = TIER_MARKS.get(wg, "red")
+        tier = tier_marks.get(wg, "red")
         vocab = storage.load_vocab(vid)
         if not vocab:
             continue
@@ -668,7 +666,7 @@ def get_batch_review_summary(batch_id: str) -> Optional[dict]:
 # 词汇详情
 # ──────────────────────────────────────────
 
-def get_vocab_detail(vocab_id: str) -> Optional[dict]:
+def get_vocab_detail(vocab_id: str) -> dict | None:
     """获取词汇详情（用于 Web 展示）
 
     definitions 返回 list[dict]（每项 {text, examples}），供模板按义项分组展示例句。
@@ -697,7 +695,14 @@ def get_vocab_detail(vocab_id: str) -> Optional[dict]:
 # ──────────────────────────────────────────
 
 SUPPORTED_LANGUAGES = [("en", "英语"), ("zh", "中文"), ("zh_classical", "文言文"), ("de", "德语")]
-MASTERY_OPTIONS = [("", "全部掌握度"), ("新词", "新词"), ("生疏", "生疏"), ("熟悉", "熟悉"), ("掌握", "掌握"), ("精通", "精通")]
+MASTERY_OPTIONS = [
+    ("", "全部掌握度"),
+    ("新词", "新词"),
+    ("生疏", "生疏"),
+    ("熟悉", "熟悉"),
+    ("掌握", "掌握"),
+    ("精通", "精通"),
+]
 
 
 def list_vocabs_for_web(language: str = "", keyword: str = "", mastery: str = "") -> list[dict]:
@@ -770,7 +775,7 @@ def _parse_definitions_block(value: str) -> list[dict]:
     return result
 
 
-def update_vocab_from_web(vocab_id: str, form: dict) -> Optional[dict]:
+def update_vocab_from_web(vocab_id: str, form: dict) -> dict | None:
     """从 Web 表单更新词汇结构化信息
 
     Args:
@@ -830,7 +835,7 @@ _RETENTION_BUCKETS = [
 _MIN_BUCKET_SAMPLE = 3  # 桶内少于 3 条样本则丢弃，避免单点噪声
 
 
-def _bucket_of(days: int) -> Optional[tuple[int, int, int, str]]:
+def _bucket_of(days: int) -> tuple[int, int, int, str] | None:
     """返回 days 所属的桶元组 (low, high, rep_days, label)；无匹配返回 None"""
     for b in _RETENTION_BUCKETS:
         if b[0] <= days <= b[1]:
@@ -874,7 +879,7 @@ def _real_retention_curve(language: str) -> list[dict]:
 
     # 桶聚合
     bucket_stats: dict[int, list[int]] = {}  # rep_days -> [grades]
-    for vid, recs in by_vocab.items():
+    for _, recs in by_vocab.items():
         first_review = min(r.review_time for r in recs)
         for r in recs:
             x = (r.review_time - first_review).days

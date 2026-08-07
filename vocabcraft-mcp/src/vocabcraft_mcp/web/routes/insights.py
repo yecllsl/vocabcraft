@@ -6,8 +6,8 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from vocabcraft_mcp.web.app import templates
 from vocabcraft_mcp.web import services
+from vocabcraft_mcp.web.app import templates
 
 router = APIRouter()
 

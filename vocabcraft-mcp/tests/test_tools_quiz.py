@@ -3,16 +3,18 @@
 
 验证 generate_quiz / grade_quiz 真实行为:
     - generate_quiz: 默认题型"拼写"、占位题持久化、渲染 generate_prompt
-    - grade_quiz 客观题: 精确匹配答对 grade=5/答错 grade=0
+    - grade_quiz 客观题: 精确匹配答对 grade=4/答错 grade=1
     - grade_quiz 释义题: 返回 grade_prompt，默认 grade=3
     - 评分后 SM-2 状态更新（repetitions/ease_factor/next_review 演进）
 """
 
+from datetime import UTC
+
 import pytest
 
-from vocabcraft_mcp.tools.quiz import generate_quiz, grade_quiz
-from vocabcraft_mcp.tools.crud import save_vocab, get_storage
 from vocabcraft_mcp.prompts.quiz_generate_prompt import CLASSICAL_GENERATE_PROMPT
+from vocabcraft_mcp.tools.crud import get_storage, save_vocab
+from vocabcraft_mcp.tools.quiz import generate_quiz, grade_quiz
 
 
 def test_quiz_importable():
@@ -46,22 +48,22 @@ def test_generate_quiz_nonexistent_returns_error(isolated_storage):
 
 
 def test_grade_quiz_correct_objective(isolated_storage, make_vocab_data):
-    """客观题答对：grade=5, correct=True"""
+    """客观题答对：grade=4, correct=True"""
     save_vocab(make_vocab_data("hello", "vocab_001"))
     gen = generate_quiz("vocab_001")  # 拼写题，answer="hello"
 
     result = grade_quiz(gen["quiz_id"], "hello")
-    assert result["grade"] == 5
+    assert result["grade"] == 4
     assert result["correct"] is True
 
 
 def test_grade_quiz_wrong_objective(isolated_storage, make_vocab_data):
-    """客观题答错：grade=0, correct=False"""
+    """客观题答错：grade=1, correct=False"""
     save_vocab(make_vocab_data("hello", "vocab_001"))
     gen = generate_quiz("vocab_001")
 
     result = grade_quiz(gen["quiz_id"], "wrong")
-    assert result["grade"] == 0
+    assert result["grade"] == 1
     assert result["correct"] is False
 
 
@@ -71,19 +73,19 @@ def test_grade_quiz_case_insensitive(isolated_storage, make_vocab_data):
     gen = generate_quiz("vocab_001")
 
     result = grade_quiz(gen["quiz_id"], "  HELLO  ")
-    assert result["grade"] == 5
+    assert result["grade"] == 4
     assert result["correct"] is True
 
 
 def test_grade_quiz_updates_sm2_state(isolated_storage, make_vocab_data):
-    """评分后 SM-2 状态更新：答对 rep 0→1, EF 2.5→2.6"""
+    """评分后 SM-2 状态更新：答对 rep 0→1, EF 2.5 不变（grade=4 不增 EF）"""
     save_vocab(make_vocab_data("hello", "vocab_001"))
     gen = generate_quiz("vocab_001")
 
     grade_quiz(gen["quiz_id"], "hello")
     v = get_storage().load_vocab("vocab_001")
     assert v.review_state.repetitions == 1
-    assert v.review_state.ease_factor == pytest.approx(2.6, abs=1e-3)
+    assert v.review_state.ease_factor == pytest.approx(2.5, abs=1e-3)
     assert v.review_state.interval == 1
     assert v.review_state.next_review  # 非空
 
@@ -119,7 +121,7 @@ def test_grade_quiz_writes_review_record(isolated_storage, make_vocab_data):
     assert "review_record_id" in result
     records = get_storage().list_all_review_records()
     assert len(records) == 1
-    assert records[0].grade == 5
+    assert records[0].grade == 4
 
 
 def test_grade_quiz_marks_graded(isolated_storage, make_vocab_data):
@@ -313,8 +315,9 @@ def test_grade_quiz_propagates_definition_index(isolated_storage):
 def test_grade_quiz_definition_index_none_for_legacy_quiz(isolated_storage, make_vocab_data):
     """旧 Quiz（definition_index=None）评分后 ReviewRecord.definition_index=None"""
     from datetime import datetime
+
     from vocabcraft_mcp.models import Quiz
-    from vocabcraft_mcp.tools.crud import save_vocab, get_storage
+    from vocabcraft_mcp.tools.crud import get_storage, save_vocab
 
     save_vocab(make_vocab_data("hello", "vocab_001"))
     # 手动构造一个无 definition_index 的旧式 Quiz
@@ -353,7 +356,7 @@ def _make_classical_vocab(vocab_id: str = "vocab_001", pos: str = "n."):
 
 
 def test_grade_quiz_classical_definition_correct(isolated_storage):
-    """zh_classical 释义题答对：individual_grade=5, correct=True"""
+    """zh_classical 释义题答对：individual_grade=4, correct=True"""
     from vocabcraft_mcp.tools.crud import save_vocab
 
     save_vocab(_make_classical_vocab())
@@ -361,14 +364,14 @@ def test_grade_quiz_classical_definition_correct(isolated_storage):
     q = gen["quizzes"][0]
 
     result = grade_quiz(q["quiz_id"], q["quiz"]["answer"])
-    assert result["individual_grade"] == 5
+    assert result["individual_grade"] == 4
     assert result["correct"] is True
     assert "grade_prompt" not in result
     assert result["remaining"] == 1  # 还有1道未答
 
 
 def test_grade_quiz_classical_definition_wrong(isolated_storage):
-    """zh_classical 释义题答错：individual_grade=0, correct=False"""
+    """zh_classical 释义题答错：individual_grade=1, correct=False"""
     from vocabcraft_mcp.tools.crud import save_vocab
 
     save_vocab(_make_classical_vocab())
@@ -376,7 +379,7 @@ def test_grade_quiz_classical_definition_wrong(isolated_storage):
     q = gen["quizzes"][0]
 
     result = grade_quiz(q["quiz_id"], "兵器")
-    assert result["individual_grade"] == 0
+    assert result["individual_grade"] == 1
     assert result["correct"] is False
 
 
@@ -389,7 +392,7 @@ def test_grade_quiz_classical_definition_case_insensitive_pos(isolated_storage):
     q = gen["quizzes"][0]
     # answer 编码为 "N.|兵器"，用户小写输入仍应判对
     result = grade_quiz(q["quiz_id"], "n.|兵器")
-    assert result["individual_grade"] == 5
+    assert result["individual_grade"] == 4
     assert result["correct"] is True
 
 
@@ -417,7 +420,7 @@ def test_grade_quiz_classical_definition_empty_pos_placeholder(isolated_storage)
     assert q["quiz"]["answer"].startswith("?|")
 
     result = grade_quiz(q["quiz_id"], q["quiz"]["answer"])
-    assert result["individual_grade"] == 5
+    assert result["individual_grade"] == 4
     assert result["correct"] is True
 
 
@@ -442,7 +445,7 @@ def test_grade_quiz_classical_definition_pipe_in_meaning(isolated_storage):
     assert q["quiz"]["answer"] == "n.|a|b|c"
 
     result = grade_quiz(q["quiz_id"], "n.|a|b|c")
-    assert result["grade"] == 5
+    assert result["grade"] == 4
     assert result["correct"] is True
 
 
@@ -475,7 +478,7 @@ def test_grade_quiz_classical_definition_quote_mismatch(isolated_storage):
 
 def test_grade_quiz_classical_definition_updates_sm2(isolated_storage):
     """zh_classical 释义题全部评完后更新 SM-2 状态与复习记录"""
-    from vocabcraft_mcp.tools.crud import save_vocab, get_storage
+    from vocabcraft_mcp.tools.crud import get_storage, save_vocab
 
     save_vocab(_make_classical_vocab())
     gen = generate_quiz("vocab_001", "释义")
@@ -483,19 +486,19 @@ def test_grade_quiz_classical_definition_updates_sm2(isolated_storage):
 
     # 评第一题：不更新 SM-2
     r1 = grade_quiz(quizzes[0]["quiz_id"], quizzes[0]["quiz"]["answer"])
-    assert r1["individual_grade"] == 5
+    assert r1["individual_grade"] == 4
     assert r1["remaining"] == 1
     v = get_storage().load_vocab("vocab_001")
     assert v.review_state.repetitions == 0  # 未更新
 
     # 评第二题：全部评完，更新 SM-2
     r2 = grade_quiz(quizzes[1]["quiz_id"], quizzes[1]["quiz"]["answer"])
-    assert r2["word_grade"] == 5
+    assert r2["word_grade"] == 4
     assert r2["remaining"] == 0
 
     v = get_storage().load_vocab("vocab_001")
     assert v.review_state.repetitions == 1
-    assert v.review_state.ease_factor == pytest.approx(2.6, abs=1e-3)
+    assert v.review_state.ease_factor == pytest.approx(2.5, abs=1e-3)
 
     records = get_storage().list_all_review_records()
     assert len(records) == 1
@@ -525,12 +528,13 @@ def test_generate_classical_quiz_uses_round_robin_definition(isolated_storage):
     assert indices == {0, 1}
 
     # 模拟 definition_index=0 已复习一次
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     from vocabcraft_mcp.models import ReviewRecord
     rec = ReviewRecord(
         record_id="rec_test_001",
         vocab_id="vocab_test_001",
-        review_time=datetime.now(timezone.utc),
+        review_time=datetime.now(UTC),
         grade=5,
         prev_ease=2.5,
         new_ease=2.6,
@@ -614,7 +618,7 @@ def test_grade_quiz_transfers_example_index(isolated_storage):
 
     # 评第一道（example_index=0）
     grade_result = grade_quiz(quizzes[0]["quiz_id"], "n.|兵器")
-    assert grade_result["individual_grade"] == 5
+    assert grade_result["individual_grade"] == 4
     assert grade_result["remaining"] == 1
 
     # 检查 Quiz 保留 example_index
@@ -625,7 +629,7 @@ def test_grade_quiz_transfers_example_index(isolated_storage):
 
     # 评第二道（example_index=1），全部评完
     grade_result2 = grade_quiz(quizzes[1]["quiz_id"], "n.|兵器")
-    assert grade_result2["word_grade"] == 5
+    assert grade_result2["word_grade"] == 4
 
     # 词级 ReviewRecord 不绑定义项
     records = storage.list_all_review_records()
@@ -648,7 +652,7 @@ def test_grade_quiz_classical_definition_with_pos_prefix(isolated_storage):
     q = gen["quizzes"][0]
 
     result = grade_quiz(q["quiz_id"], "n.|兵器")
-    assert result["individual_grade"] == 5
+    assert result["individual_grade"] == 4
     assert result["correct"] is True
 
 
@@ -661,7 +665,7 @@ def test_grade_quiz_classical_definition_with_zh_pos_prefix(isolated_storage):
     q = gen["quizzes"][0]
 
     result = grade_quiz(q["quiz_id"], "名词|兵器")
-    assert result["individual_grade"] == 5
+    assert result["individual_grade"] == 4
     assert result["correct"] is True
 
 
@@ -675,7 +679,7 @@ def test_grade_quiz_classical_definition_mixed_pos_style(isolated_storage):
 
     # 期望 n.|兵器，用户用中文词性回答
     result = grade_quiz(q["quiz_id"], "名词|兵器")
-    assert result["individual_grade"] == 5
+    assert result["individual_grade"] == 4
     assert result["correct"] is True
 
 

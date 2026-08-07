@@ -1,6 +1,6 @@
 # tests/test_web_routes.py
 """测试 Web 路由层 — Dashboard、统计、复习、出题端点"""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -36,8 +36,8 @@ def _make_vocab(word, vid, language="en", repetitions=0, next_review=""):
             repetitions=repetitions,
             next_review=next_review,
         ),
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -98,7 +98,7 @@ def test_stats_api(client):
 def test_review_partial(client):
     """复习片段返回待复习清单"""
     test_client, storage = client
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     storage.save_vocab(_make_vocab("due", "vocab_001", next_review=today))
 
     response = test_client.get("/partials/review")
@@ -189,8 +189,8 @@ def _make_classical_vocab(word, vid, next_review=""):
             language="zh_classical",
         ),
         review_state=ReviewState(next_review=next_review),
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -331,7 +331,7 @@ def test_vocab_detail_unknown_vocab(client):
 
 def _today_iso():
     """当前 UTC 日期字符串"""
-    return datetime.now(timezone.utc).date().isoformat()
+    return datetime.now(UTC).date().isoformat()
 
 
 def test_start_batch_review_route(client):

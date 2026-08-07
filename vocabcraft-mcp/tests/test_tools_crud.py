@@ -11,10 +11,14 @@
 
 import pytest
 
-from vocabcraft_mcp.tools.crud import (
-    save_vocab, query_vocab, update_vocab, delete_vocab, get_storage,
-)
 from vocabcraft_mcp.storage import Storage
+from vocabcraft_mcp.tools.crud import (
+    delete_vocab,
+    get_storage,
+    query_vocab,
+    save_vocab,
+    update_vocab,
+)
 
 
 def _make_vocab_data(word: str = "hello", vocab_id: str | None = None) -> dict:

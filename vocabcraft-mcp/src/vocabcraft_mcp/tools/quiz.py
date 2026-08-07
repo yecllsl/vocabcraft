@@ -9,6 +9,8 @@
       再调用 update_vocab 或重新 save_quiz 写回真实题目
     - grade_quiz 客观题（选择/填空/拼写）工具内精确匹配；
       释义题（主观）返回 grade_prompt 交宿主 LLM 评分，骨架阶段默认 grade=3
+    - 评分四级制 4/3/2/1（4 完全记住 / 3 勉强记住 / 2 部分错 / 1 几乎忘），
+      grade<3 视为失败、重置复习周期（与 SM-2 边界一致）
 """
 import random
 
@@ -22,7 +24,8 @@ from vocabcraft_mcp.prompts.quiz_grade_prompt import GRADE_PROMPT
 from vocabcraft_mcp.tools.crud import _now_utc, get_storage, update_vocab
 
 # 客观题：工具内精确匹配评分；zh_classical 释义题按 "词性|释义" 客观评分；
-# 其他释义题为主观题交 LLM
+# 其他释义题为主观题交 LLM。
+# 四级评分制 4/3/2/1：客观题答对=4、答错=1；zh_classical 释义题见 _grade_definition
 _OBJECTIVE_TYPES = {"选择", "填空", "拼写"}
 
 
@@ -156,8 +159,8 @@ def _match_meaning(expected: str, actual: str) -> bool:
     """
     raw_parts = _MEANING_SEP_RE.split(expected.strip())
     # 去除文言虚词后缀，统一比较基准
-    _PARTICLES = "也矣乎哉之者"
-    parts = [p.strip().strip(_PARTICLES).strip() for p in raw_parts if p.strip()]
+    _particles = "也矣乎哉之者"
+    parts = [p.strip().strip(_particles).strip() for p in raw_parts if p.strip()]
     actual_text = actual.strip()
     if not parts or not actual_text:
         return False
@@ -175,19 +178,17 @@ def _match_meaning(expected: str, actual: str) -> bool:
         ep = parts[0]
         if ep in actual_text:
             return True
-        if actual_text in ep and len(actual_text) >= len(ep) // 2:
-            return True
-        return False
+        return actual_text in ep and len(actual_text) >= len(ep) // 2
 
 
 def _grade_definition(expected_answer: str, user_response: str) -> int:
-    """义项级评分：按词性和释义两个维度分别匹配
+    """义项级评分：按词性和释义两个维度分别匹配（四级制 4/3/2/1）
 
     Returns:
-        5: 词性+释义都对
-        3: 词性对但释义错
-        2: 词性错但释义对
-        0: 都错
+        4: 词性+释义都对（完全记住）
+        3: 词性对但释义错（勉强记住）
+        2: 词性错但释义对（部分错）
+        1: 都错（几乎忘）
     """
     exp_pos, _, exp_meaning = expected_answer.partition("|")
     act_pos, _, act_meaning = user_response.partition("|")
@@ -196,12 +197,12 @@ def _grade_definition(expected_answer: str, user_response: str) -> int:
     meaning_ok = _match_meaning(exp_meaning, act_meaning)
 
     if pos_ok and meaning_ok:
-        return 5
+        return 4
     if pos_ok:
         return 3
     if meaning_ok:
         return 2
-    return 0
+    return 1
 
 
 def _composite_word_grade(definition_grades: list[int]) -> int:
@@ -238,10 +239,7 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
 
     # 题型：用户提供 or 按语言默认
     # ponytail: 中文/文言文默认"释义"（汉字无"拼写"概念），英语/德语默认"拼写"
-    if quiz_type:
-        qtype = quiz_type
-    else:
-        qtype = "释义" if v.structured.language.startswith("zh") else "拼写"
+    qtype = quiz_type or ("释义" if v.structured.language.startswith("zh") else "拼写")
 
     # zh_classical 释义题：遍历所有义项的所有例句，每条例句生成独立 quiz
     # 确保每个义项的所有例句都被考查到，避免只考一个义项的部分例句
@@ -299,10 +297,7 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
 
     # 非 zh_classical：选一个义项，单个 quiz
     if defs:
-        if len(defs) > 1:
-            definition_index = random.randrange(len(defs))
-        else:
-            definition_index = 0
+        definition_index = random.randrange(len(defs)) if len(defs) > 1 else 0  # noqa: B311  # 仅出题采样义项，非安全用途
         selected = defs[definition_index]
         defs_block = f"1. {selected.text}" + "".join(f"\n   - {e}" for e in selected.examples)
     else:
@@ -346,8 +341,8 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
 
     评分分两层：
     1. 义项级（individual_grade）：每道题独立评分
-       - zh_classical 释义题: 按词性+释义两个维度 fuzzy matching → 5/3/2/0
-       - 客观题（选择/填空/拼写）: 精确匹配 → 5/0
+       - zh_classical 释义题: 按词性+释义两个维度 fuzzy matching → 4/3/2/1
+       - 客观题（选择/填空/拼写）: 精确匹配 → 4/1
        - 其他释义题（主观）: 交宿主 LLM，骨架阶段默认 3
     2. 词级（word_grade）：该词所有 quiz 评完后聚合
        - 公式: round((min + avg) / 2)
@@ -376,11 +371,11 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
     # ── 1. 计算义项级 grade ──
     if quiz.quiz_type in _OBJECTIVE_TYPES:
         correct = response.strip().lower() == quiz.answer.strip().lower()
-        individual_grade = 5 if correct else 0
+        individual_grade = 4 if correct else 1
         result["correct"] = correct
     elif quiz.quiz_type == "释义" and vocab.structured.language == "zh_classical":
         individual_grade = _grade_definition(quiz.answer, response)
-        result["correct"] = individual_grade == 5
+        result["correct"] = individual_grade == 4
     else:
         result["grade_prompt"] = GRADE_PROMPT.format(
             question=quiz.question,
@@ -409,7 +404,12 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
             gen_date = q.generated_at.date().isoformat() if q.generated_at else ""
             if gen_date >= today_str:
                 # 同批次判定：生成时间差 ≤ 60s
-                time_diff = abs((q.generated_at - quiz.generated_at).total_seconds()) if q.generated_at and quiz.generated_at else 999
+                has_both = q.generated_at is not None and quiz.generated_at is not None
+                time_diff = (
+                    abs((q.generated_at - quiz.generated_at).total_seconds())
+                    if has_both
+                    else 999
+                )
                 if time_diff <= 60:
                     vocab_quizzes.append(q)
     ungraded = [q for q in vocab_quizzes if not q.graded]

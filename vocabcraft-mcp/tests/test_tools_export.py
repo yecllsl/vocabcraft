@@ -12,10 +12,8 @@
 import csv
 import json
 
-import pytest
-
-from vocabcraft_mcp.tools.export import export_data
 from vocabcraft_mcp.tools.crud import save_vocab
+from vocabcraft_mcp.tools.export import export_data
 
 
 def test_export_importable():

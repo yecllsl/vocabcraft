@@ -8,10 +8,11 @@
 import pytest
 
 from vocabcraft_mcp.algorithms import (
-    compute_next_review, get_initial_schedule,
-    MIN_EASE_FACTOR, DEFAULT_EASE_FACTOR,
+    DEFAULT_EASE_FACTOR,
+    MIN_EASE_FACTOR,
+    compute_next_review,
+    get_initial_schedule,
 )
-
 
 # ──────────────────────────────────────────
 # 输入校验

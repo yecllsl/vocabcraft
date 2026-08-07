@@ -8,12 +8,10 @@
     - 不存在词汇返回 error
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-import pytest
-
-from vocabcraft_mcp.tools.review import schedule_review
 from vocabcraft_mcp.tools.crud import save_vocab
+from vocabcraft_mcp.tools.review import schedule_review
 
 
 def _save_with_review(word: str, vocab_id: str, next_review: str, make_vocab_data) -> None:
@@ -42,7 +40,7 @@ def test_schedule_review_single_vocab(isolated_storage, make_vocab_data):
 
 def test_schedule_review_aggregate_due(isolated_storage, make_vocab_data):
     """未指定 vocab_id 返回到期词汇列表（next_review <= today）"""
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     # 到期词：next_review = 今天
     _save_with_review("hello", "vocab_001", today, make_vocab_data)
     _save_with_review("world", "vocab_002", today, make_vocab_data)
@@ -72,7 +70,7 @@ def test_schedule_review_nonexistent_returns_error(isolated_storage):
 
 def test_schedule_review_is_due_flag(isolated_storage, make_vocab_data):
     """is_due 标记：到期词 True，未到期 False"""
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     _save_with_review("due", "vocab_001", today, make_vocab_data)
     _save_with_review("notdue", "vocab_002", "2099-12-31", make_vocab_data)
 
@@ -82,7 +80,7 @@ def test_schedule_review_is_due_flag(isolated_storage, make_vocab_data):
 
 def test_schedule_review_filters_by_language(isolated_storage, make_vocab_data):
     """schedule_review(language=xx) 应只返回该语种到期词汇"""
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
 
     # 英语词汇，今天到期
     data_en = make_vocab_data(word="hello", vocab_id="vocab_lang_en", language="en")

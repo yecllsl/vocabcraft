@@ -9,10 +9,9 @@
     - trends 固定 30 天
 """
 
-import pytest
 
-from vocabcraft_mcp.tools.statistics import get_statistics
 from vocabcraft_mcp.tools.crud import save_vocab
+from vocabcraft_mcp.tools.statistics import get_statistics
 
 
 def test_statistics_importable():

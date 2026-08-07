@@ -13,9 +13,9 @@
 """
 import csv
 import json
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
-from vocabcraft_mcp.tools.crud import get_storage, _DEFAULT_DATA_DIR
+from vocabcraft_mcp.tools.crud import _DEFAULT_DATA_DIR, get_storage
 
 # 支持的导出格式
 _VALID_FORMATS = {"json", "csv"}
@@ -65,7 +65,7 @@ def _flatten_vocab(v: dict) -> dict:
     }
 
 
-def export_data(format: str = "json", filters: dict = None) -> dict:
+def export_data(format: str = "json", filters: dict | None = None) -> dict:
     """导出词汇数据到文件
 
     Args:
@@ -83,7 +83,7 @@ def export_data(format: str = "json", filters: dict = None) -> dict:
 
     exports_dir = _DEFAULT_DATA_DIR / "exports"
     exports_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
 
     if format == "json":
         fp = exports_dir / f"vocabs_{timestamp}.json"

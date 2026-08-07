@@ -15,8 +15,7 @@ review_state 子字段而不动 structured，避免覆盖用户确认过的词�
 """
 from __future__ import annotations
 
-from datetime import date, datetime
-from typing import Optional
+from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -142,7 +141,7 @@ class StructuredVocab(BaseModel):
     part_of_speech: str = Field(default="", description="词性，如 n./v./adj.")
     definitions: list[Definition] = Field(default_factory=list, description="释义列表，每项含 text 与关联例句 examples")
     language: str = Field(default="en", description="语言代码（en/zh/zh_classical/de，支持别名归一化）")
-    source_image: Optional[str] = Field(default=None, description="原图路径，手动录入为 None")
+    source_image: str | None = Field(default=None, description="原图路径，手动录入为 None")
 
     @model_validator(mode="before")
     @classmethod
@@ -208,8 +207,8 @@ class ReviewState(BaseModel):
     interval: int = Field(default=0, description="当前复习间隔(天)")
     repetitions: int = Field(default=0, description="已连续答对次数")
     next_review: str = Field(default="", description="下次到期复习日期 YYYY-MM-DD，空串=未排程")
-    last_review: Optional[str] = Field(default=None, description="上次复习日期 YYYY-MM-DD")
-    last_word_grade: Optional[int] = Field(default=None, description="上次词级综合评分 0-5，用于掌握度判定")
+    last_review: str | None = Field(default=None, description="上次复习日期 YYYY-MM-DD")
+    last_word_grade: int | None = Field(default=None, description="上次词级综合评分 1-4，用于掌握度判定")
 
 
 class VocabRecord(BaseModel):
@@ -244,19 +243,19 @@ class Quiz(BaseModel):
     vocab_id: str = Field(description="关联词汇ID")
     quiz_type: str = Field(description="题型：选择/填空/拼写/释义")
     question: str = Field(description="题干内容")
-    options: Optional[list[str]] = Field(default=None, description="选项列表，仅选择题填值")
+    options: list[str] | None = Field(default=None, description="选项列表，仅选择题填值")
     answer: str = Field(description="正确答案")
     generated_at: datetime = Field(description="生成时间")
     graded: bool = Field(default=False, description="是否已评分")
-    individual_grade: Optional[int] = Field(
+    individual_grade: int | None = Field(
         default=None,
-        description="义项级评分 5/3/2/0，仅 zh_classical 释义题填充"
+        description="义项级评分 4/3/2/1，仅 zh_classical 释义题填充"
     )
-    definition_index: Optional[int] = Field(
+    definition_index: int | None = Field(
         default=None,
         description="考查的义项索引（definitions 列表下标），单词义词为 0"
     )
-    example_index: Optional[int] = Field(
+    example_index: int | None = Field(
         default=None,
         description="考查的例句索引（definitions[i].examples 列表下标）"
     )
@@ -286,14 +285,14 @@ class ReviewRecord(BaseModel):
     record_id: str = Field(description="复习记录唯一ID")
     vocab_id: str = Field(description="关联词汇ID")
     review_time: datetime = Field(description="复习时间")
-    grade: int = Field(description="评分 0-5，参考 SM-2")
+    grade: int = Field(description="评分 1-4（参考 SM-2：4 完全记住/3 勉强记住/2 部分错/1 几乎忘）")
     prev_ease: float = Field(description="评分前 EF")
     new_ease: float = Field(description="评分后 EF")
-    definition_index: Optional[int] = Field(
+    definition_index: int | None = Field(
         default=None,
         description="本次复习考查的义项索引，透传自 Quiz"
     )
-    example_index: Optional[int] = Field(
+    example_index: int | None = Field(
         default=None,
         description="本次复习考查的例句索引，透传自 Quiz"
     )
@@ -317,7 +316,7 @@ class ReviewSchedule(BaseModel):
     vocab_id: str = Field(description="关联词汇ID")
     due_date: str = Field(description="到期日期 YYYY-MM-DD")
     status: str = Field(default="待复习", description="状态：待复习/已完成/已跳过")
-    quiz_id: Optional[str] = Field(default=None, description="关联考题ID，未生成为 None")
+    quiz_id: str | None = Field(default=None, description="关联考题ID，未生成为 None")
 
     @field_validator("status")
     @classmethod

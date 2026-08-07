@@ -36,7 +36,7 @@ def _safe_mark(value: str) -> Markup:
     """
     parts = _MARK_TAG_RE.split(str(value))
     escaped = [escape(part) if i % 2 == 0 else part for i, part in enumerate(parts)]
-    return Markup("".join(escaped))
+    return Markup("".join(escaped))  # noqa: B704  # 输入已逐片段 escape，仅放行 <mark> 标签
 
 
 # 全局模板实例，供路由模块复用
@@ -70,7 +70,7 @@ def create_app() -> FastAPI:
         return templates.TemplateResponse(request, "base.html", {})
 
     # 注册路由模块
-    from vocabcraft_mcp.web.routes import dashboard, stats, review, quiz, vocab, insights
+    from vocabcraft_mcp.web.routes import dashboard, insights, quiz, review, stats, vocab
 
     app.include_router(dashboard.router)
     app.include_router(stats.router)
@@ -90,7 +90,7 @@ def main():
     """
     import uvicorn
 
-    host = os.environ.get("VOCABCRAFT_WEB_HOST", "0.0.0.0")
+    host = os.environ.get("VOCABCRAFT_WEB_HOST", "0.0.0.0")  # nosec B104  # 本地工具，绑定地址可由环境变量覆盖，非公网暴露
     port = int(os.environ.get("VOCABCRAFT_WEB_PORT", "8002"))
 
     uvicorn.run(

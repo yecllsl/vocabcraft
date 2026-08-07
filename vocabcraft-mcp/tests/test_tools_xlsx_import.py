@@ -253,8 +253,149 @@ def test_import_xlsx_empty_file(isolated_storage):
 def test_import_xlsx_vocab_registered_as_mcp_tool():
     """import_xlsx_vocab 已注册为 MCP 工具"""
     import asyncio
+
     from vocabcraft_mcp.server import mcp
 
     tools = asyncio.run(mcp.list_tools())
     tool_names = [tool.name for tool in tools]
     assert "import_xlsx_vocab" in tool_names
+
+
+# ──────────────────────────────────────────
+# 文言文实词表格式（自动检测分支）
+# ──────────────────────────────────────────
+
+def _create_classical_xlsx(tmp_path, filename, title, header, rows):
+    """创建文言文实词表格式 xlsx（首行标题 + 列头 + 数据行）"""
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append([title])
+    ws.append(header)
+    for row in rows:
+        ws.append(row)
+    path = tmp_path / filename
+    wb.save(path)
+    wb.close()
+    return path
+
+
+def test_import_classical_chinese_success(isolated_storage):
+    """文言文格式被自动检测并导入，例句含篇名、词性继承、例句追加均生效"""
+    path = _create_classical_xlsx(
+        isolated_storage,
+        "classical.xlsx",
+        "1. 兵 (bīng)",
+        ["词性", "词义", "例句", "篇名"],
+        [
+            ["n.", "武器；兵器", "兵者，国之大事。", "孙子兵法"],
+            ["", "士兵；军队", "可汗大点兵。", "木兰诗"],  # 词性继承上一行
+            ["", "", "兵败如山倒。", "史记"],  # 无词义：例句追加到上一条释义
+        ],
+    )
+    result = import_xlsx_vocab(str(path))
+    assert result["success_count"] == 1
+    assert result["error_count"] == 0
+    assert len(result["imported_vocabs"]) == 1
+    vid = result["imported_vocabs"][0]
+    # 校验落地数据：语言被强制为文言文
+    from vocabcraft_mcp.storage import Storage
+
+    rec = Storage(isolated_storage).load_vocab(vid)
+    assert rec is not None
+    assert rec.structured.language == "zh_classical"
+    defs = rec.structured.definitions
+    assert len(defs) == 2
+    # 第二条释义聚合了第 3 行的例句
+    assert any("兵败如山倒" in e for d in defs for e in d.examples)
+    # 篇名拼接
+    assert any("《孙子兵法》" in e for d in defs for e in d.examples)
+
+
+def test_import_classical_chinese_no_data_rows(isolated_storage):
+    """仅有表头无数据行时优雅返回"""
+    path = _create_classical_xlsx(
+        isolated_storage,
+        "classical_empty.xlsx",
+        "2. 错 (cuò)",
+        ["词性", "词义", "例句", "篇名"],
+        [],
+    )
+    result = import_xlsx_vocab(str(path))
+    assert result["success_count"] == 0
+    assert "未解析到任何释义" in result["errors"][0]
+
+
+def test_import_classical_chinese_save_failure(monkeypatch, isolated_storage):
+    """保存失败时 error_count 递增并报告"""
+    path = _create_classical_xlsx(
+        isolated_storage,
+        "classical_fail.xlsx",
+        "3. 达 (dá)",
+        ["词性", "词义", "例句", "篇名"],
+        [["v.", "到达", "到达目的地。", "论语"]],
+    )
+    monkeypatch.setattr(
+        "vocabcraft_mcp.tools.xlsx_import.save_vocab",
+        lambda data: {"error": "mock save failed"},
+    )
+    result = import_xlsx_vocab(str(path))
+    assert result["success_count"] == 0
+    assert result["error_count"] == 1
+    assert "保存失败" in result["errors"][0]
+
+
+# ──────────────────────────────────────────
+# 边界：指定工作表 / 读取失败
+# ──────────────────────────────────────────
+
+def test_import_xlsx_named_sheet_exists(isolated_storage):
+    """指定存在的工作表时正常读取"""
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+    target = wb.create_sheet("Vocab")
+    target.append(["word", "definitions"])
+    target.append(["hello", "你好"])
+    path = isolated_storage / "multi_sheet.xlsx"
+    wb.save(path)
+    wb.close()
+
+    result = import_xlsx_vocab(str(path), sheet_name="Vocab")
+    assert result["success_count"] == 1
+
+
+def test_import_xlsx_read_failure(monkeypatch, isolated_storage):
+    """openpyxl 读取抛异常时优雅返回错误"""
+    import openpyxl
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["word", "definitions"])
+    path = isolated_storage / "broken.xlsx"
+    wb.save(path)
+    wb.close()
+
+    def _boom(*args, **kwargs):
+        raise OSError("disk error")
+
+    monkeypatch.setattr(openpyxl, "load_workbook", _boom)
+    result = import_xlsx_vocab(str(path))
+    assert result["success_count"] == 0
+    assert "读取 Excel 文件失败" in result["errors"][0]
+
+
+def test_import_xlsx_standard_with_empty_header_cell(isolated_storage):
+    """表头含空单元格时跳过该列而不报错"""
+    path = _create_xlsx(
+        isolated_storage,
+        "sparse_header.xlsx",
+        ["word", "", "definitions"],
+        [["hello", "ignored", "你好"]],
+    )
+    result = import_xlsx_vocab(str(path))
+    assert result["success_count"] == 1
+

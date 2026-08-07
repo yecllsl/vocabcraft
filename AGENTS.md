@@ -123,7 +123,7 @@ Not lazy about: input validation at trust boundaries, error handling that preven
 ### 复习规则
 
 1. 复习排程由 `algorithms.py` 改良版 SM-2 驱动（参数见技术栈）。
-2. grade 标准 0-5（5 完全记住 / 4 略迟疑 / 3 勉强记住 / 2 部分错 / 1 几乎忘 / 0 完全忘）。**当前实现**：客观题（选择/填空/拼写）精确匹配 → 对 grade=5、错 grade=0；主观释义题交宿主 LLM 评分，骨架阶段默认 grade=3 推进 SM-2。**目标**：实现 4/3/2/1 四级区分。
+2. grade 标准 0-5（5 完全记住 / 4 略迟疑 / 3 勉强记住 / 2 部分错 / 1 几乎忘 / 0 完全忘）。**当前实现（四级制 4/3/2/1，已落地）**：客观题（选择/填空/拼写）精确匹配 → 对 grade=4、错 grade=1；zh_classical 释义题按词性+释义两个维度 fuzzy matching → 4（都对）/3（词性对释义错）/2（词性错释义对）/1（都错）；其他释义题交宿主 LLM 评分，范围 1-4，骨架阶段默认 grade=3 推进 SM-2。grade<3 视为失败、重置复习周期（与 SM-2 边界一致）。
 3. grade<3 必须重置复习周期（reps 归零、间隔=1 天），不递增间隔。
 4. 到期词汇（`next_review <= 今天`）必须复习；跳过需记录原因且不延后日期。
 5. 每次评分后更新 SM-2 状态（repetitions / ease_factor / next_review）。
@@ -158,7 +158,7 @@ Not lazy about: input validation at trust boundaries, error handling that preven
 | `/capture` | 录词/录入/拍照录词 | vocabcraft-capture | `parse_vocab`（对话>路径>文本）、`save_vocab` |
 | `/review` | 复习/该复习了 | vocabcraft-review | `schedule_review`、`generate_quiz`、`grade_quiz` |
 | `/quiz` | 出题/考我/练一练 | vocabcraft-quiz | `generate_quiz`、`grade_quiz` |
-| `/stats` | 统计/词汇量/掌握度 | vocabcraft-stats | `get_statistics`（group_by: overview/mastery/date/review） |
+| `/stats` | 统计/词汇量/掌握度 | vocabcraft-stats | `get_statistics`（group_by: language/mastery/date/quiz_type） |
 | `/export` | 导出/备份/导出 csv | vocabcraft-export | `export_data`（json 默认 / csv） |
 
 Excel 批量导入：自然语言"导入Excel文件/从表格添加词汇"，调用 `import_xlsx_vocab`。

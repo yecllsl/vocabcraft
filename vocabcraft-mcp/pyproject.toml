@@ -23,6 +23,9 @@ dev = [
     "httpx>=0.27",
     "playwright>=1.40",
     "openpyxl>=3.1.0",
+    "ruff>=0.16.0",
+    "mypy>=1.10.0",
+    "bandit>=1.8.0",
 ]
 
 [project.scripts]
@@ -41,3 +44,48 @@ markers = [
     "e2e: End-to-end tests that require Playwright and a running web server. Run with `uv run pytest -m e2e`, CI splits them into a dedicated job.",
 ]
 asyncio_mode = "auto"
+
+# ──────────────────────────────────────────
+# Ruff 配置（严格集: E,F,W,I,N,UP,B,SIM）
+# 数据来源: AGENTS.md「质量与合规规则」要求提交前通过 ruff
+# ──────────────────────────────────────────
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+# B008: FastAPI 在默认参数中调用 Depends() 属预期用法，非真实 bug
+ignore = ["B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["vocabcraft_mcp"]
+
+[tool.ruff.lint.per-file-ignores]
+# prompt 模板文本行，拆分会改变送达 LLM 的内容，故豁免行长限制
+"src/vocabcraft_mcp/prompts/**" = ["E501"]
+
+# ──────────────────────────────────────────
+# Mypy 配置（AGENTS.md 要求提交前通过 mypy）
+# ──────────────────────────────────────────
+[tool.mypy]
+python_version = "3.12"
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+# markupsafe 无类型存根，放行
+[[tool.mypy.overrides]]
+module = "markupsafe.*"
+ignore_missing_imports = true
+
+# ──────────────────────────────────────────
+# Bandit 配置（AGENTS.md 要求发布前通过 bandit）
+# 数据来源: 用户对 bandit 6 项扫出结果的决策
+#   - B704: web/app.py 的 Markup 输入已逐片段 escape，仅放行 <mark> 标签，安全
+#   - B110: xlsx_import 解析失败时吞异常仅上报错误，符合业务"失败不放大"规则
+#   - B311: quiz/services 的 random 仅用于出题干扰项与抽样（非安全用途）
+#   - B104: web/app.py 绑定 0.0.0.0 为本地工具预期行为，地址可由 VOCABCRAFT_WEB_HOST 覆盖
+# ──────────────────────────────────────────
+[tool.bandit]
+exclude = ["tests"]
+skips = ["B704", "B110", "B311"]

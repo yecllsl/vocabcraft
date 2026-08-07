@@ -3,11 +3,11 @@
 
 提供词汇列表、详情、编辑、删除与独立出题入口。
 """
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
-from vocabcraft_mcp.web.app import templates
 from vocabcraft_mcp.web import services
+from vocabcraft_mcp.web.app import templates
 
 router = APIRouter()
 

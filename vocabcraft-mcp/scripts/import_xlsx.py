@@ -20,7 +20,6 @@
     uv run python scripts/import_xlsx.py data/images/61.xlsx -n
 """
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -37,7 +36,7 @@ def _format_summary(results: list[dict], file_names: list[str]) -> str:
     total_success = sum(r["success_count"] for r in results)
     total_error = sum(r["error_count"] for r in results)
     lines = ["=" * 60, "导入结果摘要", "=" * 60]
-    for fname, result in zip(file_names, results):
+    for fname, result in zip(file_names, results, strict=False):
         status = "✓" if result["error_count"] == 0 else "✗"
         ids = ", ".join(result["imported_vocabs"]) if result["imported_vocabs"] else "-"
         errs = "; ".join(result["errors"]) if result["errors"] else ""
@@ -73,8 +72,8 @@ def import_single(path: str, language: str, sheet_name: str | None, dry_run: boo
             lines.append([str(c)[:40] if c is not None else "" for c in (row or [])])
         wb.close()
         print(f"--- 预览: {path_obj.name} (前 {min(len(lines), 20)} 行) ---")
-        for l in lines:
-            print(f"  {l}")
+        for line in lines:
+            print(f"  {line}")
         print()
         # 返回模拟结果
         return {"success_count": 0, "error_count": 0, "errors": [], "imported_vocabs": ["(预览模式，未保存)"]}
@@ -92,12 +91,32 @@ def import_directory(
     """导入目录下所有 .xlsx 文件"""
     dir_path = Path(directory)
     if not dir_path.is_dir():
-        return [{"success_count": 0, "error_count": 1, "errors": [f"目录不存在: {directory}"], "imported_vocabs": []}], [directory]
+        return (
+            [
+                {
+                    "success_count": 0,
+                    "error_count": 1,
+                    "errors": [f"目录不存在: {directory}"],
+                    "imported_vocabs": [],
+                }
+            ],
+            [directory],
+        )
 
     pattern = "**/*.xlsx" if recursive else "*.xlsx"
     files = sorted(dir_path.glob(pattern))
     if not files:
-        return [{"success_count": 0, "error_count": 0, "errors": [f"目录 '{directory}' 下没有 .xlsx 文件"], "imported_vocabs": []}], [directory]
+        return (
+            [
+                {
+                    "success_count": 0,
+                    "error_count": 0,
+                    "errors": [f"目录 '{directory}' 下没有 .xlsx 文件"],
+                    "imported_vocabs": [],
+                }
+            ],
+            [directory],
+        )
 
     results = []
     names = []

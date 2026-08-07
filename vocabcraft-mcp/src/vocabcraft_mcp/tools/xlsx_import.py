@@ -8,6 +8,7 @@
 """
 import re
 from pathlib import Path
+from typing import Any
 
 from vocabcraft_mcp.models import normalize_language, normalize_pos
 from vocabcraft_mcp.tools.crud import save_vocab
@@ -21,7 +22,7 @@ def _cell_str(cell: object) -> str:
 _CLASSICAL_CHINESE_KEYWORDS = {"词性", "词义", "例句", "篇名"}
 
 
-def _is_classical_chinese_worksheet(worksheet: object) -> bool:
+def _is_classical_chinese_worksheet(worksheet: Any) -> bool:
     """检测工作表是否为文言文实词表格式
 
     检测规则: 读取前 5 行，若某行同时包含"词性"和"词义"列名，则判定为文言文格式。
@@ -34,7 +35,7 @@ def _is_classical_chinese_worksheet(worksheet: object) -> bool:
             keyword_hits = _CLASSICAL_CHINESE_KEYWORDS & cells
             if "词性" in keyword_hits and "词义" in keyword_hits:
                 return True
-    except Exception:  # noqa: BLE001 - 检测失败时安全回退到标准格式
+    except Exception:  # noqa: BLE001, B110  # 检测为启发式，失败时安全回退到标准格式
         pass
     return False
 
@@ -66,7 +67,7 @@ def _parse_title_row(title_text: str) -> tuple[str, str]:
     return (word, phonetic)
 
 
-def _find_classical_chinese_header_row(worksheet: object) -> tuple[int, dict[str, int]]:
+def _find_classical_chinese_header_row(worksheet: Any) -> tuple[int, dict[str, int]]:
     """查找文言文格式的列头行，返回 (行号, 列名→列索引 映射)
 
     Returns:
@@ -93,8 +94,8 @@ def _find_classical_chinese_header_row(worksheet: object) -> tuple[int, dict[str
 
 
 def _import_classical_chinese(
-    worksheet: object,
-    workbook: object,
+    worksheet: Any,
+    workbook: Any,
     xlsx_path: str,
     language: str,
 ) -> dict:
@@ -138,11 +139,9 @@ def _import_classical_chinese(
 
     # 3. 解析数据行
     definitions: list[dict] = []
-    errors: list[str] = []
     current_pos = ""  # 当前词性（行内继承）
-    current_def_text = ""  # 当前词义文本（用于去重合并）
 
-    for row_idx, row in enumerate(
+    for _, row in enumerate(
         worksheet.iter_rows(min_row=header_row + 1, values_only=True),
         start=header_row + 1,
     ):
@@ -170,8 +169,6 @@ def _import_classical_chinese(
 
         if raw_def:
             # 新词义行
-            current_def_text = raw_def
-
             # 检查是否存在相同词性+词义的 definition（合并）
             existing = None
             for d in definitions:
@@ -199,7 +196,7 @@ def _import_classical_chinese(
         return {
             "success_count": 0,
             "error_count": 0,
-            "errors": [f"未解析到任何释义，请检查表格格式"],
+            "errors": ["未解析到任何释义，请检查表格格式"],
             "imported_vocabs": [],
         }
 
@@ -349,7 +346,7 @@ def import_xlsx_vocab(
             continue
 
         row_data: dict = {}
-        for header, cell in zip(headers, row):
+        for header, cell in zip(headers, row, strict=False):
             if header:
                 row_data[header] = cell
 

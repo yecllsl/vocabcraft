@@ -3,11 +3,11 @@
 
 提供复习追踪页面片段、待复习列表 API 和标记复习完成 API。
 """
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
-from vocabcraft_mcp.web.app import templates
 from vocabcraft_mcp.web import services
+from vocabcraft_mcp.web.app import templates
 
 router = APIRouter()
 
@@ -22,7 +22,7 @@ async def review_partial(request: Request, language: str = ""):
 
     # 计算各语种到期数量（用于标签栏）
     all_upcoming = services.get_upcoming_reviews()
-    lang_counts = {}
+    lang_counts: dict[str, int] = {}
     for item in all_upcoming:
         lang = item["language"]
         lang_counts[lang] = lang_counts.get(lang, 0) + 1
@@ -67,9 +67,9 @@ async def start_batch_review_partial(request: Request, language: str = ""):
         forgetting_curve = services.get_forgetting_curve()
 
         all_upcoming = services.get_upcoming_reviews()
-        lang_counts = {}
-        for item in all_upcoming:
-            lang = item["language"]
+        lang_counts: dict[str, int] = {}
+        for up in all_upcoming:
+            lang = up["language"]
             lang_counts[lang] = lang_counts.get(lang, 0) + 1
 
         return templates.TemplateResponse(
@@ -123,7 +123,8 @@ async def grade_batch_review_item_partial(request: Request, batch_id: str, index
     if pos and definition:
         response = f"{pos}|{definition}"
     else:
-        response = form.get("response", "")
+        raw_response = form.get("response", "")
+        response = raw_response if isinstance(raw_response, str) else ""
         if not response:
             response = request.query_params.get("response", "")
 

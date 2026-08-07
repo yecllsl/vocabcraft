@@ -1,14 +1,17 @@
 # src/vocabcraft_mcp/server.py
 """VocabCraft MCP Server 入口
 
-注册所有 MCP 工具（4 个 CRUD + 6 个业务工具），通过 FastMCP 框架对外提供服务。
+注册所有 MCP 工具（4 个 CRUD + 7 个业务工具），通过 FastMCP 框架对外提供服务。
 
 业务流程: 拍照 → 多模态LLM解析 → 结构化解析 → 保存词汇 → 遗忘曲线排程 → 到期提醒 → 出考题 → 评分 → 更新记忆状态
 """
 
 from fastmcp import FastMCP
 
-from vocabcraft_mcp.tools import crud, parse_vocab, review, quiz, statistics, export
+# 工具模块以 _ 前缀导入，避免与下方同名的 @mcp.tool 包装函数发生名字遮蔽
+from vocabcraft_mcp.tools import crud, export, quiz, review, statistics
+from vocabcraft_mcp.tools import parse_vocab as _parse_vocab
+from vocabcraft_mcp.tools import xlsx_import as _xlsx_import
 
 mcp = FastMCP(name="vocabcraft-mcp", instructions="词汇学习与制作MCP Server")
 
@@ -48,14 +51,14 @@ def delete_vocab(vocab_id: str) -> dict:
 @mcp.tool()
 def parse_vocab(image_path: str = "", text: str = "", language: str = "en") -> dict:
     """AI 结构化解析词汇（词形/音标/词性/释义/例句）。
-    两模式优先级：对话多模态（无参数）> 本地路径多模态（image_path）> 文本模式（text）。"""
-    return parse_vocab.parse_vocab(image_path, text, language)
+    三模式优先级：对话多模态（无参数）> 本地路径多模态（image_path）> 文本模式（text）。"""
+    return _parse_vocab.parse_vocab(image_path, text, language)
 
 
 @mcp.tool()
-def schedule_review(vocab_id: str = "") -> dict:
-    """基于遗忘曲线生成复习计划"""
-    return review.schedule_review(vocab_id)
+def schedule_review(vocab_id: str = "", language: str = "") -> dict:
+    """基于遗忘曲线生成复习计划（language 为空则不按语种过滤）"""
+    return review.schedule_review(vocab_id, language)
 
 
 @mcp.tool()
@@ -77,7 +80,7 @@ def get_statistics(group_by: str) -> dict:
 
 
 @mcp.tool()
-def export_data(format: str = "json", filters: dict = None) -> dict:
+def export_data(format: str = "json", filters: dict | None = None) -> dict:
     """导出词汇数据为 JSON/CSV"""
     return export.export_data(format, filters or {})
 
@@ -89,8 +92,7 @@ def import_xlsx_vocab(
     language: str = "en",
 ) -> dict:
     """从 .xlsx 文件批量导入词汇"""
-    from vocabcraft_mcp.tools.xlsx_import import import_xlsx_vocab as _import
-    return _import(xlsx_path, sheet_name or None, language)
+    return _xlsx_import.import_xlsx_vocab(xlsx_path, sheet_name or None, language)
 
 
 def main():

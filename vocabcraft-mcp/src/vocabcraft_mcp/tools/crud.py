@@ -13,8 +13,8 @@
 """
 from pathlib import Path
 
-from vocabcraft_mcp.algorithms import get_initial_schedule, _now_utc
-from vocabcraft_mcp.models import VocabRecord, StructuredVocab, ReviewState, normalize_pos
+from vocabcraft_mcp.algorithms import _now_utc, get_initial_schedule
+from vocabcraft_mcp.models import ReviewState, StructuredVocab, VocabRecord, normalize_pos
 from vocabcraft_mcp.storage import Storage
 
 # 默认数据目录：项目根目录下的 data/ 文件夹

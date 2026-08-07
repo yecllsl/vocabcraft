@@ -1,12 +1,12 @@
 # tests/test_web_services.py
 """测试 Web 服务层 — 编排 storage/statistics/review/quiz"""
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from vocabcraft_mcp.models import Definition, ReviewRecord, ReviewState, StructuredVocab, VocabRecord
 from vocabcraft_mcp.storage import Storage
+from vocabcraft_mcp.tools.quiz import en_to_zh_pos, zh_to_en_pos
 from vocabcraft_mcp.web import services
 
 
@@ -36,8 +36,8 @@ def _make_vocab(word, vid, language="en", repetitions=0, next_review="", last_wo
             next_review=next_review,
             last_word_grade=last_word_grade,
         ),
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -58,8 +58,8 @@ def _make_classical_vocab(word, vid, part_of_speech="n.", definitions=None, next
             repetitions=0,
             next_review=next_review,
         ),
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -88,7 +88,7 @@ def test_dashboard_summary_empty(temp_storage):
 
 def test_dashboard_summary_with_data(temp_storage):
     """有数据时应正确统计"""
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     temp_storage.save_vocab(_make_vocab("hello", "vocab_001", language="en", next_review=today))
     temp_storage.save_vocab(_make_vocab("世界", "vocab_002", language="zh", last_word_grade=4))
 
@@ -125,7 +125,7 @@ def test_multi_dim_stats(temp_storage):
 
 def test_upcoming_reviews(temp_storage):
     """应返回已到期的词汇"""
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     temp_storage.save_vocab(_make_vocab("due", "vocab_001", next_review=today))
     temp_storage.save_vocab(_make_vocab("future", "vocab_002", next_review="2099-01-01"))
 
@@ -138,7 +138,7 @@ def test_get_upcoming_reviews_filters_by_language(temp_storage):
     """get_upcoming_reviews(language=xx) 应只返回该语种词汇"""
     from vocabcraft_mcp.tools.crud import save_vocab
 
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
 
     save_vocab({
         "id": "vocab_web_en",
@@ -165,7 +165,7 @@ def test_get_upcoming_reviews_filters_by_language(temp_storage):
 
 def test_review_calendar(temp_storage):
     """日历应包含当月每一天"""
-    today = datetime.now(timezone.utc)
+    today = datetime.now(UTC)
     temp_storage.save_vocab(_make_vocab("due", "vocab_001", next_review=today.date().isoformat()))
 
     calendar = services.get_review_calendar()
@@ -199,7 +199,7 @@ def test_grade_web_quiz(temp_storage):
     quiz_id = quiz_result["quiz_id"]
 
     result = services.grade_web_quiz(quiz_id, "hello")
-    assert result["grade"] == 5
+    assert result["grade"] == 4
     assert result["correct"] is True
     assert "updated_review_state" in result
 
@@ -273,7 +273,9 @@ def test_generate_web_quiz_classical_expands_examples(temp_storage):
     definitions = [
         Definition(text="兵器", examples=["收天下之兵", "兵者国之大事"]),
     ]
-    temp_storage.save_vocab(_make_classical_vocab("兵", "vocab_web_multi", part_of_speech="n.", definitions=definitions))
+    temp_storage.save_vocab(
+        _make_classical_vocab("兵", "vocab_web_multi", part_of_speech="n.", definitions=definitions)
+    )
 
     result = services.generate_web_quiz("vocab_web_multi", "释义")
     assert "quiz_ids" in result
@@ -368,7 +370,7 @@ def test_delete_vocab(temp_storage):
 
 def _today_iso():
     """当前 UTC 日期字符串"""
-    return datetime.now(timezone.utc).date().isoformat()
+    return datetime.now(UTC).date().isoformat()
 
 
 def test_start_batch_review_with_due_words(temp_storage):
@@ -466,7 +468,7 @@ def test_get_batch_review_summary(temp_storage):
     assert summary["total_words"] == 2
     assert summary["graded_words"] == 2
     assert summary["avg_grade"] == 2.5
-    # 按掌握度分组：hello(word_grade=0) → red, world(word_grade=5) → star
+    # 按掌握度分组：hello(word_grade=1) → red, world(word_grade=4) → green
     assert len(summary["grouped"]["red"]) == 1
     assert summary["grouped"]["red"][0]["word"] == "hello"
     assert summary["next_review_distribution"] != {}
@@ -511,7 +513,7 @@ def test_real_retention_curve_empty_when_no_records(temp_storage):
 def test_real_retention_curve_buckets_by_days_since_first_review(temp_storage):
     """按距首次复习天数分桶，桶内 grade>=3 比例 = 保留率"""
     from vocabcraft_mcp.web.services import _real_retention_curve
-    base = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    base = datetime(2026, 7, 1, tzinfo=UTC)
     temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
 
     # 5 条记录：第 0 天 2 条（grade 5, 2），第 3 天 2 条（grade 4, 1），第 10 天 1 条（grade 5）
@@ -542,7 +544,7 @@ def test_real_retention_curve_buckets_by_days_since_first_review(temp_storage):
 def test_real_retention_curve_filters_by_language(temp_storage):
     """只统计指定语言的复习记录"""
     from vocabcraft_mcp.web.services import _real_retention_curve
-    base = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    base = datetime(2026, 7, 1, tzinfo=UTC)
     temp_storage.save_vocab(_make_vocab("hallo", "vocab_de", language="de"))
     temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical"))
 
@@ -568,7 +570,7 @@ def test_real_retention_curve_filters_by_language(temp_storage):
 def test_weak_words_by_language_filters_grade_below_3(temp_storage):
     """薄弱词 = 该语言下最近一次 ReviewRecord.grade < 3"""
     from vocabcraft_mcp.web.services import _weak_words_by_language
-    base = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    base = datetime(2026, 7, 1, tzinfo=UTC)
     temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
     temp_storage.save_vocab(_make_vocab("welt", "vocab_002", language="de", repetitions=2))
 
@@ -588,7 +590,7 @@ def test_weak_words_by_language_filters_grade_below_3(temp_storage):
 def test_weak_words_by_language_excludes_other_languages(temp_storage):
     """薄弱词只统计指定语言"""
     from vocabcraft_mcp.web.services import _weak_words_by_language
-    base = datetime(2026, 7, 1, tzinfo=timezone.utc)
+    base = datetime(2026, 7, 1, tzinfo=UTC)
     temp_storage.save_vocab(_make_vocab("hallo", "vocab_de", language="de"))
     temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical"))
     temp_storage.save_review_record(_make_review_record("rec_de", "vocab_de", base, grade=1))
@@ -644,8 +646,6 @@ def test_mastery_distribution_by_language_empty(temp_storage):
 # ──────────────────────────────────────────
 # Task 1: 词性解析与中英文映射
 # ──────────────────────────────────────────
-
-from vocabcraft_mcp.tools.quiz import en_to_zh_pos, zh_to_en_pos
 
 
 def test_zh_to_en_pos_single():
@@ -705,7 +705,7 @@ def test_insights_summary_small_sample(temp_storage):
 def test_insights_summary_kpi_today_pending(temp_storage):
     """KPI today_pending 统计该语言今日到期词汇"""
     from vocabcraft_mcp.web.services import get_insights_summary
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de", next_review=today))
     temp_storage.save_vocab(_make_vocab("welt", "vocab_002", language="de", next_review="2099-01-01"))
     temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical", next_review=today))
@@ -716,8 +716,8 @@ def test_insights_summary_kpi_today_pending(temp_storage):
 
 def test_insights_summary_kpi_avg_ease(temp_storage):
     """KPI avg_ease = 该语言所有词 EF 平均值"""
-    from vocabcraft_mcp.web.services import get_insights_summary
     from vocabcraft_mcp.models import ReviewState
+    from vocabcraft_mcp.web.services import get_insights_summary
     v1 = _make_vocab("w1", "vocab_001", language="de")
     v1.review_state = ReviewState(ease_factor=2.5)
     v2 = _make_vocab("w2", "vocab_002", language="de")

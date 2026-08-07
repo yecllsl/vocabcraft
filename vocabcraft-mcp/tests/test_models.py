@@ -5,15 +5,19 @@
 模型层级: StructuredVocab + ReviewState → VocabRecord；Quiz；ReviewRecord；ReviewSchedule
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
 from vocabcraft_mcp.models import (
-    Definition, StructuredVocab, ReviewState, VocabRecord,
-    Quiz, ReviewRecord, ReviewSchedule,
+    Definition,
+    Quiz,
+    ReviewRecord,
+    ReviewSchedule,
+    ReviewState,
+    StructuredVocab,
+    VocabRecord,
 )
-
 
 # ──────────────────────────────────────────
 # StructuredVocab
@@ -134,7 +138,7 @@ def _make_structured() -> StructuredVocab:
 
 def test_vocab_record_required_fields():
     """VocabRecord 必填：id/structured/created_at/updated_at"""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     v = VocabRecord(
         id="vocab_001", structured=_make_structured(),
         created_at=now, updated_at=now,
@@ -147,7 +151,7 @@ def test_vocab_record_required_fields():
 
 def test_vocab_record_id_prefix_validation():
     """VocabRecord.id 必须以 vocab_ 开头"""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValueError):
         VocabRecord(
             id="invalid_id", structured=_make_structured(),
@@ -161,7 +165,7 @@ def test_vocab_record_id_prefix_validation():
 
 def test_quiz_required_fields():
     """Quiz 必填字段"""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     q = Quiz(
         id="quiz_001", vocab_id="vocab_001", quiz_type="拼写",
         question="请拼写 /həˈləʊ/", answer="hello", generated_at=now,
@@ -173,7 +177,7 @@ def test_quiz_required_fields():
 
 def test_quiz_with_options():
     """Quiz 选择题含 options"""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     q = Quiz(
         id="quiz_002", vocab_id="vocab_001", quiz_type="选择",
         question="hello 的释义是？",
@@ -185,7 +189,7 @@ def test_quiz_with_options():
 
 def test_quiz_type_validation():
     """quiz_type 必须为 选择/填空/拼写/释义 之一"""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValueError):
         Quiz(
             id="quiz_003", vocab_id="vocab_001", quiz_type="无效题型",
@@ -195,7 +199,7 @@ def test_quiz_type_validation():
 
 def test_quiz_id_prefix_validation():
     """Quiz.id 必须以 quiz_ 开头"""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValueError):
         Quiz(
             id="invalid_id", vocab_id="vocab_001", quiz_type="选择",
@@ -209,7 +213,7 @@ def test_quiz_id_prefix_validation():
 
 def test_review_record_required_fields():
     """ReviewRecord 必填字段"""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     r = ReviewRecord(
         record_id="rec_001", vocab_id="vocab_001", review_time=now,
         grade=5, prev_ease=2.5, new_ease=2.6,
@@ -220,7 +224,7 @@ def test_review_record_required_fields():
 
 def test_review_record_grade_validation():
     """grade 必须在 0-5"""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     with pytest.raises(ValueError):
         ReviewRecord(
             record_id="rec_002", vocab_id="vocab_001", review_time=now,
@@ -252,6 +256,7 @@ def test_review_schedule_status_validation():
 def test_quiz_definition_index_default_none():
     """Quiz 新字段 definition_index 默认 None"""
     from datetime import datetime
+
     from vocabcraft_mcp.models import Quiz
     q = Quiz(
         id="quiz_20260725_001",
@@ -267,6 +272,7 @@ def test_quiz_definition_index_default_none():
 def test_review_record_definition_index_default_none():
     """ReviewRecord 新字段 definition_index 默认 None"""
     from datetime import datetime
+
     from vocabcraft_mcp.models import ReviewRecord
     r = ReviewRecord(
         record_id="rec_20260725_001",
@@ -282,6 +288,7 @@ def test_review_record_definition_index_default_none():
 def test_quiz_legacy_json_without_definition_index():
     """旧 Quiz JSON（无 definition_index）反序列化为 None"""
     import json
+
     from vocabcraft_mcp.models import Quiz
     legacy = {
         "id": "quiz_20260725_001",
@@ -299,6 +306,7 @@ def test_quiz_legacy_json_without_definition_index():
 def test_review_record_legacy_json_without_definition_index():
     """旧 ReviewRecord JSON（无 definition_index）反序列化为 None"""
     import json
+
     from vocabcraft_mcp.models import ReviewRecord
     legacy = {
         "record_id": "rec_20260725_001",

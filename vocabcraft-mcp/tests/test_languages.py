@@ -12,18 +12,17 @@
 import pytest
 
 from vocabcraft_mcp.models import (
-    StructuredVocab,
     SUPPORTED_LANGUAGES,
+    StructuredVocab,
     normalize_language,
 )
 from vocabcraft_mcp.prompts.vocab_parse_prompt import (
-    render_parse_prompt,
     _LANGUAGE_GUIDE,
+    render_parse_prompt,
 )
-from vocabcraft_mcp.tools.parse_vocab import parse_vocab
 from vocabcraft_mcp.tools.crud import save_vocab
+from vocabcraft_mcp.tools.parse_vocab import parse_vocab
 from vocabcraft_mcp.tools.quiz import generate_quiz
-
 
 # ──────────────────────────────────────────
 # normalize_language

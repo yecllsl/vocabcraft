@@ -6,8 +6,7 @@
 import socket
 import threading
 import time
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
@@ -35,8 +34,8 @@ def _find_free_port() -> int:
 
 def _seed_test_data(storage: Storage):
     """填充测试词汇数据"""
-    today = datetime.now(timezone.utc).date().isoformat()
-    now = datetime.now(timezone.utc)
+    today = datetime.now(UTC).date().isoformat()
+    now = datetime.now(UTC)
     languages = ["en", "zh", "de"]
 
     for i in range(9):
@@ -100,7 +99,7 @@ def server_url(tmp_path_factory):
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=1):
                 break
-        except (ConnectionRefusedError, socket.timeout):
+        except (TimeoutError, ConnectionRefusedError):
             time.sleep(0.2)
 
     yield url

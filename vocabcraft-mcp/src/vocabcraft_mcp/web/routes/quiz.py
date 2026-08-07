@@ -5,12 +5,12 @@
 """
 from uuid import uuid4
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
-from vocabcraft_mcp.web.app import templates
 from vocabcraft_mcp.web import services
-from vocabcraft_mcp.web.services import _BatchReviewSession, _batch_sessions
+from vocabcraft_mcp.web.app import templates
+from vocabcraft_mcp.web.services import _batch_sessions, _BatchReviewSession
 
 router = APIRouter()
 
@@ -86,7 +86,8 @@ async def grade_quiz_partial(request: Request, quiz_id: str):
     if pos and definition:
         response = f"{pos}|{definition}"
     else:
-        response = form.get("response", "")
+        raw_response = form.get("response", "")
+        response = raw_response if isinstance(raw_response, str) else ""
         if not response:
             response = request.query_params.get("response", "")
 

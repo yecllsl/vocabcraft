@@ -15,11 +15,9 @@
 """
 import json
 import os
-from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-from vocabcraft_mcp.models import VocabRecord, Quiz, ReviewRecord
+from vocabcraft_mcp.models import Quiz, ReviewRecord, VocabRecord
 
 
 class Storage:
@@ -76,7 +74,7 @@ class Storage:
         self._atomic_write(fp, vocab.model_dump_json(indent=2, ensure_ascii=False))
         return {"vocab_id": vocab.id, "saved_path": str(fp)}
 
-    def load_vocab(self, vocab_id: str) -> Optional[VocabRecord]:
+    def load_vocab(self, vocab_id: str) -> VocabRecord | None:
         """根据 ID 加载词汇记录，不存在返回 None"""
         fp = self.vocabs_dir / f"{vocab_id}.json"
         if not fp.exists():
@@ -87,7 +85,7 @@ class Storage:
         """更新词汇（覆盖写入），语义等同于 save"""
         return self.save_vocab(vocab, overwrite=True)
 
-    def patch_vocab(self, vocab_id: str, patch: dict) -> Optional[VocabRecord]:
+    def patch_vocab(self, vocab_id: str, patch: dict) -> VocabRecord | None:
         """部分更新词汇，仅修改 patch 中包含的字段
 
         加载现有记录 → 递归合并 patch → 原子写回。
@@ -169,7 +167,7 @@ class Storage:
         self._atomic_write(fp, quiz.model_dump_json(indent=2, ensure_ascii=False))
         return {"quiz_id": quiz.id, "saved_path": str(fp)}
 
-    def load_quiz(self, quiz_id: str) -> Optional[Quiz]:
+    def load_quiz(self, quiz_id: str) -> Quiz | None:
         """根据 ID 加载考题，不存在返回 None"""
         fp = self.quizzes_dir / f"{quiz_id}.json"
         if not fp.exists():

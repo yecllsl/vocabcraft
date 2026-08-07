@@ -5,11 +5,12 @@
 """
 
 import json
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+import pytest
+
+from vocabcraft_mcp.models import Definition, StructuredVocab, VocabRecord
 from vocabcraft_mcp.storage import Storage, _deep_merge
-from vocabcraft_mcp.models import VocabRecord, StructuredVocab, Definition
 
 
 @pytest.fixture
@@ -19,7 +20,7 @@ def tmp_storage(tmp_path):
 
 def _make_vocab(vocab_id: str = "vocab_20260723_001") -> VocabRecord:
     """构造测试用词汇记录（definitions 内嵌 examples 新格式）"""
-    now = datetime(2026, 7, 23, 10, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 7, 23, 10, 30, tzinfo=UTC)
     return VocabRecord(
         id=vocab_id,
         structured=StructuredVocab(

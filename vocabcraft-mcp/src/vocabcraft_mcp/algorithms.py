@@ -4,18 +4,19 @@
 包含 SM-2 间隔重复算法和初始复习排程。
 
 SM-2 算法原理（SuperMemo 2, 1987 Piotr Wozniak）:
-    用户对每张卡片打分 grade (0-5)：
-        0-2: 完全不记得 → 视为失败：重置 repetitions=0, interval=1（明天重背）
-        3:   勉强记住 → 视为通过（SM-2 标准 q>=3 即成功）：reps 递增、间隔正常推进
-        4:   记住但有迟疑 → 正常推进，ease 不变
-        5:   完美记忆 → 正常推进，ease 略升
+    用户对每张卡片打分 grade，应用层采用四级制 4/3/2/1：
+        4: 完全记住 → 正常推进，ease 不变
+        3: 勉强记住 → 视为通过（SM-2 标准 grade>=3 即成功）：reps 递增、间隔正常推进
+        2: 部分错   → 视为失败：重置 repetitions=0, interval=1（明天重背）
+        1: 几乎忘   → 视为失败：重置 repetitions=0, interval=1（明天重背）
+    通用约定（函数兼容 0-5）：grade<3 失败（重置）、grade>=3 成功（推进）。
     ease factor (EF) 无论答对答错都更新（反映真实难度），下限 1.3 防止间隔不增长。
 
 参考: https://www.supermemo.com/en/blog/application-of-a-computer-to-improve-the-results-obtained-in-working-with-the-supermemo-method
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 # SM-2 算法常量
 MIN_EASE_FACTOR = 1.3  # EF 下限，防止间隔不增长
@@ -29,7 +30,7 @@ INITIAL_INTERVALS_DAYS = [1, 2, 4, 7, 15]
 
 def _now_utc() -> datetime:
     """当前 UTC 日期时间，统一时间基准，供全模块复用"""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _today_utc() -> date:
@@ -49,7 +50,7 @@ def compute_next_review(
         ease_factor: 当前难度系数（下限 MIN_EASE_FACTOR）
         interval: 当前复习间隔（天）
         repetitions: 已连续答对次数（grade>=3 才递增）
-        grade: 本次评分 0-5
+        grade: 本次评分（应用层四级制 4/3/2/1，函数兼容 0-5；<3 失败、>=3 成功）
 
     Returns:
         包含以下字段的字典:
