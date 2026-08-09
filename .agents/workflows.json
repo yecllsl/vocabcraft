@@ -1,0 +1,49 @@
+{
+  "$schema": "https://agents.aaif.io/schemas/workflows.json",
+  "workflows": [
+    {
+      "name": "vocabcraft-capture",
+      "description": "完整的词汇采集工作流",
+      "steps": [
+        {
+          "action": "capture",
+          "description": "拍照或输入词汇"
+        },
+        {
+          "action": "parse",
+          "description": "AI 解析词汇信息"
+        },
+        {
+          "action": "save",
+          "description": "保存词汇到本地"
+        },
+        {
+          "action": "schedule",
+          "description": "安排复习计划"
+        }
+      ]
+    },
+    {
+      "name": "vocabcraft-review",
+      "description": "完整的复习工作流",
+      "steps": [
+        {
+          "action": "get_due_vocab",
+          "description": "获取到期词汇"
+        },
+        {
+          "action": "generate_quiz",
+          "description": "生成考题"
+        },
+        {
+          "action": "grade",
+          "description": "评分"
+        },
+        {
+          "action": "update_memory",
+          "description": "更新记忆状态"
+        }
+      ]
+    }
+  ]
+}

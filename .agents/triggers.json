@@ -1,0 +1,23 @@
+{
+  "$schema": "https://agents.aaif.io/schemas/triggers.json",
+  "triggers": [
+    {
+      "type": "conversation",
+      "pattern": "(?i)(拍|扫描|识别|学习|复习|考试|统计|导出)",
+      "handler": "handle_trigger",
+      "description": "中文对话触发器"
+    },
+    {
+      "type": "conversation",
+      "pattern": "(?i)(capture|scan|learn|review|quiz|stats|export)",
+      "handler": "handle_trigger",
+      "description": "英文对话触发器"
+    },
+    {
+      "type": "command",
+      "pattern": "^/vocabcraft\\s+(capture|review|quiz|stats|export)\\s*(.*)?$",
+      "handler": "handle_command",
+      "description": "命令触发器"
+    }
+  ]
+}

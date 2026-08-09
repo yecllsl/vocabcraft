@@ -1,0 +1,22 @@
+{
+  "name": "vocabcraft",
+  "version": "0.5.4",
+  "description": "VocabCraft - 词汇学习与制作智能体",
+  "main": ".agents/tools.json",
+  "scripts": {
+    "generate-configs": "python scripts/generate-platform-configs.py",
+    "sync-configs": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-agent-configs.ps1",
+    "publish": "agents publish .agents"
+  },
+  "keywords": [
+    "aaif",
+    "agent",
+    "vocabulary",
+    "learning",
+    "mcp"
+  ],
+  "author": "yecll",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}

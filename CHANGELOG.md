@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-08-09
+
+### AAIF Migration
+- 配置真相源由 `.trae/` 迁移到 AAIF 标准目录 `.agents/`（含 `runtime/`、`skills/`、`AGENTS.md`、`tools.json`、`triggers.json`、`workflows.json`）。
+- `scripts/sync-agent-configs` 改为以 `.agents/` 为唯一来源，单向同步到 `.trae/` / `.opencode/` / `.workbuddy/` / `.hermes/` 四平台目录（含 `AGENTS.md`、Skills、runtime 配置）。
+- `scripts/generate-platform-configs.js` 重写为 Python `scripts/generate-platform-configs.py`（与项目 Python 技术栈统一）；`package.json` 的 `generate-configs` / `sync-configs` 同步更新。
+- `scripts/pre-commit` 机械防线扩展为拦截 `.trae/` / `.opencode/` / `.workbuddy/` / `.hermes/` 全部生成目录的直接编辑，要求改动先落在 `.agents/`。
+- `install.*` 的 FixPath 路径修复改以 `.agents/runtime/` 为对象并重新同步；`build-release.*` 打包源改为 `.agents/skills/` 与 `.agents/AGENTS.md`。
+- `.agents/tools.json` 工具名对齐真实 MCP 工具（`grade_quiz` / `export_data`），并补全 `update_vocab` / `delete_vocab` / `import_xlsx_vocab`。
+- 版本号统一至 0.5.4（package.json / install.* / README.md / DEPLOY.md / QUICKSTART.md / CHANGELOG）。
+
 ## [0.5.2] - 2026-08-07
 
 ### Quality / Compliance

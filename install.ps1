@@ -6,7 +6,7 @@
 #   2. 或在 PowerShell 中执行: .\install.ps1
 #
 # 可选参数：
-#   -FixPath       将 .trae/mcp.json 中的 ${workspaceFolder} 替换为绝对路径
+#   -FixPath       将 .agents/runtime 中 ${workspaceFolder} 替换为绝对路径（并重新同步各平台目录）
 #   -AgentRuntime  配置 Agent 运行时 (trae/workbuddy/opencode/hermes/all)
 #
 # 前置要求：
@@ -24,7 +24,7 @@ $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host " VocabCraft v0.5.2 安装向导" -ForegroundColor Cyan
+Write-Host " VocabCraft v0.5.4 安装向导" -ForegroundColor Cyan
 Write-Host "  (Trae IDE CN + Trae Work CN + WorkBuddy + opencode + Hermes Agent)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
@@ -192,14 +192,15 @@ try {
 }
 
 # ──────────────────────────────────────────
-# mcp.json 路径回退方案（多运行时共用）
+# mcp.json 路径回退方案（多运行时共用，AAIF 真相源 .agents/runtime）
 # ──────────────────────────────────────────
-$mcpJsonPath = Join-Path $projectRoot ".trae\mcp.json"
-if (Test-Path $mcpJsonPath) {
-    $mcpContent = Get-Content $mcpJsonPath -Raw
+$runtimeDir = Join-Path $projectRoot ".agents\runtime"
+$traeJson = Join-Path $runtimeDir "trae.json"
+if (Test-Path $traeJson) {
+    $mcpContent = Get-Content $traeJson -Raw
     if ($mcpContent -match '\$\{workspaceFolder\}') {
         Write-Host ""
-        Write-Host "  ℹ 检测到 mcp.json 使用了 \${workspaceFolder} 变量" -ForegroundColor Cyan
+        Write-Host "  ℹ 检测到 runtime 配置使用了 \${workspaceFolder} 变量" -ForegroundColor Cyan
         Write-Host "    Trae / WorkBuddy / opencode 会自动替换此变量，无需手动配置" -ForegroundColor Cyan
         Write-Host "    如果你的环境不支持变量替换，请运行：" -ForegroundColor Cyan
         Write-Host "    .\install.ps1 -FixPath" -ForegroundColor White
@@ -208,18 +209,34 @@ if (Test-Path $mcpJsonPath) {
 
 if ($FixPath) {
     Write-Host ""
-    Write-Host "  正在修复 mcp.json 路径..." -ForegroundColor Yellow
-    if (Test-Path $mcpJsonPath) {
-        $mcpContent = Get-Content $mcpJsonPath -Raw
-        $escapedRoot = $projectRoot -replace '\\', '/'
-        $fixedContent = $mcpContent -replace '\$\{workspaceFolder\}', $escapedRoot
-        Set-Content -Path $mcpJsonPath -Value $fixedContent -Encoding UTF8
-        Write-Host "  ✓ mcp.json 路径已修复为: $escapedRoot" -ForegroundColor Green
-        Write-Host "  ⚠ 注意：修复后配置仅对当前路径有效，移动项目后需重新运行 -FixPath" -ForegroundColor Yellow
-        Write-Host "  ⚠ 注意：多运行时可移植性会降低，建议优先升级运行时版本以支持变量" -ForegroundColor Yellow
-    } else {
-        Write-Host "  ✗ 未找到 $mcpJsonPath" -ForegroundColor Red
+    Write-Host "  正在修复 runtime 配置路径（.agents/runtime）..." -ForegroundColor Yellow
+    $fixedAny = $false
+    $fixTargets = @(
+        (Join-Path $runtimeDir "trae.json"),
+        (Join-Path $runtimeDir "workbuddy.json")
+    )
+    $ws = $projectRoot -replace '\\', '/'
+    foreach ($t in $fixTargets) {
+        if (Test-Path $t) {
+            $content = Get-Content $t -Raw -Encoding UTF8
+            if ($content -match '\$\{workspaceFolder\}') {
+                $fixedContent = $content -replace '\$\{workspaceFolder\}', $ws
+                Set-Content -Path $t -Value $fixedContent -Encoding UTF8
+                Write-Host "  ✓ 已修复: $t" -ForegroundColor Green
+                $fixedAny = $true
+            } else {
+                Write-Host "  ℹ 无需修复（无变量）: $t" -ForegroundColor DarkGray
+            }
+        } else {
+            Write-Host "  ✗ 未找到 $t" -ForegroundColor Red
+        }
     }
+    if ($fixedAny) {
+        Write-Host "  重新同步到各平台目录..." -ForegroundColor Gray
+        & "$PSScriptRoot\scripts\sync-agent-configs.ps1"
+    }
+    Write-Host "  ⚠ 注意：修复后配置仅对当前路径有效，移动项目后需重新运行 -FixPath" -ForegroundColor Yellow
+    Write-Host "  ⚠ 注意：多运行时可移植性会降低，建议优先升级运行时版本以支持变量" -ForegroundColor Yellow
 }
 
 # ──────────────────────────────────────────
@@ -230,7 +247,7 @@ $HookSrc = Join-Path $projectRoot "scripts/pre-commit"
 $HookDst = Join-Path $projectRoot ".git/hooks/pre-commit"
 if (Test-Path $HookSrc) {
     Copy-Item -Path $HookSrc -Destination $HookDst -Force
-    Write-Host "  ✓ 已安装 pre-commit 钩子（拦截直接修改 .opencode/.workbuddy 的违规提交）" -ForegroundColor Green
+    Write-Host "  ✓ 已安装 pre-commit 钩子（拦截直接修改生成目录 .trae/.opencode/.workbuddy/.hermes 的违规提交）" -ForegroundColor Green
     Write-Host "    若需手动安装：Copy-Item scripts/pre-commit .git/hooks/pre-commit" -ForegroundColor DarkGray
 } else {
     Write-Host "  ⚠ 未找到 $HookSrc，跳过钩子安装" -ForegroundColor Yellow

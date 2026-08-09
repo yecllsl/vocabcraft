@@ -37,7 +37,7 @@ VocabCraft 支持多个 Agent 运行时，选择你使用的环境进行配置�
 3. 打开 **"启用项目级 MCP"** 开关
 4. 重启 Trae
 
-> 💡 两个环境读取同一份 `.trae/mcp.json`（使用 `${workspaceFolder}` 自动适配路径），无需为每个环境单独配置。
+> 💡 两个环境读取同一份由 `.agents/runtime/trae.json` 同步生成的 `.trae/mcp.json`，无需单独配置。
 
 #### Hermes Agent
 
@@ -275,8 +275,8 @@ Q3. 例句填空
 | MCP Server 不生效 | 确认启用项目级 MCP → 重启 Trae |
 | 路径变量不替换 | 运行 `.\install.ps1 -FixPath` 修复路径 |
 | 依赖安装失败 / `uv sync` 报错 | 删除 `.venv` 后重试 `uv sync`；确认 Python ≥ 3.12；网络问题检查代理 |
-| Skills 不生效 | 重启 Trae → 检查 .trae/skills/vocabcraft-* 目录 |
-| 多运行时配置冲突 | 不会冲突，共用同一份 `.trae/mcp.json`，详见 [DEPLOY.md](DEPLOY.md) |
+| Skills 不生效 | 重启 Trae → 检查 .agents/skills/vocabcraft-* 目录 |
+| 多运行时配置冲突 | 不会冲突，共用同一份 `.agents/runtime/trae.json`（→ `.trae/mcp.json`），详见 [DEPLOY.md](DEPLOY.md) |
 
 ## 下一步
 

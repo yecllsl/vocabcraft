@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-VERSION="${1:-0.5.2}"
+VERSION="${1:-0.5.4}"
 
 # ──────────────────────────────────────────
 # 路径定义
@@ -135,8 +135,8 @@ copy_vocabcraft_dirs() {
     done
 }
 
-# .trae/skills/ 只复制 vocabcraft-* 前缀的 skill 目录
-copy_vocabcraft_dirs "$PROJECT_ROOT/.trae/skills" "$STAGING_DIR/.trae/skills"
+# .agents/skills/ 只复制 vocabcraft-* 前缀的 skill 目录（AAIF 真相源）
+copy_vocabcraft_dirs "$PROJECT_ROOT/.agents/skills" "$STAGING_DIR/.trae/skills"
 
 log_ok ".trae config copied (skills only, rules/agents/commands migrated to AGENTS.md)"
 
@@ -206,7 +206,10 @@ log_ok "source copied"
 # ──────────────────────────────────────────
 log_step "[5/6] Copy docs and install scripts..."
 for f in install.ps1 install.sh README.md DEPLOY.md QUICKSTART.md LICENSE AGENTS.md; do
-    [ -f "$PROJECT_ROOT/$f" ] && cp "$PROJECT_ROOT/$f" "$STAGING_DIR/$f"
+    # AGENTS.md 的真相源是 .agents/AGENTS.md（同步生成根目录 AGENTS.md）
+    src_f="$PROJECT_ROOT/$f"
+    [ "$f" = "AGENTS.md" ] && src_f="$PROJECT_ROOT/.agents/AGENTS.md"
+    [ -f "$src_f" ] && cp "$src_f" "$STAGING_DIR/$f"
 done
 log_ok "docs copied"
 

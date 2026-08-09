@@ -7,7 +7,7 @@
 #   ./install.sh
 #
 # 可选参数：
-#   --fix-path       将 .trae/mcp.json 中的 ${workspaceFolder} 替换为绝对路径
+#   --fix-path       将 .agents/runtime 中 ${workspaceFolder} 替换为绝对路径（并重新同步各平台目录）
 #   --agent-runtime  配置 Agent 运行时 (trae/workbuddy/opencode/hermes/all)
 #
 # 前置要求：
@@ -33,7 +33,7 @@ done
 
 echo ""
 echo "========================================"
-echo "  VocabCraft v0.5.2 安装向导"
+echo "  VocabCraft v0.5.4 安装向导"
 echo "  (Trae IDE CN + Trae Work CN + WorkBuddy + opencode + Hermes Agent)"
 echo "========================================"
 echo ""
@@ -183,13 +183,14 @@ else
 fi
 
 # ──────────────────────────────────────────
-# mcp.json 路径回退方案（多运行时共用）
+# mcp.json 路径回退方案（多运行时共用，AAIF 真相源 .agents/runtime）
 # ──────────────────────────────────────────
-MCP_JSON_PATH="$PROJECT_ROOT/.trae/mcp.json"
-if [ -f "$MCP_JSON_PATH" ]; then
-    if grep -q '${workspaceFolder}' "$MCP_JSON_PATH" 2>/dev/null; then
+RUNTIME_DIR="$PROJECT_ROOT/.agents/runtime"
+TRAE_JSON="$RUNTIME_DIR/trae.json"
+if [ -f "$TRAE_JSON" ]; then
+    if grep -q '${workspaceFolder}' "$TRAE_JSON" 2>/dev/null; then
         echo ""
-        echo "  ℹ 检测到 mcp.json 使用了 \${workspaceFolder} 变量"
+        echo "  ℹ 检测到 runtime 配置使用了 \${workspaceFolder} 变量"
         echo "    Trae / WorkBuddy / opencode 会自动替换此变量，无需手动配置"
         echo "    如果你的环境不支持变量替换，请运行："
         echo "    ./install.sh --fix-path"
@@ -198,17 +199,29 @@ fi
 
 if [ "$FIX_PATH" -eq 1 ]; then
     echo ""
-    echo "  正在修复 mcp.json 路径..."
-    if [ -f "$MCP_JSON_PATH" ]; then
-        ESCAPED_ROOT="${PROJECT_ROOT//\//\\/}"
-        sed -i.bak "s/\${workspaceFolder}/$ESCAPED_ROOT/g" "$MCP_JSON_PATH"
-        rm -f "$MCP_JSON_PATH.bak"
-        echo "  ✓ mcp.json 路径已修复为: $PROJECT_ROOT"
-        echo "  ⚠ 注意：修复后配置仅对当前路径有效，移动项目后需重新运行 --fix-path"
-        echo "  ⚠ 注意：多运行时可移植性会降低，建议优先升级运行时版本以支持变量"
-    else
-        echo "  ✗ 未找到 $MCP_JSON_PATH"
+    echo "  正在修复 runtime 配置路径（.agents/runtime）..."
+    FIXED_ANY=0
+    for t in "$RUNTIME_DIR/trae.json" "$RUNTIME_DIR/workbuddy.json"; do
+        if [ -f "$t" ]; then
+            if grep -q '${workspaceFolder}' "$t" 2>/dev/null; then
+                ESCAPED_ROOT="${PROJECT_ROOT//\//\\/}"
+                sed -i.bak "s/\${workspaceFolder}/$ESCAPED_ROOT/g" "$t"
+                rm -f "$t.bak"
+                echo "  ✓ 已修复: $t"
+                FIXED_ANY=1
+            else
+                echo "  ℹ 无需修复（无变量）: $t"
+            fi
+        else
+            echo "  ✗ 未找到 $t"
+        fi
+    done
+    if [ "$FIXED_ANY" -eq 1 ]; then
+        echo "  重新同步到各平台目录..."
+        bash "$PROJECT_ROOT/scripts/sync-agent-configs.sh"
     fi
+    echo "  ⚠ 注意：修复后配置仅对当前路径有效，移动项目后需重新运行 --fix-path"
+    echo "  ⚠ 注意：多运行时可移植性会降低，建议优先升级运行时版本以支持变量"
 fi
 
 # ──────────────────────────────────────────
@@ -220,7 +233,7 @@ HOOK_DST="$PROJECT_ROOT/.git/hooks/pre-commit"
 if [ -f "$HOOK_SRC" ]; then
     cp "$HOOK_SRC" "$HOOK_DST"
     chmod +x "$HOOK_DST"
-    echo "  ✓ 已安装 pre-commit 钩子（拦截直接修改 .opencode/.workbuddy 的违规提交）"
+    echo "  ✓ 已安装 pre-commit 钩子（拦截直接修改生成目录 .trae/.opencode/.workbuddy/.hermes 的违规提交）"
     echo "    若需手动安装：cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit"
 else
     echo "  ⚠ 未找到 $HOOK_SRC，跳过钩子安装"

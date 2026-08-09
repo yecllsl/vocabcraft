@@ -5,7 +5,7 @@
 ### Windows 用户
 
 ```powershell
-# 1. 从 GitHub Releases 下载 VocabCraft-v0.5.2.zip，解压到任意目录（如 D:\vocabcraft\）
+# 1. 从 GitHub Releases 下载 VocabCraft-v0.5.4.zip，解压到任意目录（如 D:\vocabcraft\）
 #    或用 7-Zip 解压 .tar.zst / .tar.gz
 
 # 2. 运行安装脚本
@@ -20,8 +20,8 @@
 
 ```bash
 # 1. 从 GitHub Releases 下载并解压
-#    tar.zst (推荐):  tar --zstd -xf VocabCraft-v0.5.2.tar.zst
-#    tar.gz:          tar -xzf VocabCraft-v0.5.2.tar.gz
+#    tar.zst (推荐):  tar --zstd -xf VocabCraft-v0.5.4.tar.zst
+#    tar.gz:          tar -xzf VocabCraft-v0.5.4.tar.gz
 
 # 2. 运行安装脚本
 chmod +x install.sh
@@ -39,7 +39,7 @@ chmod +x install.sh
 curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 
 # 2. 从 GitHub Releases 下载并解压
-tar --zstd -xf VocabCraft-v0.5.2.tar.zst
+tar --zstd -xf VocabCraft-v0.5.4.tar.zst
 cd vocabcraft
 
 # 3. 运行安装脚本
@@ -68,7 +68,7 @@ hermes
 
 ## 多运行时共用配置（核心）
 
-VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。所有运行时共用项目根目录下的 `.trae/mcp.json` 与 `AGENTS.md`，无需为每个运行时单独配置。
+VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。所有运行时共用 `.agents/runtime/trae.json`（同步生成 `.trae/mcp.json`）与 `.agents/AGENTS.md`（同步到根目录与各平台），无需单独配置。
 
 ```
 ┌─────────────────────────┐  ┌─────────────────────────┐  ┌──────────────────┐  ┌──────────────┐  ┌──────────────┐
@@ -79,7 +79,7 @@ VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。�
              └────────────────────┬─────────────────────────────────┘                │                │
                                   ↓                                                  ↓                ↓
               ┌───────────────────────┐                                                                      │
-              │  .trae/mcp.json       │  ← 五个运行时各自替换为当前工作区路径                                  │
+              │  .agents/runtime/trae.json │  ← 同步生成 .trae/mcp.json，各运行时各自替换路径                                  │
               │  ${workspaceFolder}   │                                                                 │
               │  /vocabcraft-mcp      │                                                                 │
               └───────────────────────┘                                                                 │
@@ -117,7 +117,7 @@ VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。�
 
 ### mcp.json 配置内容
 
-项目级 MCP 配置已内置于 `.trae/mcp.json`：
+项目级 MCP 配置源在 `.agents/runtime/trae.json`，经 `scripts/sync-agent-configs` 同步生成 `.trae/mcp.json`：
 
 ```json
 {
@@ -151,7 +151,7 @@ VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。�
 ./install.sh --fix-path
 ```
 
-这会自动将 mcp.json 中的 `${workspaceFolder}` 替换为实际绝对路径（移动项目后需重新运行修复）。
+这会自动将 `.agents/runtime` 配置中的 `${workspaceFolder}` 替换为实际绝对路径（移动项目后需重新运行修复）。
 
 也可手动在运行时中添加 MCP 服务器：
 
@@ -172,7 +172,7 @@ uv run vocabcraft-mcp
 
 ## Skills 与规则配置
 
-Skills 位于 `.trae/skills/`，运行时自动读取，修改后重启运行时即可生效。通过 `scripts/sync-agent-configs` 同步到 `.opencode/` 与 `.workbuddy/`。
+Skills 位于 `.agents/skills/`（AAIF 真相源），经 `scripts/sync-agent-configs` 同步到 `.trae/` / `.opencode/` / `.workbuddy/` / `.hermes/`。修改后重启运行时即可生效。
 
 ### Skills 说明（vocabcraft-* 业务编排）
 
@@ -186,7 +186,7 @@ Skills 位于 `.trae/skills/`，运行时自动读取，修改后重启运行时
 
 ### 规则来源
 
-业务规则与开发规范统一存放于根目录 **`AGENTS.md`**（五个运行时共用，单一真相源），不再拆分到 `.trae/rules/`。各 skill 的「约束规则」内联在其 `SKILL.md` 中。
+业务规则与开发规范统一存放于 **`.agents/AGENTS.md`**（五个运行时共用，单一真相源，同步到根目录与各平台），不再拆分到 `.trae/rules/`。各 skill 的「约束规则」内联在其 `SKILL.md` 中。
 
 ## Hermes Agent 部署
 
@@ -250,14 +250,14 @@ uv sync
 ### Q3: 运行时无法识别 MCP Server
 
 1. 是否已启用项目级 MCP / 已信任 vocabcraft-mcp
-2. `.trae/mcp.json` 文件是否存在
+2. `.trae/mcp.json` 文件是否存在（由 `.agents/runtime/trae.json` 同步生成）
 3. 是否已重启运行时
 
 → 运行 `.\install.ps1 -FixPath` 修复路径，或手动添加（见上文）。
 
 ### Q4: 五个运行时能否同时使用？
 
-可以，且推荐。各运行时共用同一份 `.trae/mcp.json` 与 `AGENTS.md`：
+可以，且推荐。各运行时共用同一份 `.agents/runtime/trae.json`（→ `.trae/mcp.json`）与 `.agents/AGENTS.md`：
 
 - **同一台机器**：各运行时打开同一个项目文件夹，各自启用 MCP 即可，`${workspaceFolder}` 会各自替换为当前路径。
 - **数据共享**：各运行时 MCP Server 实例读写同一个 `vocabcraft-mcp/data/` 目录，词汇数据互通。
@@ -265,11 +265,11 @@ uv sync
 
 ### Q5: Skills / Commands 不生效
 
-1. `.trae/skills/vocabcraft-*` 目录和 SKILL.md 是否存在
+1. `.agents/skills/vocabcraft-*` 目录和 SKILL.md 是否存在
 2. 文件名和格式是否正确
 3. 运行时是否重启
 
-→ 重启对应运行时，检查 `.trae` 目录结构是否完整（应有 `skills/` 子目录）。
+→ 重启对应运行时，检查 `.agents` 目录结构是否完整（应有 `skills/` 子目录）。
 
 ### Q6: 如何升级到新版本
 
@@ -300,12 +300,13 @@ vocabcraft/
 │   ├── pyproject.toml                     # Python 项目配置
 │   └── uv.lock                            # 依赖锁定
 │
-├── .trae/                                 # 配置层（源文件）
-│   ├── mcp.json                           # 项目级 MCP 配置（${workspaceFolder} 适配）
-│   ├── skill-config.json                  # Skills 配置
-│   └── skills/vocabcraft-*                # capture/review/quiz/stats/export
+├── .agents/                                # 配置层（AAIF 唯一真相源，只改这里）
+│   ├── runtime/{trae,opencode,workbuddy}.json + hermes.yaml   # 各平台 MCP 配置源
+│   ├── skills/vocabcraft-*                # capture/review/quiz/stats/export（源文件）
+│   ├── AGENTS.md                          # 统一规则源
+│   └── tools.json / triggers.json / workflows.json           # AAIF 声明
 │
-├── .opencode/  .workbuddy/                # 由 scripts/sync-agent-configs 生成
+├── .trae/  .opencode/  .workbuddy/  .hermes/   # 由 scripts/sync-agent-configs 生成
 │
 ├── .github/workflows/                     # test.yml / release.yml
 ├── scripts/                               # build-release.* / sync-agent-configs.*
@@ -319,21 +320,21 @@ vocabcraft/
 
 ```powershell
 # Windows (PowerShell 5.1+)
-.\scripts\build-release.ps1 -Version 0.5.2
+.\scripts\build-release.ps1 -Version 0.5.4
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.5.2
+bash scripts/build-release.sh 0.5.4
 ```
 
-产物：`dist/VocabCraft-v0.5.2.{zip,tar.zst,tar.gz}`，结构与 GitHub Release 资产一致。
+产物：`dist/VocabCraft-v0.5.4.{zip,tar.zst,tar.gz}`，结构与 GitHub Release 资产一致。
 
 构建脚本采用**白名单复制策略**，只打包必要文件：
 
 - `vocabcraft-mcp/src/`、`vocabcraft-mcp/tests/`、`pyproject.toml`、`uv.lock`
-- `.trae/skills/vocabcraft-*`
-- `.trae/mcp.json`（注入 `${workspaceFolder}` 变量版本）
+- `.agents/skills/vocabcraft-*`
+- `.agents/runtime/trae.json`（注入 `${workspaceFolder}` 变量版本，同步到 `.trae/mcp.json`）
 - 顶层文档（README / QUICKSTART / DEPLOY / CHANGELOG / LICENSE）与安装脚本
 
 自动排除：`__pycache__/`、`.pytest_cache/`、`*.pyc`、`.venv/`、`.git/`、`.vscode/`、`data/*.json`（用户数据只放 `.gitkeep`）、`dist/`。

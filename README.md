@@ -17,14 +17,14 @@
 ```
 用户交互层
 ├── 对话式交互 (命令 / 自然语言)
-├── 五运行时: Trae + WorkBuddy + opencode + Hermes Agent (共用 AGENTS.md)
+├── 五运行时: Trae + WorkBuddy + opencode + Hermes Agent (共用 .agents/AGENTS.md)
     ↓
-Skills 编排层 (.trae/skills/vocabcraft-*: capture / review / quiz / stats / export)
+Skills 编排层 (.agents/skills/vocabcraft-*: capture / review / quiz / stats / export)
     ↓
 MCP Tools 层 (vocabcraft-mcp)
 ├── 结构化解析 → 存储 → SM-2 排程 → 考题生成 → 评分 → 统计 → 导出
     ↓
-Rules 约束层 (AGENTS.md — 统一规则源，五个运行时共用)
+Rules 约束层 (.agents/AGENTS.md — 统一规则源，五个运行时共用)
     ↓
 数据存储层 (本地 JSON 文件，原子写入)
 ```
@@ -50,7 +50,7 @@ Rules 约束层 (AGENTS.md — 统一规则源，五个运行时共用)
 
 #### 1. 下载并解压
 
-下载 `VocabCraft-v0.5.2.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
+下载 `VocabCraft-v0.5.4.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
 
 #### 2. 运行安装脚本
 
@@ -78,7 +78,7 @@ chmod +x install.sh
 3. 进入 **设置 → 规则**，开启 **"将 AGENTS.md 包含在上下文中"**
 4. 重启 Trae
 
-> 💡 项目级 MCP 配置已内置于 `.trae/mcp.json`，使用 `${workspaceFolder}` 变量自动适配路径。
+> 💡 项目级 MCP 配置已内置于 `.trae/mcp.json`（由 `.agents/runtime/trae.json` 经 `scripts/sync-agent-configs` 同步生成），使用 `${workspaceFolder}` 变量自动适配路径。
 
 ##### WorkBuddy (CodeBuddy)
 
@@ -200,7 +200,7 @@ chmod +x install.sh
 
 ```
 vocabcraft/
-├── AGENTS.md                                 # 统一规则源（五个运行时共用）
+├── .agents/                                  # 配置层（AAIF 唯一真相源：runtime/、skills/、AGENTS.md）
 ├── vocabcraft-mcp/                           # MCP Server 服务层（Python）
 │   ├── src/vocabcraft_mcp/
 │   │   ├── server.py                         # FastMCP 服务入口（main 函数）
@@ -220,19 +220,27 @@ vocabcraft/
 │   ├── pyproject.toml                        # Python 项目配置（入口 vocabcraft-mcp）
 │   └── uv.lock                               # 依赖锁定文件
 │
-├── .trae/                                    # 配置层（Trae 开发时源文件）
-│   ├── mcp.json                              # 项目级 MCP 配置（${workspaceFolder} 适配）
-│   ├── skill-config.json                     # Skills 配置
-│   ├── skills/                               # Skills 源文件
+├── .agents/                                  # 配置层（AAIF 唯一真相源，只改这里）
+│   ├── runtime/                              # 各平台 MCP 运行时配置源
+│   │   ├── trae.json                         # Trae 项目级 MCP 配置源
+│   │   ├── opencode.json                     # opencode 配置源
+│   │   ├── workbuddy.json                    # WorkBuddy 配置源
+│   │   └── hermes.yaml                       # Hermes Agent 配置源
+│   ├── skills/                               # Skills 源文件（同步到四平台）
 │   │   ├── vocabcraft-capture/               # /capture 拍照录入
 │   │   ├── vocabcraft-review/                # /review 复习排程
 │   │   ├── vocabcraft-quiz/                  # /quiz 考题与评分
 │   │   ├── vocabcraft-stats/                 # /stats 统计
 │   │   └── vocabcraft-export/                # /export 导出
+│   ├── AGENTS.md                             # 统一规则源（五个运行时共用）
+│   ├── tools.json                            # AAIF 工具声明
+│   ├── triggers.json                         # AAIF 触发器声明
+│   └── workflows.json                        # AAIF 工作流声明
 │
-├── .opencode/                                # opencode 配置（sync-agent-configs 生成）
-├── .workbuddy/                               # WorkBuddy 配置（sync-agent-configs 生成）
-├── .hermes/                                  # Hermes Agent 配置（sync-agent-configs 生成）
+├── .trae/                                    # Trae 配置（scripts/sync-agent-configs 生成）
+├── .opencode/                                # opencode 配置（scripts/sync-agent-configs 生成）
+├── .workbuddy/                               # WorkBuddy 配置（scripts/sync-agent-configs 生成）
+├── .hermes/                                  # Hermes Agent 配置（scripts/sync-agent-configs 生成）
 │
 ├── .github/
 │   └── workflows/
@@ -242,8 +250,8 @@ vocabcraft/
 ├── scripts/                                  # 开发者工具
 │   ├── build-release.ps1                     # Windows 发布包构建（PowerShell）
 │   ├── build-release.sh                      # Linux/macOS 发布包构建（bash，与 .ps1 逻辑对齐）
-│   ├── sync-agent-configs.ps1               # 同步 AGENTS.md 到 opencode/WorkBuddy 配置（PowerShell）
-│   └── sync-agent-configs.sh                # 同步 AGENTS.md 到 opencode/WorkBuddy 配置（bash）
+│   ├── sync-agent-configs.ps1               # 将 .agents/ 同步到 .trae/opencode/workbuddy/hermes（PowerShell）
+│   └── sync-agent-configs.sh                # 将 .agents/ 同步到 .trae/opencode/workbuddy/hermes（bash）
 ├── install.ps1                               # Windows 安装脚本
 ├── install.sh                                # Linux/macOS 安装脚本
 ├── QUICKSTART.md                             # 5 分钟快速上手
@@ -261,33 +269,33 @@ vocabcraft/
 | 层级 | 位置 | 用途 |
 |------|------|------|
 | **服务层** | `vocabcraft-mcp/` | 纯 Python MCP Server，通用，不绑定任何客户端，可独立发布 |
-| **配置层** | `.trae/` | Trae 开发时源文件，定义 Skills 流程与约束（单一真相源） |
+| **配置层** | `.agents/` | AAIF 唯一真相源，定义 Skills 流程与约束（单一真相源），同步生成 `.trae/` 等四平台目录 |
 
 ### AGENTS.md 统一规则源
 
-`AGENTS.md` 是五个运行时共用的统一规则源，包含：
+`.agents/AGENTS.md` 是五个运行时共用的统一规则源，包含：
 
 - **业务规则** — 采集规则、复习规则、交互规则、数据安全规则
 - **开发规范** — 代码规范、安全规则、合规规则、质量规则、流程规则
 - **架构定义** — 系统架构、MCP Tools 参考
 - **命令参考** — /capture、/review、/quiz、/stats、/export 的触发条件与约束
 
-五个运行时（Trae / WorkBuddy / opencode / Hermes Agent）都读取 `AGENTS.md`，保证行为一致。
+五个运行时（Trae / WorkBuddy / opencode / Hermes Agent）都读取 `.agents/AGENTS.md`，保证行为一致。
 
 ### 多运行时适配
 
 项目同时支持 **Trae IDE CN / Trae Work CN**、**WorkBuddy (CodeBuddy)**、**opencode** 和 **Hermes Agent** 五个 Agent Runtime，核心机制：
 
-1. **统一规则源** — `AGENTS.md` 是唯一的规则与行为定义文件，五个运行时共用
-2. **开发时源文件** — `.trae/` 是 Skills 和 MCP 配置的开发时源文件（编辑在这里进行）
-3. **同步生成** — 运行 `.\scripts\sync-agent-configs.ps1`（或 `.\scripts\sync-agent-configs.sh`）将 `.trae/skills/` 同步到 `.opencode/`、`.workbuddy/` 和 `.hermes/` 对应目录
+1. **统一规则源** — `.agents/AGENTS.md` 是唯一的规则与行为定义文件，五个运行时共用
+2. **开发时源文件** — `.agents/` 是 Skills 和 MCP 配置的开发时源文件（编辑在这里进行）
+3. **同步生成** — 运行 `.\scripts\sync-agent-configs.ps1`（或 `.\scripts\sync-agent-configs.sh`）将 `.agents/skills/` 与 `.agents/runtime/` 同步到 `.trae/`、`.opencode/`、`.workbuddy/` 和 `.hermes/` 对应目录
 4. **各运行时独立配置目录** — `.trae/`（Trae）、`.opencode/`（opencode）、`.workbuddy/`（WorkBuddy）、`.hermes/`（Hermes Agent）各自独立，互不干扰
 
 ### 为什么要分离？
 
 1. **职责清晰**: 代码归代码，配置归配置
 2. **可复用**: `vocabcraft-mcp/` 可单独在任何 MCP 客户端中使用
-3. **单一真相源**: `AGENTS.md` 是唯一的规则与行为定义，Skills 配置在 `.trae/` 下编辑，同步到其他运行时
+3. **单一真相源**: `.agents/AGENTS.md` 是唯一的规则与行为定义，Skills 配置在 `.agents/` 下编辑，同步到其他运行时
 4. **Git 友好**: 项目结构一目了然，`.trae/` 即 Trae 配置根目录
 5. **多运行时友好**: 一份 AGENTS.md，五个运行时共用，同步脚本自动生成各运行时配置
 
@@ -318,7 +326,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ### Q: 多个 Agent Runtime 能否同时使用？
 
-可以。五个运行时（Trae IDE CN / Trae Work CN、WorkBuddy、opencode、Hermes Agent）共用同一份 `AGENTS.md` 规则源，各自有独立的配置目录。首次运行或修改 Skills 后，执行同步脚本确保各运行时配置一致：
+可以。五个运行时（Trae IDE CN / Trae Work CN、WorkBuddy、opencode、Hermes Agent）共用同一份 `.agents/AGENTS.md` 规则源，各自有独立的配置目录。首次运行或修改 Skills 后，执行同步脚本确保各运行时配置一致：
 
 ```powershell
 .\scripts\sync-agent-configs.ps1          # Windows
@@ -351,15 +359,15 @@ uv run pytest tests/ -m "not e2e"
 
 ```powershell
 # Windows
-pwsh .\scripts\build-release.ps1 -Version 0.5.2
+pwsh .\scripts\build-release.ps1 -Version 0.5.4
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.5.2
+bash scripts/build-release.sh 0.5.4
 ```
 
-产物：`dist/VocabCraft-v0.5.2.{zip,tar.zst,tar.gz}`。
+产物：`dist/VocabCraft-v0.5.4.{zip,tar.zst,tar.gz}`。
 
 ### CI/CD
 

@@ -2,13 +2,13 @@
 # 从源码生成可分发的 zip 包（白名单复制策略，避免误打包 .venv）
 #
 # 使用方法：
-#   pwsh .\scripts\build-release.ps1 [-Version "0.5.2"]
+#   pwsh .\scripts\build-release.ps1 [-Version "0.5.4"]
 #
 # 输出：
-#   dist\VocabCraft-v0.5.2.zip
+#   dist\VocabCraft-v0.5.4.zip
 
 param(
-    [string]$Version = "0.5.2"
+    [string]$Version = "0.5.4"
 )
 
 $ErrorActionPreference = "Stop"
@@ -141,8 +141,8 @@ function Copy-VocabcraftPrefixedItems {
     }
 }
 
-# .trae/skills/ 只复制 vocabcraft-* 前缀的 skill 目录
-Copy-VocabcraftPrefixedItems -srcDir (Join-Path $projectRoot ".trae\skills") -dstDir (Join-Path $tempDir ".trae\skills") -isDirectory $true
+# .agents/skills/ 只复制 vocabcraft-* 前缀的 skill 目录（AAIF 真相源）
+Copy-VocabcraftPrefixedItems -srcDir (Join-Path $projectRoot ".agents\skills") -dstDir (Join-Path $tempDir ".trae\skills") -isDirectory $true
 
 Write-Ok ".trae config copied (skills only, rules/agents/commands migrated to AGENTS.md)"
 
@@ -212,8 +212,10 @@ Write-Ok "source copied"
 # ──────────────────────────────────────────
 Write-Step "[5/6] Copy docs and install scripts..."
 $topFiles = @("install.ps1", "install.sh", "README.md", "DEPLOY.md", "QUICKSTART.md", "LICENSE", "AGENTS.md")
+# AGENTS.md 的真相源是 .agents/AGENTS.md（同步生成根目录 AGENTS.md）
 foreach ($f in $topFiles) {
-    $src = Join-Path $projectRoot $f
+    $srcName = if ($f -eq "AGENTS.md") { ".agents\AGENTS.md" } else { $f }
+    $src = Join-Path $projectRoot $srcName
     if (Test-Path $src) {
         Copy-Item $src (Join-Path $tempDir $f) -Force
     }
