@@ -32,6 +32,27 @@ chmod +x install.sh
 # 5. 重启运行时
 ```
 
+### Hermes Agent 用户
+
+```bash
+# 1. 安装 Hermes Agent
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+
+# 2. 从 GitHub Releases 下载并解压
+tar --zstd -xf VocabCraft-v0.5.2.tar.zst
+cd vocabcraft
+
+# 3. 运行安装脚本
+chmod +x install.sh
+./install.sh --agent-runtime hermes
+
+# 4. 配置 Hermes Agent
+hermes setup
+
+# 5. 启动 Hermes Agent
+hermes
+```
+
 > 💡 安装脚本只装基础依赖（无需 OCR 引擎）。图片词汇采集由**宿主 LLM 多模态直接解析**，手动录入 / 复习 / 出题 / 统计 / 导出等功能均不依赖额外模型。
 
 ## 环境要求
@@ -41,32 +62,32 @@ chmod +x install.sh
 | Python | 3.12+ | https://www.python.org/downloads/ |
 | uv | 最新版 | Windows: `irm https://astral.sh/uv/install.ps1 \| iex` |
 | | | Linux/macOS: `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| 运行时 | 最新版 | Trae IDE CN / Trae Work CN / WorkBuddy / opencode（任选其一或全部） |
+| 运行时 | 最新版 | Trae IDE CN / Trae Work CN / WorkBuddy / opencode / Hermes Agent（任选其一或全部） |
 
-> 💡 四个运行时**共用同一份配置与数据**，也可同时安装。
+> 💡 五个运行时**共用同一份配置与数据**，也可同时安装。
 
 ## 多运行时共用配置（核心）
 
 VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。所有运行时共用项目根目录下的 `.trae/mcp.json` 与 `AGENTS.md`，无需为每个运行时单独配置。
 
 ```
-┌─────────────────────────┐  ┌─────────────────────────┐  ┌──────────────────┐  ┌──────────────┐
-│ Trae IDE CN             │  │ Trae Work CN            │  │ WorkBuddy       │  │ opencode     │
-│ 设置→MCP→启用            │  │ 设置→MCP→启用           │  │ 信任 mcp        │  │ 运行 opencode│
-└────────────┬────────────┘  └────────────┬────────────┘  └────────┬─────────┘  └──────┬───────┘
-             │ 读取同一份配置（${workspaceFolder} 各自替换）          │                │
-             └────────────────────┬─────────────────────────────────┘                │
-                                  ↓                                                  │
-              ┌───────────────────────┐                                              │
-              │  .trae/mcp.json       │  ← 四个运行时各自替换为当前工作区路径          │
-              │  ${workspaceFolder}   │                                             │
-              │  /vocabcraft-mcp      │                                             │
-              └───────────────────────┘                                             │
-                                  ↓                                                  │
-              ┌───────────────────────┐                                             │
-              │  vocabcraft-mcp/      │  ← 同一份 MCP Server 代码                    │
-              │  (uv run 入口)         │                                             │
-              └───────────────────────┘                                             │
+┌─────────────────────────┐  ┌─────────────────────────┐  ┌──────────────────┐  ┌──────────────┐  ┌──────────────┐
+│ Trae IDE CN             │  │ Trae Work CN            │  │ WorkBuddy       │  │ opencode     │  │ Hermes Agent │
+│ 设置→MCP→启用            │  │ 设置→MCP→启用           │  │ 信任 mcp        │  │ 运行 opencode│  │ hermes       │
+└────────────┬────────────┘  └────────────┬────────────┘  └────────┬─────────┘  └──────┬───────┘  └──────┬───────┘
+             │ 读取同一份配置（${workspaceFolder} 各自替换）          │                │                │
+             └────────────────────┬─────────────────────────────────┘                │                │
+                                  ↓                                                  ↓                ↓
+              ┌───────────────────────┐                                                                      │
+              │  .trae/mcp.json       │  ← 五个运行时各自替换为当前工作区路径                                  │
+              │  ${workspaceFolder}   │                                                                 │
+              │  /vocabcraft-mcp      │                                                                 │
+              └───────────────────────┘                                                                 │
+                                  ↓                                                                      │
+              ┌───────────────────────┐                                                                 │
+              │  vocabcraft-mcp/      │  ← 同一份 MCP Server 代码                                        │
+              │  (uv run 入口)         │                                                                 │
+              └───────────────────────┘                                                                 │
 ```
 
 打开**同一个项目文件夹**时，`${workspaceFolder}` 会被各自替换为实际路径，因此解压到任意位置、用任一运行时打开都能正常工作。
@@ -88,7 +109,11 @@ VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。�
 1. 运行 `.\install.ps1 -AgentRuntime opencode`（或 `bash install.sh --agent-runtime opencode`）
 2. 在项目目录运行 `opencode`（AGENTS.md 自动加载）
 
-> ✅ 四个运行时操作一致，可同时启用。在哪个环境中使用 `/capture` 等命令，就由哪个环境的 MCP Server 实例响应。
+**Hermes Agent**
+1. 运行 `.\install.ps1 -AgentRuntime hermes`（或 `bash install.sh --agent-runtime hermes`）
+2. 在项目目录运行 `hermes`
+
+> ✅ 五个运行时操作一致，可同时启用。在哪个环境中使用 `/capture` 等命令，就由哪个环境的 MCP Server 实例响应。
 
 ### mcp.json 配置内容
 
@@ -161,7 +186,44 @@ Skills 位于 `.trae/skills/`，运行时自动读取，修改后重启运行时
 
 ### 规则来源
 
-业务规则与开发规范统一存放于根目录 **`AGENTS.md`**（四个运行时共用，单一真相源），不再拆分到 `.trae/rules/`。各 skill 的「约束规则」内联在其 `SKILL.md` 中。
+业务规则与开发规范统一存放于根目录 **`AGENTS.md`**（五个运行时共用，单一真相源），不再拆分到 `.trae/rules/`。各 skill 的「约束规则」内联在其 `SKILL.md` 中。
+
+## Hermes Agent 部署
+
+### 前置要求
+
+- Python 3.12+
+- uv 包管理器
+- Hermes Agent
+
+### 部署步骤
+
+1. 安装 Hermes Agent：
+   ```bash
+   curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+   ```
+
+2. 克隆项目：
+   ```bash
+   git clone https://github.com/yecllsl/vocabcraft.git
+   cd vocabcraft
+   ```
+
+3. 运行安装脚本：
+   ```powershell
+   .\install.ps1 -AgentRuntime hermes  # Windows
+   bash install.sh --agent-runtime hermes  # Linux/macOS
+   ```
+
+4. 配置 Hermes Agent：
+   ```bash
+   hermes setup
+   ```
+
+5. 启动 Hermes Agent：
+   ```bash
+   hermes
+   ```
 
 ## 常见问题
 
@@ -193,7 +255,7 @@ uv sync
 
 → 运行 `.\install.ps1 -FixPath` 修复路径，或手动添加（见上文）。
 
-### Q4: 四个运行时能否同时使用？
+### Q4: 五个运行时能否同时使用？
 
 可以，且推荐。各运行时共用同一份 `.trae/mcp.json` 与 `AGENTS.md`：
 
