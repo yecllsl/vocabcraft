@@ -103,8 +103,7 @@ if [ -n "$AGENT_RUNTIME" ]; then
     echo ""
     echo "=== Agent Runtime 配置 ==="
 
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    SYNC_SCRIPT="$SCRIPT_DIR/scripts/sync-agent-configs.sh"
+    SYNC_SCRIPT="$PROJECT_ROOT/scripts/sync-agent-configs.sh"
 
     case $AGENT_RUNTIME in
         trae)
