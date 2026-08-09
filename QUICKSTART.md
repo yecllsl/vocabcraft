@@ -26,9 +26,11 @@ chmod +x install.sh && ./install.sh
 
 > 📷 图片词汇采集由**宿主 LLM 多模态直接解析**（对话上传图片优先、本地路径次之、文本兜底），无需安装任何 OCR 引擎。手动录入、复习、考题、统计、导出均不依赖额外模型。
 
-### 第 3 步：在 Trae 中配置（多运行时操作一致）
+### 第 3 步：配置 Agent 运行时
 
-VocabCraft 同时支持 **Trae IDE CN** 与 **Trae Work CN**，两个环境共用同一份配置：
+VocabCraft 支持多个 Agent 运行时，选择你使用的环境进行配置：
+
+#### Trae IDE CN / Trae Work CN
 
 1. 用 **Trae IDE CN** 或 **Trae Work CN** 打开项目文件夹
 2. 进入 **设置 → MCP**
@@ -36,6 +38,29 @@ VocabCraft 同时支持 **Trae IDE CN** 与 **Trae Work CN**，两个环境共�
 4. 重启 Trae
 
 > 💡 两个环境读取同一份 `.trae/mcp.json`（使用 `${workspaceFolder}` 自动适配路径），无需为每个环境单独配置。
+
+#### Hermes Agent
+
+1. 安装 Hermes Agent：
+   ```bash
+   curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+   ```
+
+2. 运行安装脚本：
+   ```powershell
+   .\install.ps1 -AgentRuntime hermes  # Windows
+   bash install.sh --agent-runtime hermes  # Linux/macOS
+   ```
+
+3. 配置 Hermes Agent：
+   ```bash
+   hermes setup
+   ```
+
+4. 在项目目录运行 Hermes Agent：
+   ```bash
+   hermes
+   ```
 
 ### 第 4 步：开始使用
 
