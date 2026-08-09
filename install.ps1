@@ -7,7 +7,7 @@
 #
 # 可选参数：
 #   -FixPath       将 .trae/mcp.json 中的 ${workspaceFolder} 替换为绝对路径
-#   -AgentRuntime  配置 Agent 运行时 (trae/workbuddy/opencode/all)
+#   -AgentRuntime  配置 Agent 运行时 (trae/workbuddy/opencode/hermes/all)
 #
 # 前置要求：
 #   - Python 3.12+
@@ -16,7 +16,7 @@
 param(
     [switch]$FixPath,
     [Parameter(Mandatory=$false)]
-    [ValidateSet("trae", "workbuddy", "opencode", "all")]
+    [ValidateSet("trae", "workbuddy", "opencode", "hermes", "all")]
     [string]$AgentRuntime
 )
 
@@ -25,7 +25,7 @@ $ErrorActionPreference = "Stop"
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host " VocabCraft v0.5.2 安装向导" -ForegroundColor Cyan
-Write-Host "  (Trae IDE CN + Trae Work CN + WorkBuddy + opencode)" -ForegroundColor Cyan
+Write-Host "  (Trae IDE CN + Trae Work CN + WorkBuddy + opencode + Hermes Agent)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -140,6 +140,19 @@ if ($AgentRuntime) {
                 Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
             }
         }
+        "hermes" {
+            Write-Host "正在同步 Hermes Agent 配置..." -ForegroundColor Yellow
+            if (Test-Path $SyncScript) {
+                & $SyncScript -SkipOpencode -SkipWorkbuddy
+                Write-Host ""
+                Write-Host "下一步:" -ForegroundColor Yellow
+                Write-Host "  1. 安装 Hermes Agent: curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash"
+                Write-Host "  2. 配置 Hermes Agent: hermes setup"
+                Write-Host "  3. 在项目目录运行 hermes"
+            } else {
+                Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
+            }
+        }
         "all" {
             Write-Host "正在同步所有 Agent Runtime 配置..." -ForegroundColor Yellow
             if (Test-Path $SyncScript) {
@@ -149,6 +162,7 @@ if ($AgentRuntime) {
                 Write-Host "  Trae: 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
                 Write-Host "  WorkBuddy: 在 MCP 配置中信任 vocabcraft-mcp"
                 Write-Host "  opencode: 在项目目录运行 opencode"
+                Write-Host "  Hermes Agent: 安装并配置 Hermes Agent 后，在项目目录运行 hermes"
             } else {
                 Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
             }
