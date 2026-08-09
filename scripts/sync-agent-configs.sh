@@ -14,15 +14,26 @@ export PROJECT_ROOT TRAE_MCP
 [ -f "$TRAE_MCP" ] || { echo "错误: MCP 配置不存在: $TRAE_MCP"; exit 1; }
 [ -f "$AGENTS_MD" ] || { echo "错误: AGENTS.md 不存在: $AGENTS_MD"; exit 1; }
 
-echo "=== VocabCraft Agent Config Sync ==="
+# ──────────────────────────────────────────
+# 颜色输出（与 PowerShell 版风格一致）
+# ──────────────────────────────────────────
+if [ -t 1 ]; then
+    GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
+else
+    GREEN=''; YELLOW=''; CYAN=''; NC=''
+fi
+
+echo -e "${CYAN}=== VocabCraft Agent Config Sync ===${NC}"
 echo "项目根目录: $PROJECT_ROOT"
 
 SKIP_OPENCODE=false
 SKIP_WORKBUDDY=false
+SKIP_HERMES=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --skip-opencode) SKIP_OPENCODE=true; shift ;;
         --skip-workbuddy) SKIP_WORKBUDDY=true; shift ;;
+        --skip-hermes) SKIP_HERMES=true; shift ;;
         *) echo "未知参数: $1"; exit 1 ;;
     esac
 done
@@ -31,11 +42,11 @@ sync_skills() {
     local target_dir="$1"
     local target_skills="$target_dir/skills"
     rm -rf "$target_skills"
-    echo "同步 Skills → $target_skills"
+    echo -e "${YELLOW}同步 Skills → $target_skills${NC}"
     cp -r "$TRAE_SKILLS" "$target_skills"
     local skill_count
     skill_count=$(find "$target_skills" -mindepth 1 -maxdepth 1 -type d | wc -l)
-    echo "  已同步 $skill_count 个 Skills"
+    echo -e "${GREEN}  已同步 $skill_count 个 Skills${NC}"
 }
 
 generate_opencode_config() {
@@ -43,6 +54,10 @@ generate_opencode_config() {
     mkdir -p "$opencode_dir"
     python3 -c "
 import json, os
+from pathlib import Path
+project_root = Path(os.environ['PROJECT_ROOT'])
+opencode_dir = project_root / '.opencode'
+opencode_dir.mkdir(exist_ok=True)
 with open(os.environ['TRAE_MCP']) as f:
     trae_mcp = json.load(f)
 config = {'\$schema': 'https://opencode.ai/config.json', 'mcp': {}, 'instructions': ['AGENTS.md']}
@@ -64,10 +79,10 @@ for name, server in trae_mcp.get('mcpServers', {}).items():
     if cwd:
         entry['cwd'] = cwd
     config['mcp'][name] = entry
-with open('$opencode_dir/opencode.json', 'w', encoding='utf-8') as f:
+with open(opencode_dir / 'opencode.json', 'w', encoding='utf-8') as f:
     json.dump(config, f, indent=2, ensure_ascii=False)
 "
-    echo "已生成 opencode 配置"
+    echo -e "${GREEN}已生成 opencode 配置${NC}"
 }
 
 generate_workbuddy_mcp() {
@@ -75,7 +90,10 @@ generate_workbuddy_mcp() {
     mkdir -p "$workbuddy_dir"
     python3 -c "
 import json, os
-project_root = os.environ['PROJECT_ROOT']
+from pathlib import Path
+project_root = Path(os.environ['PROJECT_ROOT'])
+workbuddy_dir = project_root / '.workbuddy'
+workbuddy_dir.mkdir(exist_ok=True)
 uv_path = 'uv'
 for p in [os.path.expanduser('~/.local/bin/uv'), '/usr/local/bin/uv']:
     if os.path.isfile(p):
@@ -84,22 +102,63 @@ with open(os.environ['TRAE_MCP']) as f:
     trae_mcp = json.load(f)
 mcp = {'mcpServers': {}}
 for name, server in trae_mcp.get('mcpServers', {}).items():
-    args = [a.replace('\${workspaceFolder}', project_root.replace(chr(92), '/')) for a in server.get('args', [])]
+    args = [a.replace('\${workspaceFolder}', str(project_root).replace(chr(92), '/')) for a in server.get('args', [])]
     mcp['mcpServers'][name] = {'command': uv_path, 'args': args}
-with open('$workbuddy_dir/mcp.json', 'w', encoding='utf-8') as f:
+with open(workbuddy_dir / 'mcp.json', 'w', encoding='utf-8') as f:
     json.dump(mcp, f, indent=2, ensure_ascii=False)
 "
-    echo "已生成 WorkBuddy MCP 配置"
+    echo -e "${GREEN}已生成 WorkBuddy MCP 配置${NC}"
+}
+
+generate_hermes_config() {
+    local hermes_dir="$PROJECT_ROOT/.hermes"
+    mkdir -p "$hermes_dir"
+    python3 -c "
+import json, os
+from pathlib import Path
+project_root = Path(os.environ['PROJECT_ROOT'])
+hermes_dir = project_root / '.hermes'
+hermes_dir.mkdir(exist_ok=True)
+with open(os.environ['TRAE_MCP']) as f:
+    trae_mcp = json.load(f)
+config = {'mcp_servers': {}, 'instructions': ['AGENTS.md']}
+for name, server in trae_mcp.get('mcpServers', {}).items():
+    args = server.get('args', [])
+    cwd = None
+    cmd_args = []
+    skip_next = False
+    for arg in args:
+        if skip_next:
+            skip_next = False
+            cwd = arg.replace('\${workspaceFolder}/', '').replace(chr(92), '/')
+            continue
+        if arg == '--directory':
+            skip_next = True
+            continue
+        cmd_args.append(arg)
+    entry = {'command': server['command'], 'args': cmd_args}
+    if cwd:
+        entry['cwd'] = cwd
+    config['mcp_servers'][name] = entry
+with open(hermes_dir / 'config.yaml', 'w', encoding='utf-8') as f:
+    json.dump(config, f, indent=2, ensure_ascii=False)
+"
+    echo -e "${GREEN}已生成 Hermes Agent 配置${NC}"
 }
 
 if [ "$SKIP_OPENCODE" = false ]; then
-    echo ""; echo "--- opencode ---"
+    echo -e "\n${CYAN}--- opencode ---${NC}"
     sync_skills "$PROJECT_ROOT/.opencode"
     generate_opencode_config
 fi
 if [ "$SKIP_WORKBUDDY" = false ]; then
-    echo ""; echo "--- WorkBuddy ---"
+    echo -e "\n${CYAN}--- WorkBuddy ---${NC}"
     sync_skills "$PROJECT_ROOT/.workbuddy"
     generate_workbuddy_mcp
 fi
-echo ""; echo "=== 同步完成 ==="
+if [ "$SKIP_HERMES" = false ]; then
+    echo -e "\n${CYAN}--- Hermes Agent ---${NC}"
+    sync_skills "$PROJECT_ROOT/.hermes"
+    generate_hermes_config
+fi
+echo -e "\n${CYAN}=== 同步完成 ===${NC}"
