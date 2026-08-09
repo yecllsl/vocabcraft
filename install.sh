@@ -8,7 +8,7 @@
 #
 # 可选参数：
 #   --fix-path       将 .trae/mcp.json 中的 ${workspaceFolder} 替换为绝对路径
-#   --agent-runtime  配置 Agent 运行时 (trae/workbuddy/opencode/all)
+#   --agent-runtime  配置 Agent 运行时 (trae/workbuddy/opencode/hermes/all)
 #
 # 前置要求：
 #   - Python 3.12+
@@ -25,7 +25,7 @@ while [[ $# -gt 0 ]]; do
         --agent-runtime) AGENT_RUNTIME="$2"; shift 2 ;;
         *)
             echo "未知参数: $1"
-            echo "可用参数：--fix-path, --agent-runtime <trae|workbuddy|opencode|all>"
+            echo "可用参数：--fix-path, --agent-runtime <trae|workbuddy|opencode|hermes|all>"
             exit 1
             ;;
     esac
@@ -34,7 +34,7 @@ done
 echo ""
 echo "========================================"
 echo "  VocabCraft v0.5.2 安装向导"
-echo "  (Trae IDE CN + Trae Work CN + WorkBuddy + opencode)"
+echo "  (Trae IDE CN + Trae Work CN + WorkBuddy + opencode + Hermes Agent)"
 echo "========================================"
 echo ""
 
@@ -137,6 +137,19 @@ if [ -n "$AGENT_RUNTIME" ]; then
                 echo "  同步脚本不存在: $SYNC_SCRIPT"
             fi
             ;;
+        hermes)
+            echo "正在同步 Hermes Agent 配置..."
+            if [ -f "$SYNC_SCRIPT" ]; then
+                bash "$SYNC_SCRIPT" --skip-opencode --skip-workbuddy
+                echo ""
+                echo "下一步:"
+                echo "  1. 安装 Hermes Agent: curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash"
+                echo "  2. 配置 Hermes Agent: hermes setup"
+                echo "  3. 在项目目录运行 hermes"
+            else
+                echo "  同步脚本不存在: $SYNC_SCRIPT"
+            fi
+            ;;
         all)
             echo "正在同步所有 Agent Runtime 配置..."
             if [ -f "$SYNC_SCRIPT" ]; then
@@ -146,13 +159,14 @@ if [ -n "$AGENT_RUNTIME" ]; then
                 echo "  Trae: 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
                 echo "  WorkBuddy: 在 MCP 配置中信任 vocabcraft-mcp"
                 echo "  opencode: 在项目目录运行 opencode"
+                echo "  Hermes Agent: 安装并配置 Hermes Agent 后，在项目目录运行 hermes"
             else
                 echo "  同步脚本不存在: $SYNC_SCRIPT"
             fi
             ;;
         *)
             echo "未知 Agent Runtime: $AGENT_RUNTIME"
-            echo "支持的值: trae, workbuddy, opencode, all"
+            echo "支持的值: trae, workbuddy, opencode, hermes, all"
             exit 1
             ;;
     esac
