@@ -1,23 +1,23 @@
 # VocabCraft - 词汇学习与制作一体 MCP 工具
 
-基于 Trae IDE CN / Trae Work CN / WorkBuddy / Opencode 的词汇学习与制作一体化解决方案。核心流程：拍照 → 多模态 LLM 解析图片（对话上传 > 本地路径 > 文本） → 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期出考题 → 作答评分更新记忆状态。Trae 配置可通过 `scripts/sync-agent-configs` 生成适配 WorkBuddy / Opencode 的配置。
+基于 Trae IDE CN / Trae Work CN / WorkBuddy / Opencode / Hermes Agent 的词汇学习与制作一体化解决方案。核心流程：拍照 → 多模态 LLM 解析图片（对话上传 > 本地路径 > 文本） → 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期出考题 → 作答评分更新记忆状态。Trae 配置可通过 `scripts/sync-agent-configs` 生成适配 WorkBuddy / Opencode / Hermes Agent 的配置。
 
 ## 系统架构
 
 **服务层 + 配置层 + 规则层** 分离：
 
 - **服务层** (`vocabcraft-mcp/`)：纯 Python MCP Server，通用，不绑定任何客户端，可独立发布
-- **配置层**：定义 subagent（Skill）行为、流程与约束。`.trae/` 为唯一真相源（**只改这里**），`.opencode/`、`.workbuddy/` 由 `scripts/sync-agent-configs` 单向生成，禁止直接编辑（见「流程规则 > 配置同步」）
+- **配置层**：定义 subagent（Skill）行为、流程与约束。`.trae/` 为唯一真相源（**只改这里**），`.opencode/`、`.workbuddy/`、`.hermes/` 由 `scripts/sync-agent-configs` 单向生成，禁止直接编辑（见「流程规则 > 配置同步」）
 - **规则层**（本文件）：业务规则约束词汇学习流程，开发规则约束代码开发流程
 
 ```
 用户交互层
 ├── 对话式交互 (命令 / 自然语言)
-├── 四运行时: Trae IDE CN + Trae Work CN + WorkBuddy + Opencode
+├── 五运行时: Trae IDE CN + Trae Work CN + WorkBuddy + Opencode + Hermes Agent
 ├── Web 可视化 (vocabcraft_mcp/web — 同包内 FastAPI 子模块，非独立组件)
     ↓
 Skills 编排层 (配置定义，三目录同步)
-├── .trae/.opencode/.workbuddy/skills/vocabcraft-*
+├── .trae/.opencode/.workbuddy/.hermes/skills/vocabcraft-*
 ├── 5 个 Skill: capture / review / quiz / stats / export
     ↓
 服务层 (vocabcraft_mcp)
@@ -101,7 +101,7 @@ Not lazy about: input validation at trust boundaries, error handling that preven
 ### 流程规则（单人模式）
 
 - 需求不明先 `brainstorming` 澄清；功能开发遵循 TDD；Bug 根因不明先 `systematic-debugging`；每次 commit 前跑 lint/test/typecheck 拿证据；声称完成必须有验证证据（禁"应该没问题"式声称）；修复循环 > 3 次仍不回退规划阶段。
-- **配置同步（强约束）**：`.trae/` 是配置层唯一真相源；`.opencode/`、`.workbuddy/` 是 `scripts/sync-agent-configs` 的生成产物。**严禁**以任何方式（手工、AI、脚本）直接编辑 `.opencode/**`、`.workbuddy/**` 下的 Skill / MCP / 配置文件——同步脚本是单向覆盖，此类改动会在下次同步时被静默丢弃。正确流程：改 `.trae/` → 跑 `scripts/sync-agent-configs.ps1`（或 `.sh`）→ 三目录改动一起提交。例外仅限 `.workbuddy/memory/**` 等由运行时自行写入、不参与同步的目录。commit 前自检：若 diff 中出现 `.opencode/**` 或 `.workbuddy/**` 的修改而 `.trae/` 下无对应改动，视为违规，必须回退并从 `.trae/` 重做。**机械防线**：`scripts/pre-commit` 钩子（由 `install.ps1`/`.sh` 的 [6/5] 步安装到 `.git/hooks/pre-commit`）会在提交时自动拦截此类违规。
+- **配置同步（强约束）**：`.trae/` 是配置层唯一真相源；`.opencode/`、`.workbuddy/`、`.hermes/` 是 `scripts/sync-agent-configs` 的生成产物。**严禁**以任何方式（手工、AI、脚本）直接编辑 `.opencode/**`、`.workbuddy/**`、`.hermes/**` 下的 Skill / MCP / 配置文件——同步脚本是单向覆盖，此类改动会在下次同步时被静默丢弃。正确流程：改 `.trae/` → 跑 `scripts/sync-agent-configs.ps1`（或 `.sh`）→ 四目录改动一起提交。例外仅限 `.workbuddy/memory/**` 等由运行时自行写入、不参与同步的目录。commit 前自检：若 diff 中出现 `.opencode/**`、`.workbuddy/**` 或 `.hermes/**` 的修改而 `.trae/` 下无对应改动，视为违规，必须回退并从 `.trae/` 重做。**机械防线**：`scripts/pre-commit` 钩子（由 `install.ps1`/`.sh` 的 [6/5] 步安装到 `.git/hooks/pre-commit`）会在提交时自动拦截此类违规。
 - 分支：main 受 GitHub 保护，禁 force-push、禁 merge commit；功能合并用 `git merge --squash`；小改动可直接 main，大功能建议用 feature 分支。
 - 发布：版本号一致后才推送 main，等 CI 通过再打 Tag；禁止 CI 未过时创建 Tag。
 
