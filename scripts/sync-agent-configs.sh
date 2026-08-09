@@ -121,7 +121,7 @@ hermes_dir = project_root / '.hermes'
 hermes_dir.mkdir(exist_ok=True)
 with open(os.environ['TRAE_MCP']) as f:
     trae_mcp = json.load(f)
-config = {'mcp_servers': {}, 'instructions': ['AGENTS.md']}
+yaml_content = 'mcp_servers:\n'
 for name, server in trae_mcp.get('mcpServers', {}).items():
     args = server.get('args', [])
     cwd = None
@@ -136,12 +136,17 @@ for name, server in trae_mcp.get('mcpServers', {}).items():
             skip_next = True
             continue
         cmd_args.append(arg)
-    entry = {'command': server['command'], 'args': cmd_args}
+    yaml_content += f'  {name}:\n'
+    yaml_content += f'    command: \"{server[\"command\"]}\"\n'
+    yaml_content += '    args:\n'
+    for cmd_arg in cmd_args:
+        yaml_content += f'      - \"{cmd_arg}\"\n'
     if cwd:
-        entry['cwd'] = cwd
-    config['mcp_servers'][name] = entry
+        yaml_content += f'    cwd: \"{cwd}\"\n'
+yaml_content += '\ninstructions:\n'
+yaml_content += '  - \"AGENTS.md\"\n'
 with open(hermes_dir / 'config.yaml', 'w', encoding='utf-8') as f:
-    json.dump(config, f, indent=2, ensure_ascii=False)
+    f.write(yaml_content)
 "
     echo -e "${GREEN}已生成 Hermes Agent 配置${NC}"
 }

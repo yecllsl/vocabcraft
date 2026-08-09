@@ -84,7 +84,7 @@ function New-HermesConfig {
     $HermesDir = Join-Path $ProjectRoot ".hermes"
     if (-not (Test-Path $HermesDir)) { New-Item -ItemType Directory -Path $HermesDir -Force | Out-Null }
     $McpContent = Get-Content $TraeMcp -Raw | ConvertFrom-Json
-    $HermesConfig = @{ mcp_servers = @{}; instructions = @("AGENTS.md") }
+    $YamlContent = "mcp_servers:`n"
     foreach ($ServerName in $McpContent.mcpServers.PSObject.Properties.Name) {
         $Server = $McpContent.mcpServers.$ServerName
         $cwd = $null
@@ -95,11 +95,19 @@ function New-HermesConfig {
             if ($arg -eq '--directory') { $skipNext = $true; continue }
             $cmdArgs += $arg
         }
-        $mcpEntry = @{ command = $Server.command; args = $cmdArgs }
-        if ($cwd) { $mcpEntry['cwd'] = $cwd }
-        $HermesConfig.mcp_servers[$ServerName] = $mcpEntry
+        $YamlContent += "  ${ServerName}:`n"
+        $YamlContent += "    command: `"$($Server.command)`"`n"
+        $YamlContent += "    args:`n"
+        foreach ($arg in $cmdArgs) {
+            $YamlContent += "      - `"$arg`"`n"
+        }
+        if ($cwd) {
+            $YamlContent += "    cwd: `"$cwd`"`n"
+        }
     }
-    $HermesConfig | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $HermesDir "config.yaml") -Encoding UTF8
+    $YamlContent += "`ninstructions:`n"
+    $YamlContent += "  - `"AGENTS.md`"`n"
+    $YamlContent | Set-Content -Path (Join-Path $HermesDir "config.yaml") -Encoding UTF8
     Write-Host "已生成 Hermes Agent 配置" -ForegroundColor Green
 }
 
