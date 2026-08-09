@@ -1,16 +1,19 @@
 <#
 .SYNOPSIS
-    同步 Trae 配置到 opencode 和 WorkBuddy。
+    同步 Trae 配置到 opencode、WorkBuddy 和 Hermes Agent。
 .DESCRIPTION
-    从 .trae/ 目录读取 Skills 和 MCP 配置，生成 .opencode/ 和 .workbuddy/ 配置。
+    从 .trae/ 目录读取 Skills 和 MCP 配置，生成 .opencode/、.workbuddy/ 和 .hermes/ 配置。
 .PARAMETER SkipOpencode
     跳过 opencode 配置生成。
 .PARAMETER SkipWorkbuddy
     跳过 WorkBuddy 配置生成。
+.PARAMETER SkipHermes
+    跳过 Hermes Agent 配置生成。
 #>
 param(
     [switch]$SkipOpencode,
-    [switch]$SkipWorkbuddy
+    [switch]$SkipWorkbuddy,
+    [switch]$SkipHermes
 )
 
 $ErrorActionPreference = "Stop"
@@ -77,6 +80,29 @@ function New-WorkbuddyMcp {
     Write-Host "已生成 WorkBuddy MCP 配置" -ForegroundColor Green
 }
 
+function New-HermesConfig {
+    $HermesDir = Join-Path $ProjectRoot ".hermes"
+    if (-not (Test-Path $HermesDir)) { New-Item -ItemType Directory -Path $HermesDir -Force | Out-Null }
+    $McpContent = Get-Content $TraeMcp -Raw | ConvertFrom-Json
+    $HermesConfig = @{ mcp_servers = @{}; instructions = @("AGENTS.md") }
+    foreach ($ServerName in $McpContent.mcpServers.PSObject.Properties.Name) {
+        $Server = $McpContent.mcpServers.$ServerName
+        $cwd = $null
+        $cmdArgs = @()
+        $skipNext = $false
+        foreach ($arg in $Server.args) {
+            if ($skipNext) { $skipNext = $false; $cwd = ($arg -replace '\$\{workspaceFolder\}/', '' -replace '\\', '/'); continue }
+            if ($arg -eq '--directory') { $skipNext = $true; continue }
+            $cmdArgs += $arg
+        }
+        $mcpEntry = @{ command = $Server.command; args = $cmdArgs }
+        if ($cwd) { $mcpEntry['cwd'] = $cwd }
+        $HermesConfig.mcp_servers[$ServerName] = $mcpEntry
+    }
+    $HermesConfig | ConvertTo-Json -Depth 10 | Set-Content -Path (Join-Path $HermesDir "config.yaml") -Encoding UTF8
+    Write-Host "已生成 Hermes Agent 配置" -ForegroundColor Green
+}
+
 if (-not $SkipOpencode) {
     Write-Host "`n--- opencode ---" -ForegroundColor Cyan
     Sync-Skills -TargetDir (Join-Path $ProjectRoot ".opencode")
@@ -86,5 +112,10 @@ if (-not $SkipWorkbuddy) {
     Write-Host "`n--- WorkBuddy ---" -ForegroundColor Cyan
     Sync-Skills -TargetDir (Join-Path $ProjectRoot ".workbuddy")
     New-WorkbuddyMcp
+}
+if (-not $SkipHermes) {
+    Write-Host "`n--- Hermes Agent ---" -ForegroundColor Cyan
+    Sync-Skills -TargetDir (Join-Path $ProjectRoot ".hermes")
+    New-HermesConfig
 }
 Write-Host "`n=== 同步完成 ===" -ForegroundColor Cyan
