@@ -28,6 +28,10 @@ All notable changes to this project will be documented in this file.
 ### 版本号统一
 - 版本号统一至 0.5.5（pyproject.toml / package.json / install.* / README.md / DEPLOY.md / QUICKSTART.md / CHANGELOG / build-release.*），并通过 `scripts/check_version.py` 校验。
 
+### 修复：Release 工作流构建失败
+- 根因：`scripts/build-release.sh` 将四个运行时平台配置写入**不带点前缀**的目录（`trae/` / `opencode/` / `codebuddy/` / `goose/`），但验证步骤与 IDE 识别均要求**带点前缀**目录（`.trae/` / `.opencode/` / `.codebuddy/` / `.goose/`），导致 verify 阶段报 `Missing required files` 后 `exit 1`，Release 工作流失败。PowerShell 版 `build-release.ps1` 本就使用带点目录名，两者不一致。
+- 修复：在 `build-release.sh` 新增 `CFG_DOT` 映射（`[trae]=".trae"` 等），步骤 [2]/[3] 改用 `$STAGING_DIR/${CFG_DOT[$p]}`，与 PowerShell 版对齐；本地复现构建已通过 verify（110 文件、无 `.venv`）。
+
 ## [0.5.4] - 2026-08-09
 
 ### AAIF Migration

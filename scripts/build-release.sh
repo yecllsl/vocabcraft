@@ -36,6 +36,9 @@ AGENTS_MD="$AGENTS_DIR/AGENTS.md"
 declare -A CFG_SRC=( [trae]=trae.json [opencode]=opencode.json [codebuddy]=codebuddy.json [goose]=goose.json )
 declare -A CFG_DST=( [trae]=mcp.json [opencode]=opencode.json [codebuddy]=mcp.json [goose]=config.yaml )
 declare -A AGENTS_IN_PLATFORM=( [trae]=0 [opencode]=1 [codebuddy]=1 [goose]=1 )
+# 平台在发布包中的目录名必须为带点前缀（.trae/.opencode/.codebuddy/.goose），
+# 否则 IDE 无法识别。PowerShell 版已使用带点目录名，此处保持对齐。
+declare -A CFG_DOT=( [trae]=".trae" [opencode]=".opencode" [codebuddy]=".codebuddy" [goose]=".goose" )
 PLATFORMS=( trae opencode codebuddy goose )
 
 # ──────────────────────────────────────────
@@ -70,7 +73,7 @@ log_ok "cleaned"
 log_step "[2/6] Create directory structure..."
 mkdir -p "$STAGING_DIR/.agents"
 for p in "${PLATFORMS[@]}"; do
-    mkdir -p "$STAGING_DIR/$p/skills"
+    mkdir -p "$STAGING_DIR/${CFG_DOT[$p]}/skills"
 done
 mkdir -p "$STAGING_DIR/vocabcraft-mcp/src"
 mkdir -p "$STAGING_DIR/vocabcraft-mcp/tests"
@@ -114,7 +117,7 @@ copy_dir_filtered() {
 }
 
 for p in "${PLATFORMS[@]}"; do
-    pd="$STAGING_DIR/$p"
+    pd="$STAGING_DIR/${CFG_DOT[$p]}"
     mkdir -p "$pd/skills"
     # Skills：整目录同步（与 sync-agent-configs 一致，不再做 vocabcraft-* 前缀过滤）
     copy_dir_filtered "$AGENTS_SKILLS" "$pd/skills"
