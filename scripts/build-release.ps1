@@ -23,6 +23,20 @@ $tempDir = Join-Path $distDir $packageName
 $zipPath = Join-Path $distDir "$packageName.zip"
 $gzPath = Join-Path $distDir "$packageName.tar.gz"
 
+# 基线运行时平台（AAIF 4 运行时：Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）
+# .agents/ 为 AAIF 真相源：Skills 与 AGENTS.md 同步自 .agents/，平台配置生成自 .agents/runtime/*.json
+$agentsDir = Join-Path $projectRoot ".agents"
+$agentsRuntime = Join-Path $agentsDir "runtime"
+$agentsSkills = Join-Path $agentsDir "skills"
+$agentsMd = Join-Path $agentsDir "AGENTS.md"
+# 每个平台：目录名 / 运行时配置源(json) / 配置输出文件名 / AGENTS.md 是否放进平台目录（Trae 放根目录）
+$platforms = @(
+    [PSCustomObject]@{ Dir = ".trae";      ConfigSrc = "trae.json";      ConfigDst = "mcp.json";      AgentsMdInPlatform = $false },
+    [PSCustomObject]@{ Dir = ".opencode";  ConfigSrc = "opencode.json";  ConfigDst = "opencode.json"; AgentsMdInPlatform = $true },
+    [PSCustomObject]@{ Dir = ".codebuddy"; ConfigSrc = "codebuddy.json"; ConfigDst = "mcp.json";      AgentsMdInPlatform = $true },
+    [PSCustomObject]@{ Dir = ".goose";     ConfigSrc = "goose.json";     ConfigDst = "config.yaml";   AgentsMdInPlatform = $true }
+)
+
 
 function Write-Step([string]$msg) {
     Write-Host "[build] $msg" -ForegroundColor Yellow
@@ -65,11 +79,13 @@ Write-Ok "cleaned"
 Write-Step "[2/6] Create directory structure..."
 # 顶层目录
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
-# .trae 子目录（与 BMAD 共存：agents/commands/skills/rules）
-New-Item -ItemType Directory -Path (Join-Path $tempDir ".trae\rules") -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $tempDir ".trae\skills") -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $tempDir ".trae\agents") -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $tempDir ".trae\commands") -Force | Out-Null
+# AAIF 真相源子目录（opencode 的 instructions 引用 .agents/AGENTS.md）
+New-Item -ItemType Directory -Path (Join-Path $tempDir ".agents") -Force | Out-Null
+# 四个运行时平台目录（Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）
+# 基线约定：每个平台目录都有 skills/ 与 AGENTS.md（Trae 例外：AGENTS.md 放根目录）
+foreach ($p in $platforms) {
+    New-Item -ItemType Directory -Path (Join-Path $tempDir $p.Dir "skills") -Force | Out-Null
+}
 # vocabcraft-mcp 子目录
 New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft-mcp\src") -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft-mcp\data\vocabs") -Force | Out-Null
@@ -80,71 +96,52 @@ New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft-mcp\data\imag
 Write-Ok "directories created"
 
 # ──────────────────────────────────────────
-# [3/6] 复制 .trae 配置（白名单，仅 vocabcraft-* 业务文件 + 顶层配置）
+# [3/6] 复制 AAIF 多平台配置（.trae / .opencode / .codebuddy / .goose）
 # ──────────────────────────────────────────
-Write-Step "[3/6] Copy .trae config..."
+Write-Step "[3/6] Copy AAIF platform configs (.trae/.opencode/.codebuddy/.goose)..."
 
-# .trae 顶层文件
-# 注意：源 .trae/mcp.json 受 Trae 保护，可能包含硬编码的绝对路径 cwd。
-# 发布包必须使用 ${workspaceFolder} 变量版本，因此在构建时覆盖写入正确内容。
-$traeTopFiles = @("hooks.json")
-foreach ($f in $traeTopFiles) {
-    $src = Join-Path $projectRoot ".trae\$f"
-    if (Test-Path $src) {
-        Copy-Item $src (Join-Path $tempDir ".trae\$f") -Force
-    }
-}
+# opencode 的 instructions 引用 .agents/AGENTS.md，发布包需包含该文件
+Copy-Item -Force $agentsMd (Join-Path $tempDir ".agents\AGENTS.md")
 
-# 写入发布版 mcp.json（使用 ${workspaceFolder} 变量，解压到任意位置均可工作）
-# 多运行时（TRAEWORK CN + TRAEIDE CN）共用此配置
-$releaseMcpJson = @'
-{
-  "mcpServers": {
-    "vocabcraft-mcp": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "${workspaceFolder}/vocabcraft-mcp",
-        "vocabcraft-mcp"
-      ]
-    }
-  }
-}
-'@
-$releaseMcpJson | Set-Content -Path (Join-Path $tempDir ".trae\mcp.json") -Encoding UTF8 -NoNewline
-
-# 辅助函数：复制目录下所有以 vocabcraft- 前缀开头的子项（文件或目录）
-# 与 BMAD 共存策略：只打包业务文件，不打包 BMAD 文件
-function Copy-VocabcraftPrefixedItems {
+function New-GooseReleaseConfig {
     param(
-        [string]$srcDir,
-        [string]$dstDir,
-        [bool]$isDirectory
+        [string]$SrcJson,
+        [string]$DstDir
     )
-    if (!(Test-Path $srcDir)) { return }
-    Get-ChildItem $srcDir | Where-Object {
-        $_.Name -like "vocabcraft-*" -and (($isDirectory -and $_.PSIsContainer) -or (-not $isDirectory -and -not $_.PSIsContainer))
-    } | ForEach-Object {
-        if ($isDirectory) {
-            # 目录递归复制（排除 __pycache__ / .pytest_cache）
-            $childDst = Join-Path $dstDir $_.Name
-            New-Item -ItemType Directory -Path $childDst -Force | Out-Null
-            $rc = robocopy $_.FullName $childDst /E /XD __pycache__ .pytest_cache /XF *.pyc /NFL /NDL /NJH /NJS /NP
-            if ($LASTEXITCODE -ge 8) {
-                Write-Err "robocopy failed for $($_.FullName) with exit code $LASTEXITCODE"
-                exit 1
-            }
-        } else {
-            Copy-Item $_.FullName (Join-Path $dstDir $_.Name) -Force
-        }
+    # 发布包使用相对 --directory（解压到任意位置均可工作），故 --no-resolve-dir
+    & python (Join-Path $PSScriptRoot "generate-goose-config.py") --runtime-json $SrcJson --out-dir $DstDir --no-resolve-dir
+    if ($LASTEXITCODE -ne 0) {
+        Write-Err "goose config generation failed (exit $LASTEXITCODE)"
+        exit 1
     }
 }
 
-# .agents/skills/ 只复制 vocabcraft-* 前缀的 skill 目录（AAIF 真相源）
-Copy-VocabcraftPrefixedItems -srcDir (Join-Path $projectRoot ".agents\skills") -dstDir (Join-Path $tempDir ".trae\skills") -isDirectory $true
+foreach ($p in $platforms) {
+    $platDir = Join-Path $tempDir $p.Dir
 
-Write-Ok ".trae config copied (skills only, rules/agents/commands migrated to AGENTS.md)"
+    # Skills：整目录同步（与 sync-agent-configs 一致，不再做 vocabcraft-* 前缀过滤）
+    $rc = robocopy $agentsSkills (Join-Path $platDir "skills") /E /XD __pycache__ .pytest_cache /XF *.pyc /NFL /NDL /NJH /NJS /NP
+    if ($LASTEXITCODE -ge 8) {
+        Write-Err "robocopy skills failed for $($p.Dir) (exit $LASTEXITCODE)"
+        exit 1
+    }
+
+    # AGENTS.md（Trae 放根目录，其余平台放进各自目录）
+    if ($p.AgentsMdInPlatform) {
+        Copy-Item -Force $agentsMd (Join-Path $platDir "AGENTS.md")
+    }
+
+    # 平台配置：来自 AAIF 运行时真相源 .agents/runtime/<ConfigSrc>
+    $cfgSrc = Join-Path $agentsRuntime $p.ConfigSrc
+    $cfgDst = Join-Path $platDir $p.ConfigDst
+    if ($p.ConfigDst -eq "config.yaml") {
+        New-GooseReleaseConfig -SrcJson $cfgSrc -DstDir $platDir
+    } else {
+        Copy-Item -Force $cfgSrc $cfgDst
+    }
+}
+
+Write-Ok "AAIF platform configs copied (.trae/.opencode/.codebuddy/.goose)"
 
 # ──────────────────────────────────────────
 # [4/6] 复制 vocabcraft-mcp 源码（白名单）
@@ -212,7 +209,7 @@ Write-Ok "source copied"
 # ──────────────────────────────────────────
 Write-Step "[5/6] Copy docs and install scripts..."
 $topFiles = @("install.ps1", "install.sh", "README.md", "DEPLOY.md", "QUICKSTART.md", "LICENSE", "AGENTS.md", ".workbuddy/README.md", ".hermes/README.md")
-# AGENTS.md 的真相源是 .agents/AGENTS.md（同步生成根目录 AGENTS.md）
+# AGENTS.md 的真相源是 .agents/AGENTS.md（同步生成根目录 AGENTS.md，供 Trae 使用）
 foreach ($f in $topFiles) {
     $srcName = if ($f -eq "AGENTS.md") { ".agents\AGENTS.md" } else { $f }
     $src = Join-Path $projectRoot $srcName
@@ -230,9 +227,18 @@ Write-Ok "docs copied"
 # ──────────────────────────────────────────
 Write-Step "[6/6] Verify and pack..."
 
-# 验证关键文件存在（关键 .trae 文件可能因前缀过滤而不存在，故只验必备项）
+# 验证关键文件存在（四个平台配置均来自 AAIF 真相源，需全部齐备）
 $requiredFiles = @(
+    "AGENTS.md",
+    ".agents\AGENTS.md",
     ".trae\mcp.json",
+    ".opencode\opencode.json",
+    ".codebuddy\mcp.json",
+    ".goose\config.yaml",
+    ".trae\skills",
+    ".opencode\skills",
+    ".codebuddy\skills",
+    ".goose\skills",
     "vocabcraft-mcp\pyproject.toml",
     "vocabcraft-mcp\src\vocabcraft_mcp\server.py",
     "install.ps1",
@@ -310,9 +316,8 @@ Write-Host "    $zipPath ($zipSizeMB MB)" -ForegroundColor Cyan
 if (Test-Path $gzPath) { Write-Host "    $gzPath" -ForegroundColor Cyan }
 Write-Host "  Files:    $fileCount" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  User steps (TRAEWORK CN / TRAEIDE CN 均适用):" -ForegroundColor White
+Write-Host "  User steps (支持的运行时: Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose):" -ForegroundColor White
 Write-Host "  1. Extract VocabCraft-v$Version.zip" -ForegroundColor DarkGray
-Write-Host "  2. Run install.ps1" -ForegroundColor DarkGray
-Write-Host "  3. Open folder in Trae, enable project-level MCP" -ForegroundColor DarkGray
-Write-Host "  4. Repeat step 3 in the other Trae env for dual-env setup" -ForegroundColor DarkGray
+Write-Host "  2. Run install.ps1 (或 Linux/macOS 下 install.sh)" -ForegroundColor DarkGray
+Write-Host "  3. 在所用 IDE 中打开该文件夹，启用项目级 MCP 即可" -ForegroundColor DarkGray
 Write-Host ""

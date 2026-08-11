@@ -26,6 +26,18 @@ ZIP_PATH="$DIST_DIR/$PACKAGE_NAME.zip"
 ZST_PATH="$DIST_DIR/$PACKAGE_NAME.tar.zst"
 GZ_PATH="$DIST_DIR/$PACKAGE_NAME.tar.gz"
 
+# 基线运行时平台（AAIF 4 运行时：Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）
+# .agents/ 为 AAIF 真相源：Skills 与 AGENTS.md 同步自 .agents/，平台配置生成自 .agents/runtime/*.json
+PYTHON_BIN="$(command -v python3 || command -v python || echo python3)"
+AGENTS_DIR="$PROJECT_ROOT/.agents"
+AGENTS_RUNTIME="$AGENTS_DIR/runtime"
+AGENTS_SKILLS="$AGENTS_DIR/skills"
+AGENTS_MD="$AGENTS_DIR/AGENTS.md"
+declare -A CFG_SRC=( [trae]=trae.json [opencode]=opencode.json [codebuddy]=codebuddy.json [goose]=goose.json )
+declare -A CFG_DST=( [trae]=mcp.json [opencode]=opencode.json [codebuddy]=mcp.json [goose]=config.yaml )
+declare -A AGENTS_IN_PLATFORM=( [trae]=0 [opencode]=1 [codebuddy]=1 [goose]=1 )
+PLATFORMS=( trae opencode codebuddy goose )
+
 # ──────────────────────────────────────────
 # 颜色输出（与 PowerShell 版风格一致）
 # ──────────────────────────────────────────
@@ -56,7 +68,10 @@ log_ok "cleaned"
 # [2/6] 创建目标目录结构
 # ──────────────────────────────────────────
 log_step "[2/6] Create directory structure..."
-mkdir -p "$STAGING_DIR/.trae/skills"
+mkdir -p "$STAGING_DIR/.agents"
+for p in "${PLATFORMS[@]}"; do
+    mkdir -p "$STAGING_DIR/$p/skills"
+done
 mkdir -p "$STAGING_DIR/vocabcraft-mcp/src"
 mkdir -p "$STAGING_DIR/vocabcraft-mcp/tests"
 mkdir -p "$STAGING_DIR/vocabcraft-mcp/data/vocabs"
@@ -67,78 +82,57 @@ mkdir -p "$STAGING_DIR/vocabcraft-mcp/data/images"
 log_ok "directories created"
 
 # ──────────────────────────────────────────
-# [3/6] 复制 .trae 配置（白名单，仅 vocabcraft-* 业务文件）
+# [3/6] 复制 AAIF 多平台配置（.trae / .opencode / .codebuddy / .goose）
 # ──────────────────────────────────────────
-log_step "[3/6] Copy .trae config..."
+log_step "[3/6] Copy AAIF platform configs (.trae/.opencode/.codebuddy/.goose)..."
 
-# .trae 顶层文件
-[ -f "$PROJECT_ROOT/.trae/hooks.json" ] && \
-    cp "$PROJECT_ROOT/.trae/hooks.json" "$STAGING_DIR/.trae/hooks.json"
+# opencode 的 instructions 引用 .agents/AGENTS.md，发布包需包含该文件
+cp "$AGENTS_MD" "$STAGING_DIR/.agents/AGENTS.md"
 
-# 写入发布版 mcp.json（使用 ${workspaceFolder} 变量，解压到任意位置均可工作）
-# 多运行时（TRAEWORK CN + TRAEIDE CN）共用此配置
-cat > "$STAGING_DIR/.trae/mcp.json" <<'EOF'
-{
-  "mcpServers": {
-    "vocabcraft-mcp": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "${workspaceFolder}/vocabcraft-mcp",
-        "vocabcraft-mcp"
-      ]
-    }
-  }
-}
-EOF
-
-# 辅助函数：复制目录下所有 vocabcraft-* 前缀的文件（非递归）
-# 与 BMAD 共存策略：只打包业务文件，不打包 BMAD 文件
-copy_vocabcraft_files() {
-    local src_dir="$1"
-    local dst_dir="$2"
+# 辅助函数：递归复制一个目录（排除 __pycache__ / .pytest_cache / *.pyc）
+copy_dir_filtered() {
+    local src_dir="$1" dst_dir="$2"
     [ -d "$src_dir" ] || return 0
-    for f in "$src_dir"/vocabcraft-*; do
-        [ -f "$f" ] || continue
-        cp "$f" "$dst_dir/$(basename "$f")"
-    done
+    mkdir -p "$dst_dir"
+    if command -v rsync >/dev/null 2>&1; then
+        rsync -a --exclude='__pycache__' --exclude='.pytest_cache' --exclude='*.pyc' \
+            "$src_dir/" "$dst_dir/"
+    else
+        (
+            cd "$src_dir"
+            find . -type f \
+                ! -path '*/__pycache__/*' \
+                ! -path '*/.pytest_cache/*' \
+                ! -name '*.pyc' -print0
+        ) | while IFS= read -r -d '' rel; do
+            rel="${rel#./}"
+            dst="$dst_dir/$rel"
+            mkdir -p "$(dirname "$dst")"
+            cp "$src_dir/$rel" "$dst"
+        done
+    fi
 }
 
-# 辅助函数：复制目录下所有 vocabcraft-* 前缀的子目录（递归，排除 __pycache__）
-copy_vocabcraft_dirs() {
-    local src_dir="$1"
-    local dst_dir="$2"
-    [ -d "$src_dir" ] || return 0
-    for d in "$src_dir"/vocabcraft-*/; do
-        [ -d "$d" ] || continue
-        local name="$(basename "$d")"
-        local skill_dst="$dst_dir/$name"
-        mkdir -p "$skill_dst"
-        if command -v rsync >/dev/null 2>&1; then
-            rsync -a --exclude='__pycache__' --exclude='.pytest_cache' --exclude='*.pyc' \
-                "$d" "$skill_dst/"
-        else
-            (
-                cd "$d"
-                find . -type f \
-                    ! -path '*/__pycache__/*' \
-                    ! -path '*/.pytest_cache/*' \
-                    ! -name '*.pyc' -print0
-            ) | while IFS= read -r -d '' rel; do
-                rel="${rel#./}"
-                local dst="$skill_dst/$rel"
-                mkdir -p "$(dirname "$dst")"
-                cp "$d$rel" "$dst"
-            done
-        fi
-    done
-}
+for p in "${PLATFORMS[@]}"; do
+    pd="$STAGING_DIR/$p"
+    mkdir -p "$pd/skills"
+    # Skills：整目录同步（与 sync-agent-configs 一致，不再做 vocabcraft-* 前缀过滤）
+    copy_dir_filtered "$AGENTS_SKILLS" "$pd/skills"
+    # AGENTS.md（Trae 放根目录，其余平台放进各自目录）
+    if [ "${AGENTS_IN_PLATFORM[$p]}" = "1" ]; then
+        cp "$AGENTS_MD" "$pd/AGENTS.md"
+    fi
+    # 平台配置：来自 AAIF 运行时真相源 .agents/runtime/<ConfigSrc>
+    if [ "${CFG_DST[$p]}" = "config.yaml" ]; then
+        "$PYTHON_BIN" "$SCRIPT_DIR/generate-goose-config.py" \
+            --runtime-json "$AGENTS_RUNTIME/${CFG_SRC[$p]}" \
+            --out-dir "$pd" --no-resolve-dir
+    else
+        cp "$AGENTS_RUNTIME/${CFG_SRC[$p]}" "$pd/${CFG_DST[$p]}"
+    fi
+done
 
-# .agents/skills/ 只复制 vocabcraft-* 前缀的 skill 目录（AAIF 真相源）
-copy_vocabcraft_dirs "$PROJECT_ROOT/.agents/skills" "$STAGING_DIR/.trae/skills"
-
-log_ok ".trae config copied (skills only, rules/agents/commands migrated to AGENTS.md)"
+log_ok "AAIF platform configs copied (.trae/.opencode/.codebuddy/.goose)"
 
 # ──────────────────────────────────────────
 # [4/6] 复制 vocabcraft-mcp 源码（白名单）
@@ -221,9 +215,18 @@ log_ok "docs copied"
 # ──────────────────────────────────────────
 log_step "[6/6] Verify and pack..."
 
-# 验证关键文件存在
+# 验证关键文件存在（四个平台配置均来自 AAIF 真相源，需全部齐备）
 required=(
+    "AGENTS.md"
+    ".agents/AGENTS.md"
     ".trae/mcp.json"
+    ".opencode/opencode.json"
+    ".codebuddy/mcp.json"
+    ".goose/config.yaml"
+    ".trae/skills"
+    ".opencode/skills"
+    ".codebuddy/skills"
+    ".goose/skills"
     "vocabcraft-mcp/pyproject.toml"
     "vocabcraft-mcp/src/vocabcraft_mcp/server.py"
     "install.ps1"
@@ -232,7 +235,7 @@ required=(
 )
 missing=()
 for rf in "${required[@]}"; do
-    [ -f "$STAGING_DIR/$rf" ] || missing+=("$rf")
+    [ -e "$STAGING_DIR/$rf" ] || missing+=("$rf")
 done
 if [ ${#missing[@]} -gt 0 ]; then
     log_err "Missing required files:"
@@ -298,9 +301,8 @@ echo ""
 echo -e "  Package: ${CYAN}$PACKAGE_NAME${NC}"
 echo -e "  Files:   ${CYAN}$file_count${NC}"
 echo ""
-echo "  User steps (TRAEWORK CN / TRAEIDE CN 均适用):"
+echo "  User steps (支持的运行时: Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose):"
 echo "  1. Extract VocabCraft-v$VERSION.{zip|tar.zst|tar.gz}"
-echo "  2. Run install.ps1 (or install.sh on Linux/macOS)"
-echo "  3. Open folder in Trae, enable project-level MCP"
-echo "  4. Repeat step 3 in the other Trae env for dual-env setup"
+echo "  2. Run install.ps1 (或 Linux/macOS 下 install.sh)"
+echo "  3. 在所用 IDE 中打开该文件夹，启用项目级 MCP 即可"
 echo ""

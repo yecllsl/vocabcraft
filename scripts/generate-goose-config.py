@@ -13,6 +13,7 @@ Usage:
 """
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -41,17 +42,17 @@ def _yaml_scalar(value: object) -> str:
     return f'"{text}"' if needs_quote else text
 
 
-def _resolve_args(args: list[str], project_root: Path) -> list[str]:
+def _resolve_args(args: list[str], project_root: Path | None) -> list[str]:
     out = list(args)
     for i, arg in enumerate(out[:-1]):
-        if arg == "--directory":
+        if arg == "--directory" and project_root is not None:
             target = Path(out[i + 1])
             if not target.is_absolute():
                 out[i + 1] = str((project_root / target).resolve())
     return out
 
 
-def _emit_extensions(extensions: dict, project_root: Path) -> list[str]:
+def _emit_extensions(extensions: dict, project_root: Path | None = None) -> list[str]:
     lines: list[str] = []
     for name, ext in extensions.items():
         lines.append(f"  {name}:")
@@ -66,13 +67,43 @@ def _emit_extensions(extensions: dict, project_root: Path) -> list[str]:
 
 
 def main() -> None:
-    data = json.loads(RUNTIME_JSON.read_text(encoding="utf-8"))
+    parser = argparse.ArgumentParser(
+        description="Generate Goose config (.goose/config.yaml) from AAIF source."
+    )
+    parser.add_argument(
+        "--runtime-json",
+        default=str(RUNTIME_JSON),
+        help="Path to the AAIF source JSON (.agents/runtime/goose.json).",
+    )
+    parser.add_argument(
+        "--out-dir",
+        default=str(GOOSE_DIR),
+        help="Output directory for config.yaml (default: .goose).",
+    )
+    parser.add_argument(
+        "--no-resolve-dir",
+        action="store_true",
+        help=(
+            "Keep --directory relative (e.g. 'vocabcraft-mcp') instead of "
+            "resolving to an absolute path. Use when packaging a release that "
+            "will be extracted to an arbitrary location."
+        ),
+    )
+    args = parser.parse_args()
+
+    runtime_json = Path(args.runtime_json)
+    out_dir = Path(args.out_dir)
+    out_config = out_dir / "config.yaml"
+    # 基线默认值：发布包使用相对 --directory（解压到任意位置均可工作）。
+    project_root = None if args.no_resolve_dir else PROJECT_ROOT
+
+    data = json.loads(runtime_json.read_text(encoding="utf-8"))
     extensions = data.get("extensions", {})
-    GOOSE_DIR.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
     lines = [*HEADER, "extensions:"]
-    lines += _emit_extensions(extensions, PROJECT_ROOT)
-    GOOSE_CONFIG.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"已生成 Goose 配置: {GOOSE_CONFIG}")
+    lines += _emit_extensions(extensions, project_root)
+    out_config.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"已生成 Goose 配置: {out_config}")
 
 
 if __name__ == "__main__":
