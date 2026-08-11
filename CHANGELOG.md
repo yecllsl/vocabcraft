@@ -16,6 +16,9 @@ All notable changes to this project will be documented in this file.
 - `scripts/pre-commit` 生成目录拦截名单新增 `.goose/*`。
 - `install.*` 增加 `goose` 运行时选项；`README.md` / `QUICKSTART.md` / `DEPLOY.md` 增加 Goose 配置说明与运行时计数更新。
 
+### 文档清理：移除遗留 WorkBuddy 引用
+- 清理 `.workbuddy/` / `WorkBuddy` 过时引用（`WorkBuddy` 此前已重命名为 `CodeBuddy`，项目实际仅生成 `.codebuddy/`）：同步修正 `.agents/AGENTS.md`、`AGENTS.md`、`README.md`、`DEPLOY.md`、`scripts/pre-commit`、`install.*` 中的生成目录列表、pre-commit 拦截名单与安装提示文案。
+
 ## [0.5.4] - 2026-08-09
 
 ### AAIF Migration

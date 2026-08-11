@@ -11,7 +11,7 @@
 # 2. 运行安装脚本
 .\install.ps1
 
-# 3. 用 Trae IDE CN / Trae Work CN / WorkBuddy / OpenCode / Goose 打开文件夹
+# 3. 用 Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose 打开文件夹
 # 4. 启用项目级 MCP（各运行时入口不同，见下文）
 # 5. 重启运行时
 ```
@@ -41,17 +41,17 @@ chmod +x install.sh
 | Python | 3.12+ | https://www.python.org/downloads/ |
 | uv | 最新版 | Windows: `irm https://astral.sh/uv/install.ps1 \| iex` |
 | | | Linux/macOS: `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| 运行时 | 最新版 | Trae IDE CN / Trae Work CN / WorkBuddy / OpenCode / Goose（任选其一或全部） |
+| 运行时 | 最新版 | Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose（任选其一或全部） |
 
 > 💡 五个运行时**共用同一份配置与数据**，也可同时安装。
 
 ## 多运行时共用配置（核心）
 
-VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。Trae / WorkBuddy / OpenCode / CodeBuddy 共用 `.agents/runtime/trae.json`（同步生成 `.trae/mcp.json`）与 `.agents/AGENTS.md`（同步到根目录与各平台）；Goose 单独走 `.agents/runtime/goose.json`（同步生成 `.goose/config.yaml`，使用绝对路径，无需 `${workspaceFolder}`）。无需单独配置。
+VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。Trae / OpenCode / CodeBuddy 共用 `.agents/runtime/trae.json`（同步生成 `.trae/mcp.json`）与 `.agents/AGENTS.md`（同步到根目录与各平台）；Goose 单独走 `.agents/runtime/goose.json`（同步生成 `.goose/config.yaml`，使用绝对路径，无需 `${workspaceFolder}`）。无需单独配置。
 
 ```
 ┌─────────────────────────┐  ┌─────────────────────────┐  ┌──────────────────┐  ┌──────────────┐
-│ Trae IDE CN             │  │ Trae Work CN            │  │ WorkBuddy       │  │ OpenCode     │
+│ Trae IDE CN             │  │ Trae Work CN            │  │ CodeBuddy      │  │ OpenCode     │
 │ 设置→MCP→启用            │  │ 设置→MCP→启用           │  │ 信任 mcp        │  │ 运行 opencode│
 └────────────┬────────────┘  └────────────┬────────────┘  └────────┬─────────┘  └──────┬───────┘
              │ 读取同一份配置（${workspaceFolder} 各自替换）          │                │

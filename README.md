@@ -1,6 +1,6 @@
 # VocabCraft - 词汇学习与制作一体 MCP 工具
 
-词汇学习与制作一体化解决方案，同时支持 **Trae IDE CN / Trae Work CN**、**WorkBuddy (CodeBuddy)**、**OpenCode** 和 **Goose** 五个 Agent Runtime。核心流程：拍照 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。
+词汇学习与制作一体化解决方案，同时支持 **Trae IDE CN / Trae Work CN**、**CodeBuddy**、**OpenCode** 和 **Goose** 五个 Agent Runtime。核心流程：拍照 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。
 
 ## 核心功能
 
@@ -17,7 +17,7 @@
 ```
 用户交互层
 ├── 对话式交互 (命令 / 自然语言)
-├── 五运行时: Trae + WorkBuddy + OpenCode + Goose (共用 .agents/AGENTS.md)
+├── 五运行时: Trae + CodeBuddy + OpenCode + Goose (共用 .agents/AGENTS.md)
     ↓
 Skills 编排层 (.agents/skills/vocabcraft-*: capture / review / quiz / stats / export)
     ↓
@@ -44,7 +44,7 @@ Rules 约束层 (.agents/AGENTS.md — 统一规则源，五个运行时共用)
 
 - Python 3.12+
 - [uv 包管理器](https://docs.astral.sh/uv/)（Windows: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`）
-- Trae IDE CN / Trae Work CN、WorkBuddy (CodeBuddy)、OpenCode 或 Goose（任选其一或全部）
+- Trae IDE CN / Trae Work CN、CodeBuddy、OpenCode 或 Goose（任选其一或全部）
 
 ### 安装步骤
 
@@ -265,11 +265,11 @@ vocabcraft/
 - **架构定义** — 系统架构、MCP Tools 参考
 - **命令参考** — /capture、/review、/quiz、/stats、/export 的触发条件与约束
 
-五个运行时（Trae IDE CN / Trae Work CN / WorkBuddy / OpenCode / Goose）都读取 `.agents/AGENTS.md`，保证行为一致。
+五个运行时（Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）都读取 `.agents/AGENTS.md`，保证行为一致。
 
 ### 多运行时适配
 
-项目同时支持 **Trae IDE CN / Trae Work CN**、**WorkBuddy (CodeBuddy)**、**OpenCode** 和 **Goose** 五个 Agent Runtime，核心机制：
+项目同时支持 **Trae IDE CN / Trae Work CN**、**CodeBuddy**、**OpenCode** 和 **Goose** 五个 Agent Runtime，核心机制：
 
 1. **统一规则源** — `.agents/AGENTS.md` 是唯一的规则与行为定义文件，五个运行时共用
 2. **开发时源文件** — `.agents/` 是 Skills 和 MCP 配置的开发时源文件（编辑在这里进行）
@@ -305,13 +305,13 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ### Q: MCP Server 不生效
 
-1. 确认已打开「启用项目级 MCP」开关（Trae）或已信任 vocabcraft-mcp（WorkBuddy）
+1. 确认已打开「启用项目级 MCP」开关（Trae）或已信任 vocabcraft-mcp（CodeBuddy）
 2. 确认已重启 IDE / 运行时
 3. 如果 `${workspaceFolder}` 变量不被支持，运行 `.\install.ps1 -FixPath` 自动修复路径
 
 ### Q: 多个 Agent Runtime 能否同时使用？
 
-可以。五个运行时（Trae IDE CN / Trae Work CN、WorkBuddy、OpenCode、Goose）共用同一份 `.agents/AGENTS.md` 规则源，各自有独立的配置目录。首次运行或修改 Skills 后，执行同步脚本确保各运行时配置一致：
+可以。五个运行时（Trae IDE CN / Trae Work CN、CodeBuddy、OpenCode、Goose）共用同一份 `.agents/AGENTS.md` 规则源，各自有独立的配置目录。首次运行或修改 Skills 后，执行同步脚本确保各运行时配置一致：
 
 ```powershell
 .\scripts\sync-agent-configs.ps1          # Windows

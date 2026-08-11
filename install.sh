@@ -232,7 +232,7 @@ HOOK_DST="$PROJECT_ROOT/.git/hooks/pre-commit"
 if [ -f "$HOOK_SRC" ]; then
     cp "$HOOK_SRC" "$HOOK_DST"
     chmod +x "$HOOK_DST"
-    echo "  ✓ 已安装 pre-commit 钩子（拦截直接修改生成目录 .trae/.opencode/.workbuddy/.codebuddy 的违规提交）"
+    echo "  ✓ 已安装 pre-commit 钩子（拦截直接修改生成目录 .trae/.opencode/.codebuddy 的违规提交）"
     echo "    若需手动安装：cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit"
 else
     echo "  ⚠ 未找到 $HOOK_SRC，跳过钩子安装"

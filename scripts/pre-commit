@@ -2,11 +2,11 @@
 # scripts/pre-commit — 配置同步强约束的机械防线
 #
 # 原则（见 .agents/AGENTS.md「流程规则 > 配置同步」）：
-#   .agents/ 是 AAIF 配置层唯一真相源；.trae/、.opencode/、.workbuddy/、.codebuddy/、.goose/
+#   .agents/ 是 AAIF 配置层唯一真相源；.trae/、.opencode/、.codebuddy/、.goose/
 #   由 scripts/sync-agent-configs(.ps1/.sh) 单向生成，禁止直接编辑。
-#   例外：.workbuddy/memory/** 与 .codebuddy/memory/** 由运行时自行写入，不经过同步。
+#   例外：.codebuddy/memory/** 由运行时自行写入，不经过同步。
 #
-# 本钩子拦截的违规：暂存区含 .trae/** / .opencode/** / .workbuddy/** / .codebuddy/** / .goose/**
+# 本钩子拦截的违规：暂存区含 .trae/** / .opencode/** / .codebuddy/** / .goose/**
 # （非 memory）的改动，但 .agents/** 无任何对应改动
 # —— 即「直接改生成目录」。
 #
@@ -29,9 +29,9 @@ while IFS= read -r f; do
         .agents/*) has_source=1 ;;
     esac
     case "$f" in
-        .trae/*|.opencode/*|.workbuddy/*|.codebuddy/*|.goose/*)
+        .trae/*|.opencode/*|.codebuddy/*|.goose/*)
             case "$f" in
-                .workbuddy/memory/*|.codebuddy/memory/*) ;;   # 例外：运行时自有目录，不参与同步
+                .codebuddy/memory/*) ;;   # 例外：运行时自有目录，不参与同步
                 *)
                     printf '%s\n' "- $f" >> "$gen_list"
                     ;;
@@ -42,7 +42,7 @@ done < "$tmp"
 
 if [ -s "$gen_list" ] && [ "$has_source" -ne 1 ]; then
     echo "pre-commit: 拒绝提交 — 检测到直接修改生成的配置目录" >&2
-    echo "以下文件属于 .trae/、.opencode/、.workbuddy/、.codebuddy/ 或 .goose/（生成产物），但本次提交未包含 .agents/ 的对应改动：" >&2
+    echo "以下文件属于 .trae/、.opencode/、.codebuddy/ 或 .goose/（生成产物），但本次提交未包含 .agents/ 的对应改动：" >&2
     cat "$gen_list" >&2
     echo "" >&2
     echo "正确流程（见 .agents/AGENTS.md「流程规则 > 配置同步」）：" >&2
