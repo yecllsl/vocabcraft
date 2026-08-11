@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Runtime 重命名：WorkBuddy → CodeBuddy
+- 项目面向的是腾讯 **CodeBuddy**（AI 代码编辑器），因此将生成目录由 `.workbuddy/` 改为 `.codebuddy/`，与 CodeBuddy 的配置目录约定一致。
+- `.agents/runtime/workbuddy.json` → `codebuddy.json`；`scripts/sync-agent-configs.*`、`generate-platform-configs.py`、`install.*`、`.git/hooks/pre-commit` 的目标运行时由 workbuddy 改为 codebuddy。
+- 修正先前对 OpenCode 的误判：`.opencode/opencode.json` 是 OpenCode 官方支持的（且优先级更高）的项目配置位置，配置本身有效。
+
 ## [0.5.4] - 2026-08-09
 
 ### AAIF Migration

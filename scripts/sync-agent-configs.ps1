@@ -2,19 +2,19 @@
 .SYNOPSIS
     同步 .agents/ 配置到各平台目录。
 .DESCRIPTION
-    从 .agents/runtime/ 目录读取配置，生成 .trae/、.opencode/、.workbuddy/ 配置。
+    从 .agents/runtime/ 目录读取配置，生成 .trae/、.opencode/、.codebuddy/ 配置。
     .agents/ 是 AAIF 标准的唯一配置源。
 .PARAMETER SkipTrae
     跳过 Trae 配置生成。
 .PARAMETER SkipOpencode
     跳过 opencode 配置生成。
-.PARAMETER SkipWorkbuddy
-    跳过 WorkBuddy 配置生成。
+.PARAMETER SkipCodebuddy
+    跳过 CodeBuddy 配置生成。
 #>
 param(
     [switch]$SkipTrae,
     [switch]$SkipOpencode,
-    [switch]$SkipWorkbuddy
+    [switch]$SkipCodebuddy
 )
 
 $ErrorActionPreference = "Stop"
@@ -35,6 +35,7 @@ Write-Host "配置源: .agents/ (AAIF 标准)"
 
 function Sync-Skills {
     param([string]$TargetDir)
+    $null = New-Item -ItemType Directory -Path $TargetDir -Force
     $TargetSkills = Join-Path $TargetDir "skills"
     if (Test-Path $TargetSkills) { Remove-Item -Recurse -Force $TargetSkills }
     Write-Host "同步 Skills → $TargetSkills" -ForegroundColor Yellow
@@ -73,14 +74,14 @@ function New-OpencodeConfig {
     }
 }
 
-function New-WorkbuddyConfig {
-    $WorkbuddyDir = Join-Path $ProjectRoot ".workbuddy"
-    if (-not (Test-Path $WorkbuddyDir)) { New-Item -ItemType Directory -Path $WorkbuddyDir -Force | Out-Null }
-    $SourceConfig = Join-Path $AgentsRuntime "workbuddy.json"
+function New-CodebuddyConfig {
+    $CodebuddyDir = Join-Path $ProjectRoot ".codebuddy"
+    if (-not (Test-Path $CodebuddyDir)) { New-Item -ItemType Directory -Path $CodebuddyDir -Force | Out-Null }
+    $SourceConfig = Join-Path $AgentsRuntime "codebuddy.json"
     if (Test-Path $SourceConfig) {
-        Write-Host "复制 WorkBuddy 配置 → $WorkbuddyDir" -ForegroundColor Yellow
-        Copy-Item -Force $SourceConfig (Join-Path $WorkbuddyDir "mcp.json")
-        Write-Host "  已生成 WorkBuddy 配置" -ForegroundColor Green
+        Write-Host "复制 CodeBuddy 配置 → $CodebuddyDir" -ForegroundColor Yellow
+        Copy-Item -Force $SourceConfig (Join-Path $CodebuddyDir "mcp.json")
+        Write-Host "  已生成 CodeBuddy 配置" -ForegroundColor Green
     }
 }
 
@@ -96,10 +97,10 @@ if (-not $SkipOpencode) {
     Sync-AgentsMd -TargetDir (Join-Path $ProjectRoot ".opencode")
     New-OpencodeConfig
 }
-if (-not $SkipWorkbuddy) {
-    Write-Host "`n--- WorkBuddy ---" -ForegroundColor Cyan
-    Sync-Skills -TargetDir (Join-Path $ProjectRoot ".workbuddy")
-    Sync-AgentsMd -TargetDir (Join-Path $ProjectRoot ".workbuddy")
-    New-WorkbuddyConfig
+if (-not $SkipCodebuddy) {
+    Write-Host "`n--- CodeBuddy ---" -ForegroundColor Cyan
+    Sync-Skills -TargetDir (Join-Path $ProjectRoot ".codebuddy")
+    Sync-AgentsMd -TargetDir (Join-Path $ProjectRoot ".codebuddy")
+    New-CodebuddyConfig
 }
 Write-Host "`n=== 同步完成 ===" -ForegroundColor Cyan

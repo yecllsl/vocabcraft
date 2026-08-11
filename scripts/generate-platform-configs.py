@@ -3,8 +3,8 @@
 
 Mirrors the previous Node script (scripts/generate-platform-configs.js) but uses
 the project's Python stack. The generated files are consumed by
-scripts/sync-agent-configs(.ps1/.sh), which distributes them to the
-.trae / .opencode / .workbuddy platform directories.
+    scripts/sync-agent-configs(.ps1/.sh), which distributes them to the
+    .trae / .opencode / .codebuddy platform directories.
 
 Usage:
     python scripts/generate-platform-configs.py
@@ -49,7 +49,7 @@ def generate_opencode() -> dict:
     }
 
 
-def generate_workbuddy() -> dict:
+def generate_codebuddy() -> dict:
     return {
         "mcpServers": {
             "vocabcraft-mcp": {
@@ -73,8 +73,8 @@ def main() -> None:
     (RUNTIME_DIR / "opencode.json").write_text(
         json.dumps(generate_opencode(), indent=2) + "\n", encoding="utf-8"
     )
-    (RUNTIME_DIR / "workbuddy.json").write_text(
-        json.dumps(generate_workbuddy(), indent=2) + "\n", encoding="utf-8"
+    (RUNTIME_DIR / "codebuddy.json").write_text(
+        json.dumps(generate_codebuddy(), indent=2) + "\n", encoding="utf-8"
     )
     print("已生成所有平台配置 (.agents/runtime/)")
 

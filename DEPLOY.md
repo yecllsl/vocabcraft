@@ -79,9 +79,9 @@ VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。�
 3. **设置 → 规则**，开启 **"将 AGENTS.md 包含在上下文中"**
 4. 重启 Trae
 
-**WorkBuddy (CodeBuddy)**
-1. 运行 `.\install.ps1 -AgentRuntime workbuddy`（或 `bash install.sh --agent-runtime workbuddy`）
-2. 用 WorkBuddy 打开项目文件夹
+**CodeBuddy**
+1. 运行 `.\install.ps1 -AgentRuntime codebuddy`（或 `bash install.sh --agent-runtime codebuddy`）
+2. 用 CodeBuddy 打开项目文件夹
 3. 在 MCP 配置中信任 `vocabcraft-mcp`
 
 **OpenCode**
@@ -147,7 +147,7 @@ uv run vocabcraft-mcp
 
 ## Skills 与规则配置
 
-Skills 位于 `.agents/skills/`（AAIF 真相源），经 `scripts/sync-agent-configs` 同步到 `.trae/` / `.opencode/` / `.workbuddy/`。修改后重启运行时即可生效。
+Skills 位于 `.agents/skills/`（AAIF 真相源），经 `scripts/sync-agent-configs` 同步到 `.trae/` / `.opencode/` / `.codebuddy/`。修改后重启运行时即可生效。
 
 ### Skills 说明（vocabcraft-* 业务编排）
 
@@ -239,12 +239,12 @@ vocabcraft/
 │   └── uv.lock                            # 依赖锁定
 │
 ├── .agents/                                # 配置层（AAIF 唯一真相源，只改这里）
-│   ├── runtime/{trae,opencode,workbuddy}.json          # 各平台 MCP 配置源
+│   ├── runtime/{trae,opencode,codebuddy}.json          # 各平台 MCP 配置源
 │   ├── skills/vocabcraft-*                # capture/review/quiz/stats/export（源文件）
 │   ├── AGENTS.md                          # 统一规则源
 │   └── tools.json / triggers.json / workflows.json           # AAIF 声明
 │
-├── .trae/  .opencode/  .workbuddy/   # 由 scripts/sync-agent-configs 生成
+├── .trae/  .opencode/  .codebuddy/   # 由 scripts/sync-agent-configs 生成
 │
 ├── .github/workflows/                     # test.yml / release.yml
 ├── scripts/                               # build-release.* / sync-agent-configs.*

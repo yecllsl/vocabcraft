@@ -30,12 +30,12 @@ echo "配置源: .agents/ (AAIF 标准)"
 
 SKIP_TRAE=false
 SKIP_OPENCODE=false
-SKIP_WORKBUDDY=false
+SKIP_CODEBUDDY=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --skip-trae) SKIP_TRAE=true; shift ;;
         --skip-opencode) SKIP_OPENCODE=true; shift ;;
-        --skip-workbuddy) SKIP_WORKBUDDY=true; shift ;;
+        --skip-codebuddy) SKIP_CODEBUDDY=true; shift ;;
         *) echo "未知参数: $1"; exit 1 ;;
     esac
 done
@@ -43,6 +43,7 @@ done
 sync_skills() {
     local target_dir="$1"
     local target_skills="$target_dir/skills"
+    mkdir -p "$target_dir"
     rm -rf "$target_skills"
     echo -e "${YELLOW}同步 Skills → $target_skills${NC}"
     cp -r "$AGENTS_SKILLS" "$target_skills"
@@ -81,14 +82,14 @@ generate_opencode_config() {
     fi
 }
 
-generate_workbuddy_config() {
-    local workbuddy_dir="$PROJECT_ROOT/.workbuddy"
-    mkdir -p "$workbuddy_dir"
-    local source_config="$AGENTS_RUNTIME/workbuddy.json"
+generate_codebuddy_config() {
+    local codebuddy_dir="$PROJECT_ROOT/.codebuddy"
+    mkdir -p "$codebuddy_dir"
+    local source_config="$AGENTS_RUNTIME/codebuddy.json"
     if [ -f "$source_config" ]; then
-        echo -e "${YELLOW}复制 WorkBuddy 配置 → $workbuddy_dir${NC}"
-        cp -f "$source_config" "$workbuddy_dir/mcp.json"
-        echo -e "${GREEN}  已生成 WorkBuddy 配置${NC}"
+        echo -e "${YELLOW}复制 CodeBuddy 配置 → $codebuddy_dir${NC}"
+        cp -f "$source_config" "$codebuddy_dir/mcp.json"
+        echo -e "${GREEN}  已生成 CodeBuddy 配置${NC}"
     fi
 }
 
@@ -104,10 +105,10 @@ if [ "$SKIP_OPENCODE" = false ]; then
     sync_agents_md "$PROJECT_ROOT/.opencode"
     generate_opencode_config
 fi
-if [ "$SKIP_WORKBUDDY" = false ]; then
-    echo -e "\n${CYAN}--- WorkBuddy ---${NC}"
-    sync_skills "$PROJECT_ROOT/.workbuddy"
-    sync_agents_md "$PROJECT_ROOT/.workbuddy"
-    generate_workbuddy_config
+if [ "$SKIP_CODEBUDDY" = false ]; then
+    echo -e "\n${CYAN}--- CodeBuddy ---${NC}"
+    sync_skills "$PROJECT_ROOT/.codebuddy"
+    sync_agents_md "$PROJECT_ROOT/.codebuddy"
+    generate_codebuddy_config
 fi
 echo -e "\n${CYAN}=== 同步完成 ===${NC}"

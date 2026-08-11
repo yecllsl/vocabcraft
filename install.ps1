@@ -7,7 +7,7 @@
 #
 # 可选参数：
 #   -FixPath       将 .agents/runtime 中 ${workspaceFolder} 替换为绝对路径（并重新同步各平台目录）
-#   -AgentRuntime  配置 Agent 运行时 (trae/workbuddy/opencode/all)
+#   -AgentRuntime  配置 Agent 运行时 (trae/codebuddy/opencode/all)
 #
 # 前置要求：
 #   - Python 3.12+
@@ -16,7 +16,7 @@
 param(
     [switch]$FixPath,
     [Parameter(Mandatory=$false)]
-    [ValidateSet("trae", "workbuddy", "opencode", "all")]
+    [ValidateSet("trae", "codebuddy", "opencode", "all")]
     [string]$AgentRuntime
 )
 
@@ -25,7 +25,7 @@ $ErrorActionPreference = "Stop"
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host " VocabCraft v0.5.4 安装向导" -ForegroundColor Cyan
-Write-Host "  (Trae IDE CN + Trae Work CN + WorkBuddy + opencode)" -ForegroundColor Cyan
+Write-Host "  (Trae IDE CN + Trae Work CN + CodeBuddy + opencode)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -116,13 +116,13 @@ if ($AgentRuntime) {
             Write-Host "  2. 设置 > MCP > 启用「项目级 MCP」"
             Write-Host "  3. 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
         }
-        "workbuddy" {
-            Write-Host "正在同步 WorkBuddy 配置..." -ForegroundColor Yellow
+        "codebuddy" {
+            Write-Host "正在同步 CodeBuddy 配置..." -ForegroundColor Yellow
             if (Test-Path $SyncScript) {
                 & $SyncScript -SkipOpencode
                 Write-Host ""
                 Write-Host "下一步:" -ForegroundColor Yellow
-                Write-Host "  1. 用 WorkBuddy 打开项目文件夹"
+                Write-Host "  1. 用 CodeBuddy 打开项目文件夹"
                 Write-Host "  2. 在 MCP 配置中信任 vocabcraft-mcp"
             } else {
                 Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
@@ -131,7 +131,7 @@ if ($AgentRuntime) {
         "opencode" {
             Write-Host "正在同步 opencode 配置..." -ForegroundColor Yellow
             if (Test-Path $SyncScript) {
-                & $SyncScript -SkipWorkbuddy
+                & $SyncScript -SkipCodebuddy
                 Write-Host ""
                 Write-Host "下一步:" -ForegroundColor Yellow
                 Write-Host "  1. 在项目目录运行 opencode"
@@ -147,7 +147,7 @@ if ($AgentRuntime) {
                 Write-Host ""
                 Write-Host "所有配置已同步。各运行时下一步:" -ForegroundColor Green
                 Write-Host "  Trae: 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
-                Write-Host "  WorkBuddy: 在 MCP 配置中信任 vocabcraft-mcp"
+                Write-Host "  CodeBuddy: 在 MCP 配置中信任 vocabcraft-mcp"
                 Write-Host "  opencode: 在项目目录运行 opencode"
             } else {
                 Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
@@ -187,7 +187,7 @@ if (Test-Path $traeJson) {
     if ($mcpContent -match '\$\{workspaceFolder\}') {
         Write-Host ""
         Write-Host "  ℹ 检测到 runtime 配置使用了 \${workspaceFolder} 变量" -ForegroundColor Cyan
-        Write-Host "    Trae / WorkBuddy / opencode 会自动替换此变量，无需手动配置" -ForegroundColor Cyan
+        Write-Host "    Trae / CodeBuddy / opencode 会自动替换此变量，无需手动配置" -ForegroundColor Cyan
         Write-Host "    如果你的环境不支持变量替换，请运行：" -ForegroundColor Cyan
         Write-Host "    .\install.ps1 -FixPath" -ForegroundColor White
     }
@@ -199,7 +199,7 @@ if ($FixPath) {
     $fixedAny = $false
     $fixTargets = @(
         (Join-Path $runtimeDir "trae.json"),
-        (Join-Path $runtimeDir "workbuddy.json")
+        (Join-Path $runtimeDir "codebuddy.json")
     )
     $ws = $projectRoot -replace '\\', '/'
     foreach ($t in $fixTargets) {
@@ -233,7 +233,7 @@ $HookSrc = Join-Path $projectRoot "scripts/pre-commit"
 $HookDst = Join-Path $projectRoot ".git/hooks/pre-commit"
 if (Test-Path $HookSrc) {
     Copy-Item -Path $HookSrc -Destination $HookDst -Force
-    Write-Host "  ✓ 已安装 pre-commit 钩子（拦截直接修改生成目录 .trae/.opencode/.workbuddy 的违规提交）" -ForegroundColor Green
+    Write-Host "  ✓ 已安装 pre-commit 钩子（拦截直接修改生成目录 .trae/.opencode/.workbuddy/.codebuddy 的违规提交）" -ForegroundColor Green
     Write-Host "    若需手动安装：Copy-Item scripts/pre-commit .git/hooks/pre-commit" -ForegroundColor DarkGray
 } else {
     Write-Host "  ⚠ 未找到 $HookSrc，跳过钩子安装" -ForegroundColor Yellow
@@ -247,12 +247,12 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host "  ✓ 安装完成！" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "下一步操作（Trae / WorkBuddy / opencode 操作一致）：" -ForegroundColor White
+Write-Host "下一步操作（Trae / CodeBuddy / opencode 操作一致）：" -ForegroundColor White
 Write-Host ""
 Write-Host "  1. 用对应运行时打开此文件夹" -ForegroundColor White
 Write-Host "     文件 → 打开文件夹 → 选择: $projectRoot" -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "  2. 启用项目级 MCP（Trae: 设置 → MCP；WorkBuddy: 信任 vocabcraft-mcp）" -ForegroundColor White
+Write-Host "  2. 启用项目级 MCP（Trae: 设置 → MCP；CodeBuddy: 信任 vocabcraft-mcp）" -ForegroundColor White
 Write-Host ""
 Write-Host "  3. 重启运行时" -ForegroundColor White
 Write-Host ""

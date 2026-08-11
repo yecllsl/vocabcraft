@@ -80,10 +80,10 @@ chmod +x install.sh
 
 > 💡 项目级 MCP 配置已内置于 `.trae/mcp.json`（由 `.agents/runtime/trae.json` 经 `scripts/sync-agent-configs` 同步生成），使用 `${workspaceFolder}` 变量自动适配路径。
 
-##### WorkBuddy (CodeBuddy)
+##### CodeBuddy
 
-1. 运行安装脚本：`.\install.ps1 -AgentRuntime workbuddy`（或 `bash install.sh --agent-runtime workbuddy`）
-2. 用 WorkBuddy 打开项目文件夹
+1. 运行安装脚本：`.\install.ps1 -AgentRuntime codebuddy`（或 `bash install.sh --agent-runtime codebuddy`）
+2. 用 CodeBuddy 打开项目文件夹
 3. 在 MCP 配置中信任 vocabcraft-mcp
 
 ##### OpenCode
@@ -201,7 +201,7 @@ vocabcraft/
 │   ├── runtime/                              # 各平台 MCP 运行时配置源
 │   │   ├── trae.json                         # Trae 项目级 MCP 配置源
 │   │   ├── opencode.json                     # opencode 配置源
-│   │   └── workbuddy.json                    # WorkBuddy 配置源
+│   │   └── codebuddy.json                    # CodeBuddy 配置源
 │   ├── skills/                               # Skills 源文件（同步到四平台）
 │   │   ├── vocabcraft-capture/               # /capture 拍照录入
 │   │   ├── vocabcraft-review/                # /review 复习排程
@@ -215,7 +215,7 @@ vocabcraft/
 │
 ├── .trae/                                    # Trae 配置（scripts/sync-agent-configs 生成）
 ├── .opencode/                                # OpenCode 配置（scripts/sync-agent-configs 生成）
-├── .workbuddy/                               # WorkBuddy 配置（scripts/sync-agent-configs 生成）
+├── .codebuddy/                               # CodeBuddy 配置（scripts/sync-agent-configs 生成）
 │
 ├── .github/
 │   └── workflows/
@@ -225,8 +225,8 @@ vocabcraft/
 ├── scripts/                                  # 开发者工具
 │   ├── build-release.ps1                     # Windows 发布包构建（PowerShell）
 │   ├── build-release.sh                      # Linux/macOS 发布包构建（bash，与 .ps1 逻辑对齐）
-│   ├── sync-agent-configs.ps1               # 将 .agents/ 同步到 .trae/opencode/workbuddy（PowerShell）
-│   └── sync-agent-configs.sh                # 将 .agents/ 同步到 .trae/opencode/workbuddy（bash）
+│   ├── sync-agent-configs.ps1               # 将 .agents/ 同步到 .trae/opencode/codebuddy（PowerShell）
+│   └── sync-agent-configs.sh                # 将 .agents/ 同步到 .trae/opencode/codebuddy（bash）
 ├── install.ps1                               # Windows 安装脚本
 ├── install.sh                                # Linux/macOS 安装脚本
 ├── QUICKSTART.md                             # 5 分钟快速上手
@@ -263,8 +263,8 @@ vocabcraft/
 
 1. **统一规则源** — `.agents/AGENTS.md` 是唯一的规则与行为定义文件，五个运行时共用
 2. **开发时源文件** — `.agents/` 是 Skills 和 MCP 配置的开发时源文件（编辑在这里进行）
-3. **同步生成** — 运行 `.\scripts\sync-agent-configs.ps1`（或 `.\scripts\sync-agent-configs.sh`）将 `.agents/skills/` 与 `.agents/runtime/` 同步到 `.trae/`、`.opencode/` 和 `.workbuddy/` 对应目录
-4. **各运行时独立配置目录** — `.trae/`（Trae）、`.opencode/`（OpenCode）、`.workbuddy/`（WorkBuddy）各自独立，互不干扰
+3. **同步生成** — 运行 `.\scripts\sync-agent-configs.ps1`（或 `.\scripts\sync-agent-configs.sh`）将 `.agents/skills/` 与 `.agents/runtime/` 同步到 `.trae/`、`.opencode/` 和 `.codebuddy/` 对应目录
+4. **各运行时独立配置目录** — `.trae/`（Trae）、`.opencode/`（OpenCode）、`.codebuddy/`（CodeBuddy）各自独立，互不干扰
 
 ### 为什么要分离？
 
