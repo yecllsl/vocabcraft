@@ -1,8 +1,0 @@
-mcp_servers:
-  vocabcraft-mcp:
-    command: "uv"
-    args: ["run", "--no-sync", "vocabcraft-mcp"]
-    cwd: "vocabcraft-mcp"
-
-instructions:
-  - ".agents/AGENTS.md"

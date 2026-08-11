@@ -11,7 +11,7 @@
 # 2. 运行安装脚本
 .\install.ps1
 
-# 3. 用 Trae IDE CN / Trae Work CN / WorkBuddy / opencode 打开文件夹
+# 3. 用 Trae IDE CN / Trae Work CN / WorkBuddy / OpenCode 打开文件夹
 # 4. 启用项目级 MCP（各运行时入口不同，见下文）
 # 5. 重启运行时
 ```
@@ -32,27 +32,6 @@ chmod +x install.sh
 # 5. 重启运行时
 ```
 
-### Hermes Agent 用户
-
-```bash
-# 1. 安装 Hermes Agent
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
-
-# 2. 从 GitHub Releases 下载并解压
-tar --zstd -xf VocabCraft-v0.5.4.tar.zst
-cd vocabcraft
-
-# 3. 运行安装脚本
-chmod +x install.sh
-./install.sh --agent-runtime hermes
-
-# 4. 配置 Hermes Agent
-hermes setup
-
-# 5. 启动 Hermes Agent
-hermes
-```
-
 > 💡 安装脚本只装基础依赖（无需 OCR 引擎）。图片词汇采集由**宿主 LLM 多模态直接解析**，手动录入 / 复习 / 出题 / 统计 / 导出等功能均不依赖额外模型。
 
 ## 环境要求
@@ -62,32 +41,32 @@ hermes
 | Python | 3.12+ | https://www.python.org/downloads/ |
 | uv | 最新版 | Windows: `irm https://astral.sh/uv/install.ps1 \| iex` |
 | | | Linux/macOS: `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| 运行时 | 最新版 | Trae IDE CN / Trae Work CN / WorkBuddy / opencode / Hermes Agent（任选其一或全部） |
+| 运行时 | 最新版 | Trae IDE CN / Trae Work CN / WorkBuddy / OpenCode（任选其一或全部） |
 
-> 💡 五个运行时**共用同一份配置与数据**，也可同时安装。
+> 💡 四个运行时**共用同一份配置与数据**，也可同时安装。
 
 ## 多运行时共用配置（核心）
 
 VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。所有运行时共用 `.agents/runtime/trae.json`（同步生成 `.trae/mcp.json`）与 `.agents/AGENTS.md`（同步到根目录与各平台），无需单独配置。
 
 ```
-┌─────────────────────────┐  ┌─────────────────────────┐  ┌──────────────────┐  ┌──────────────┐  ┌──────────────┐
-│ Trae IDE CN             │  │ Trae Work CN            │  │ WorkBuddy       │  │ opencode     │  │ Hermes Agent │
-│ 设置→MCP→启用            │  │ 设置→MCP→启用           │  │ 信任 mcp        │  │ 运行 opencode│  │ hermes       │
-└────────────┬────────────┘  └────────────┬────────────┘  └────────┬─────────┘  └──────┬───────┘  └──────┬───────┘
-             │ 读取同一份配置（${workspaceFolder} 各自替换）          │                │                │
-             └────────────────────┬─────────────────────────────────┘                │                │
-                                  ↓                                                  ↓                ↓
-              ┌───────────────────────┐                                                                      │
-              │  .agents/runtime/trae.json │  ← 同步生成 .trae/mcp.json，各运行时各自替换路径                                  │
-              │  ${workspaceFolder}   │                                                                 │
-              │  /vocabcraft-mcp      │                                                                 │
-              └───────────────────────┘                                                                 │
-                                  ↓                                                                      │
-              ┌───────────────────────┐                                                                 │
-              │  vocabcraft-mcp/      │  ← 同一份 MCP Server 代码                                        │
-              │  (uv run 入口)         │                                                                 │
-              └───────────────────────┘                                                                 │
+┌─────────────────────────┐  ┌─────────────────────────┐  ┌──────────────────┐  ┌──────────────┐
+│ Trae IDE CN             │  │ Trae Work CN            │  │ WorkBuddy       │  │ OpenCode     │
+│ 设置→MCP→启用            │  │ 设置→MCP→启用           │  │ 信任 mcp        │  │ 运行 opencode│
+└────────────┬────────────┘  └────────────┬────────────┘  └────────┬─────────┘  └──────┬───────┘
+             │ 读取同一份配置（${workspaceFolder} 各自替换）          │                │
+             └────────────────────┬─────────────────────────────────┘                │
+                                  ↓                                                  ↓
+              ┌───────────────────────┐                                              │
+              │  .agents/runtime/trae.json │  ← 同步生成 .trae/mcp.json，各运行时各自替换路径          │
+              │  ${workspaceFolder}   │                                              │
+              │  /vocabcraft-mcp      │                                              │
+              └───────────────────────┘                                              │
+                                  ↓                                                  │
+              ┌───────────────────────┐                                              │
+              │  vocabcraft-mcp/      │  ← 同一份 MCP Server 代码                      │
+              │  (uv run 入口)         │                                              │
+              └───────────────────────┘                                              │
 ```
 
 打开**同一个项目文件夹**时，`${workspaceFolder}` 会被各自替换为实际路径，因此解压到任意位置、用任一运行时打开都能正常工作。
@@ -105,15 +84,11 @@ VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。�
 2. 用 WorkBuddy 打开项目文件夹
 3. 在 MCP 配置中信任 `vocabcraft-mcp`
 
-**opencode**
+**OpenCode**
 1. 运行 `.\install.ps1 -AgentRuntime opencode`（或 `bash install.sh --agent-runtime opencode`）
 2. 在项目目录运行 `opencode`（AGENTS.md 自动加载）
 
-**Hermes Agent**
-1. 运行 `.\install.ps1 -AgentRuntime hermes`（或 `bash install.sh --agent-runtime hermes`）
-2. 在项目目录运行 `hermes`
-
-> ✅ 五个运行时操作一致，可同时启用。在哪个环境中使用 `/capture` 等命令，就由哪个环境的 MCP Server 实例响应。
+> ✅ 四个运行时操作一致，可同时启用。在哪个环境中使用 `/capture` 等命令，就由哪个环境的 MCP Server 实例响应。
 
 ### mcp.json 配置内容
 
@@ -172,7 +147,7 @@ uv run vocabcraft-mcp
 
 ## Skills 与规则配置
 
-Skills 位于 `.agents/skills/`（AAIF 真相源），经 `scripts/sync-agent-configs` 同步到 `.trae/` / `.opencode/` / `.workbuddy/` / `.hermes/`。修改后重启运行时即可生效。
+Skills 位于 `.agents/skills/`（AAIF 真相源），经 `scripts/sync-agent-configs` 同步到 `.trae/` / `.opencode/` / `.workbuddy/`。修改后重启运行时即可生效。
 
 ### Skills 说明（vocabcraft-* 业务编排）
 
@@ -186,44 +161,7 @@ Skills 位于 `.agents/skills/`（AAIF 真相源），经 `scripts/sync-agent-co
 
 ### 规则来源
 
-业务规则与开发规范统一存放于 **`.agents/AGENTS.md`**（五个运行时共用，单一真相源，同步到根目录与各平台），不再拆分到 `.trae/rules/`。各 skill 的「约束规则」内联在其 `SKILL.md` 中。
-
-## Hermes Agent 部署
-
-### 前置要求
-
-- Python 3.12+
-- uv 包管理器
-- Hermes Agent
-
-### 部署步骤
-
-1. 安装 Hermes Agent：
-   ```bash
-   curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
-   ```
-
-2. 克隆项目：
-   ```bash
-   git clone https://github.com/yecllsl/vocabcraft.git
-   cd vocabcraft
-   ```
-
-3. 运行安装脚本：
-   ```powershell
-   .\install.ps1 -AgentRuntime hermes  # Windows
-   bash install.sh --agent-runtime hermes  # Linux/macOS
-   ```
-
-4. 配置 Hermes Agent：
-   ```bash
-   hermes setup
-   ```
-
-5. 启动 Hermes Agent：
-   ```bash
-   hermes
-   ```
+业务规则与开发规范统一存放于 **`.agents/AGENTS.md`**（四个运行时共用，单一真相源，同步到根目录与各平台），不再拆分到 `.trae/rules/`。各 skill 的「约束规则」内联在其 `SKILL.md` 中。
 
 ## 常见问题
 
@@ -255,7 +193,7 @@ uv sync
 
 → 运行 `.\install.ps1 -FixPath` 修复路径，或手动添加（见上文）。
 
-### Q4: 五个运行时能否同时使用？
+### Q4: 四个运行时能否同时使用？
 
 可以，且推荐。各运行时共用同一份 `.agents/runtime/trae.json`（→ `.trae/mcp.json`）与 `.agents/AGENTS.md`：
 
@@ -301,12 +239,12 @@ vocabcraft/
 │   └── uv.lock                            # 依赖锁定
 │
 ├── .agents/                                # 配置层（AAIF 唯一真相源，只改这里）
-│   ├── runtime/{trae,opencode,workbuddy}.json + hermes.yaml   # 各平台 MCP 配置源
+│   ├── runtime/{trae,opencode,workbuddy}.json          # 各平台 MCP 配置源
 │   ├── skills/vocabcraft-*                # capture/review/quiz/stats/export（源文件）
 │   ├── AGENTS.md                          # 统一规则源
 │   └── tools.json / triggers.json / workflows.json           # AAIF 声明
 │
-├── .trae/  .opencode/  .workbuddy/  .hermes/   # 由 scripts/sync-agent-configs 生成
+├── .trae/  .opencode/  .workbuddy/   # 由 scripts/sync-agent-configs 生成
 │
 ├── .github/workflows/                     # test.yml / release.yml
 ├── scripts/                               # build-release.* / sync-agent-configs.*

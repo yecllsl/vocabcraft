@@ -2,7 +2,7 @@
 .SYNOPSIS
     同步 .agents/ 配置到各平台目录。
 .DESCRIPTION
-    从 .agents/runtime/ 目录读取配置，生成 .trae/、.opencode/、.workbuddy/ 和 .hermes/ 配置。
+    从 .agents/runtime/ 目录读取配置，生成 .trae/、.opencode/、.workbuddy/ 配置。
     .agents/ 是 AAIF 标准的唯一配置源。
 .PARAMETER SkipTrae
     跳过 Trae 配置生成。
@@ -10,14 +10,11 @@
     跳过 opencode 配置生成。
 .PARAMETER SkipWorkbuddy
     跳过 WorkBuddy 配置生成。
-.PARAMETER SkipHermes
-    跳过 Hermes Agent 配置生成。
 #>
 param(
     [switch]$SkipTrae,
     [switch]$SkipOpencode,
-    [switch]$SkipWorkbuddy,
-    [switch]$SkipHermes
+    [switch]$SkipWorkbuddy
 )
 
 $ErrorActionPreference = "Stop"
@@ -87,17 +84,6 @@ function New-WorkbuddyConfig {
     }
 }
 
-function New-HermesConfig {
-    $HermesDir = Join-Path $ProjectRoot ".hermes"
-    if (-not (Test-Path $HermesDir)) { New-Item -ItemType Directory -Path $HermesDir -Force | Out-Null }
-    $SourceConfig = Join-Path $AgentsRuntime "hermes.yaml"
-    if (Test-Path $SourceConfig) {
-        Write-Host "复制 Hermes Agent 配置 → $HermesDir" -ForegroundColor Yellow
-        Copy-Item -Force $SourceConfig (Join-Path $HermesDir "config.yaml")
-        Write-Host "  已生成 Hermes Agent 配置" -ForegroundColor Green
-    }
-}
-
 if (-not $SkipTrae) {
     Write-Host "`n--- Trae ---" -ForegroundColor Cyan
     Sync-Skills -TargetDir (Join-Path $ProjectRoot ".trae")
@@ -115,11 +101,5 @@ if (-not $SkipWorkbuddy) {
     Sync-Skills -TargetDir (Join-Path $ProjectRoot ".workbuddy")
     Sync-AgentsMd -TargetDir (Join-Path $ProjectRoot ".workbuddy")
     New-WorkbuddyConfig
-}
-if (-not $SkipHermes) {
-    Write-Host "`n--- Hermes Agent ---" -ForegroundColor Cyan
-    Sync-Skills -TargetDir (Join-Path $ProjectRoot ".hermes")
-    Sync-AgentsMd -TargetDir (Join-Path $ProjectRoot ".hermes")
-    New-HermesConfig
 }
 Write-Host "`n=== 同步完成 ===" -ForegroundColor Cyan

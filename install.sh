@@ -8,7 +8,7 @@
 #
 # 可选参数：
 #   --fix-path       将 .agents/runtime 中 ${workspaceFolder} 替换为绝对路径（并重新同步各平台目录）
-#   --agent-runtime  配置 Agent 运行时 (trae/workbuddy/opencode/hermes/all)
+#   --agent-runtime  配置 Agent 运行时 (trae/workbuddy/opencode/all)
 #
 # 前置要求：
 #   - Python 3.12+
@@ -25,7 +25,7 @@ while [[ $# -gt 0 ]]; do
         --agent-runtime) AGENT_RUNTIME="$2"; shift 2 ;;
         *)
             echo "未知参数: $1"
-            echo "可用参数：--fix-path, --agent-runtime <trae|workbuddy|opencode|hermes|all>"
+            echo "可用参数：--fix-path, --agent-runtime <trae|workbuddy|opencode|all>"
             exit 1
             ;;
     esac
@@ -34,7 +34,7 @@ done
 echo ""
 echo "========================================"
 echo "  VocabCraft v0.5.4 安装向导"
-echo "  (Trae IDE CN + Trae Work CN + WorkBuddy + opencode + Hermes Agent)"
+echo "  (Trae IDE CN + Trae Work CN + WorkBuddy + opencode)"
 echo "========================================"
 echo ""
 
@@ -136,19 +136,6 @@ if [ -n "$AGENT_RUNTIME" ]; then
                 echo "  同步脚本不存在: $SYNC_SCRIPT"
             fi
             ;;
-        hermes)
-            echo "正在同步 Hermes Agent 配置..."
-            if [ -f "$SYNC_SCRIPT" ]; then
-                bash "$SYNC_SCRIPT" --skip-opencode --skip-workbuddy
-                echo ""
-                echo "下一步:"
-                echo "  1. 安装 Hermes Agent: curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash"
-                echo "  2. 配置 Hermes Agent: hermes setup"
-                echo "  3. 在项目目录运行 hermes"
-            else
-                echo "  同步脚本不存在: $SYNC_SCRIPT"
-            fi
-            ;;
         all)
             echo "正在同步所有 Agent Runtime 配置..."
             if [ -f "$SYNC_SCRIPT" ]; then
@@ -158,14 +145,13 @@ if [ -n "$AGENT_RUNTIME" ]; then
                 echo "  Trae: 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
                 echo "  WorkBuddy: 在 MCP 配置中信任 vocabcraft-mcp"
                 echo "  opencode: 在项目目录运行 opencode"
-                echo "  Hermes Agent: 安装并配置 Hermes Agent 后，在项目目录运行 hermes"
             else
                 echo "  同步脚本不存在: $SYNC_SCRIPT"
             fi
             ;;
         *)
             echo "未知 Agent Runtime: $AGENT_RUNTIME"
-            echo "支持的值: trae, workbuddy, opencode, hermes, all"
+            echo "支持的值: trae, workbuddy, opencode, all"
             exit 1
             ;;
     esac
@@ -233,7 +219,7 @@ HOOK_DST="$PROJECT_ROOT/.git/hooks/pre-commit"
 if [ -f "$HOOK_SRC" ]; then
     cp "$HOOK_SRC" "$HOOK_DST"
     chmod +x "$HOOK_DST"
-    echo "  ✓ 已安装 pre-commit 钩子（拦截直接修改生成目录 .trae/.opencode/.workbuddy/.hermes 的违规提交）"
+    echo "  ✓ 已安装 pre-commit 钩子（拦截直接修改生成目录 .trae/.opencode/.workbuddy 的违规提交）"
     echo "    若需手动安装：cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit"
 else
     echo "  ⚠ 未找到 $HOOK_SRC，跳过钩子安装"

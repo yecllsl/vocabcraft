@@ -39,28 +39,15 @@ VocabCraft 支持多个 Agent 运行时，选择你使用的环境进行配置�
 
 > 💡 两个环境读取同一份由 `.agents/runtime/trae.json` 同步生成的 `.trae/mcp.json`，无需单独配置。
 
-#### Hermes Agent
+#### OpenCode
 
-1. 安装 Hermes Agent：
-   ```bash
-   curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
-   ```
-
-2. 运行安装脚本：
+1. 运行安装脚本：
    ```powershell
-   .\install.ps1 -AgentRuntime hermes  # Windows
-   bash install.sh --agent-runtime hermes  # Linux/macOS
+   .\install.ps1 -AgentRuntime opencode  # Windows
+   bash install.sh --agent-runtime opencode  # Linux/macOS
    ```
 
-3. 配置 Hermes Agent：
-   ```bash
-   hermes setup
-   ```
-
-4. 在项目目录运行 Hermes Agent：
-   ```bash
-   hermes
-   ```
+2. 在项目目录运行 `opencode`
 
 ### 第 4 步：开始使用
 

@@ -31,13 +31,11 @@ echo "配置源: .agents/ (AAIF 标准)"
 SKIP_TRAE=false
 SKIP_OPENCODE=false
 SKIP_WORKBUDDY=false
-SKIP_HERMES=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --skip-trae) SKIP_TRAE=true; shift ;;
         --skip-opencode) SKIP_OPENCODE=true; shift ;;
         --skip-workbuddy) SKIP_WORKBUDDY=true; shift ;;
-        --skip-hermes) SKIP_HERMES=true; shift ;;
         *) echo "未知参数: $1"; exit 1 ;;
     esac
 done
@@ -94,17 +92,6 @@ generate_workbuddy_config() {
     fi
 }
 
-generate_hermes_config() {
-    local hermes_dir="$PROJECT_ROOT/.hermes"
-    mkdir -p "$hermes_dir"
-    local source_config="$AGENTS_RUNTIME/hermes.yaml"
-    if [ -f "$source_config" ]; then
-        echo -e "${YELLOW}复制 Hermes Agent 配置 → $hermes_dir${NC}"
-        cp -f "$source_config" "$hermes_dir/config.yaml"
-        echo -e "${GREEN}  已生成 Hermes Agent 配置${NC}"
-    fi
-}
-
 if [ "$SKIP_TRAE" = false ]; then
     echo -e "\n${CYAN}--- Trae ---${NC}"
     sync_skills "$PROJECT_ROOT/.trae"
@@ -122,11 +109,5 @@ if [ "$SKIP_WORKBUDDY" = false ]; then
     sync_skills "$PROJECT_ROOT/.workbuddy"
     sync_agents_md "$PROJECT_ROOT/.workbuddy"
     generate_workbuddy_config
-fi
-if [ "$SKIP_HERMES" = false ]; then
-    echo -e "\n${CYAN}--- Hermes Agent ---${NC}"
-    sync_skills "$PROJECT_ROOT/.hermes"
-    sync_agents_md "$PROJECT_ROOT/.hermes"
-    generate_hermes_config
 fi
 echo -e "\n${CYAN}=== 同步完成 ===${NC}"

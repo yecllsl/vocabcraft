@@ -1,6 +1,6 @@
 # VocabCraft - 词汇学习与制作一体 MCP 工具
 
-词汇学习与制作一体化解决方案，同时支持 **Trae IDE CN / Trae Work CN**、**WorkBuddy (CodeBuddy)**、**opencode** 和 **Hermes Agent** 五个 Agent Runtime。核心流程：拍照 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。
+词汇学习与制作一体化解决方案，同时支持 **Trae IDE CN / Trae Work CN**、**WorkBuddy (CodeBuddy)** 和 **OpenCode** 四个 Agent Runtime。核心流程：拍照 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。
 
 ## 核心功能
 
@@ -17,7 +17,7 @@
 ```
 用户交互层
 ├── 对话式交互 (命令 / 自然语言)
-├── 五运行时: Trae + WorkBuddy + opencode + Hermes Agent (共用 .agents/AGENTS.md)
+├── 四运行时: Trae + WorkBuddy + OpenCode (共用 .agents/AGENTS.md)
     ↓
 Skills 编排层 (.agents/skills/vocabcraft-*: capture / review / quiz / stats / export)
     ↓
@@ -44,7 +44,7 @@ Rules 约束层 (.agents/AGENTS.md — 统一规则源，五个运行时共用)
 
 - Python 3.12+
 - [uv 包管理器](https://docs.astral.sh/uv/)（Windows: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`）
-- Trae IDE CN / Trae Work CN、WorkBuddy (CodeBuddy)、opencode 或 Hermes Agent（任选其一或全部）
+- Trae IDE CN / Trae Work CN、WorkBuddy (CodeBuddy) 或 OpenCode（任选其一或全部）
 
 ### 安装步骤
 
@@ -86,33 +86,10 @@ chmod +x install.sh
 2. 用 WorkBuddy 打开项目文件夹
 3. 在 MCP 配置中信任 vocabcraft-mcp
 
-##### opencode
+##### OpenCode
 
 1. 运行安装脚本：`.\install.ps1 -AgentRuntime opencode`（或 `bash install.sh --agent-runtime opencode`）
 2. 在项目目录运行 `opencode`
-
-##### Hermes Agent
-
-1. 安装 Hermes Agent：
-   ```bash
-   curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
-   ```
-
-2. 运行安装脚本：
-   ```powershell
-   .\install.ps1 -AgentRuntime hermes  # Windows
-   bash install.sh --agent-runtime hermes  # Linux/macOS
-   ```
-
-3. 配置 Hermes Agent：
-   ```bash
-   hermes setup
-   ```
-
-4. 在项目目录运行 Hermes Agent：
-   ```bash
-   hermes
-   ```
 
 #### 4. 开始使用
 
@@ -224,8 +201,7 @@ vocabcraft/
 │   ├── runtime/                              # 各平台 MCP 运行时配置源
 │   │   ├── trae.json                         # Trae 项目级 MCP 配置源
 │   │   ├── opencode.json                     # opencode 配置源
-│   │   ├── workbuddy.json                    # WorkBuddy 配置源
-│   │   └── hermes.yaml                       # Hermes Agent 配置源
+│   │   └── workbuddy.json                    # WorkBuddy 配置源
 │   ├── skills/                               # Skills 源文件（同步到四平台）
 │   │   ├── vocabcraft-capture/               # /capture 拍照录入
 │   │   ├── vocabcraft-review/                # /review 复习排程
@@ -238,9 +214,8 @@ vocabcraft/
 │   └── workflows.json                        # AAIF 工作流声明
 │
 ├── .trae/                                    # Trae 配置（scripts/sync-agent-configs 生成）
-├── .opencode/                                # opencode 配置（scripts/sync-agent-configs 生成）
+├── .opencode/                                # OpenCode 配置（scripts/sync-agent-configs 生成）
 ├── .workbuddy/                               # WorkBuddy 配置（scripts/sync-agent-configs 生成）
-├── .hermes/                                  # Hermes Agent 配置（scripts/sync-agent-configs 生成）
 │
 ├── .github/
 │   └── workflows/
@@ -250,8 +225,8 @@ vocabcraft/
 ├── scripts/                                  # 开发者工具
 │   ├── build-release.ps1                     # Windows 发布包构建（PowerShell）
 │   ├── build-release.sh                      # Linux/macOS 发布包构建（bash，与 .ps1 逻辑对齐）
-│   ├── sync-agent-configs.ps1               # 将 .agents/ 同步到 .trae/opencode/workbuddy/hermes（PowerShell）
-│   └── sync-agent-configs.sh                # 将 .agents/ 同步到 .trae/opencode/workbuddy/hermes（bash）
+│   ├── sync-agent-configs.ps1               # 将 .agents/ 同步到 .trae/opencode/workbuddy（PowerShell）
+│   └── sync-agent-configs.sh                # 将 .agents/ 同步到 .trae/opencode/workbuddy（bash）
 ├── install.ps1                               # Windows 安装脚本
 ├── install.sh                                # Linux/macOS 安装脚本
 ├── QUICKSTART.md                             # 5 分钟快速上手
@@ -269,7 +244,7 @@ vocabcraft/
 | 层级 | 位置 | 用途 |
 |------|------|------|
 | **服务层** | `vocabcraft-mcp/` | 纯 Python MCP Server，通用，不绑定任何客户端，可独立发布 |
-| **配置层** | `.agents/` | AAIF 唯一真相源，定义 Skills 流程与约束（单一真相源），同步生成 `.trae/` 等四平台目录 |
+| **配置层** | `.agents/` | AAIF 唯一真相源，定义 Skills 流程与约束（单一真相源），同步生成 `.trae/` 等三平台目录 |
 
 ### AGENTS.md 统一规则源
 
@@ -280,16 +255,16 @@ vocabcraft/
 - **架构定义** — 系统架构、MCP Tools 参考
 - **命令参考** — /capture、/review、/quiz、/stats、/export 的触发条件与约束
 
-五个运行时（Trae / WorkBuddy / opencode / Hermes Agent）都读取 `.agents/AGENTS.md`，保证行为一致。
+四个运行时（Trae / WorkBuddy / OpenCode）都读取 `.agents/AGENTS.md`，保证行为一致。
 
 ### 多运行时适配
 
-项目同时支持 **Trae IDE CN / Trae Work CN**、**WorkBuddy (CodeBuddy)**、**opencode** 和 **Hermes Agent** 五个 Agent Runtime，核心机制：
+项目同时支持 **Trae IDE CN / Trae Work CN**、**WorkBuddy (CodeBuddy)** 和 **OpenCode** 四个 Agent Runtime，核心机制：
 
 1. **统一规则源** — `.agents/AGENTS.md` 是唯一的规则与行为定义文件，五个运行时共用
 2. **开发时源文件** — `.agents/` 是 Skills 和 MCP 配置的开发时源文件（编辑在这里进行）
-3. **同步生成** — 运行 `.\scripts\sync-agent-configs.ps1`（或 `.\scripts\sync-agent-configs.sh`）将 `.agents/skills/` 与 `.agents/runtime/` 同步到 `.trae/`、`.opencode/`、`.workbuddy/` 和 `.hermes/` 对应目录
-4. **各运行时独立配置目录** — `.trae/`（Trae）、`.opencode/`（opencode）、`.workbuddy/`（WorkBuddy）、`.hermes/`（Hermes Agent）各自独立，互不干扰
+3. **同步生成** — 运行 `.\scripts\sync-agent-configs.ps1`（或 `.\scripts\sync-agent-configs.sh`）将 `.agents/skills/` 与 `.agents/runtime/` 同步到 `.trae/`、`.opencode/` 和 `.workbuddy/` 对应目录
+4. **各运行时独立配置目录** — `.trae/`（Trae）、`.opencode/`（OpenCode）、`.workbuddy/`（WorkBuddy）各自独立，互不干扰
 
 ### 为什么要分离？
 
@@ -297,7 +272,7 @@ vocabcraft/
 2. **可复用**: `vocabcraft-mcp/` 可单独在任何 MCP 客户端中使用
 3. **单一真相源**: `.agents/AGENTS.md` 是唯一的规则与行为定义，Skills 配置在 `.agents/` 下编辑，同步到其他运行时
 4. **Git 友好**: 项目结构一目了然，`.trae/` 即 Trae 配置根目录
-5. **多运行时友好**: 一份 AGENTS.md，五个运行时共用，同步脚本自动生成各运行时配置
+5. **多运行时友好**: 一份 AGENTS.md，四个运行时共用，同步脚本自动生成各运行时配置
 
 ## 数据安全
 
@@ -326,7 +301,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ### Q: 多个 Agent Runtime 能否同时使用？
 
-可以。五个运行时（Trae IDE CN / Trae Work CN、WorkBuddy、opencode、Hermes Agent）共用同一份 `.agents/AGENTS.md` 规则源，各自有独立的配置目录。首次运行或修改 Skills 后，执行同步脚本确保各运行时配置一致：
+可以。四个运行时（Trae IDE CN / Trae Work CN、WorkBuddy、OpenCode）共用同一份 `.agents/AGENTS.md` 规则源，各自有独立的配置目录。首次运行或修改 Skills 后，执行同步脚本确保各运行时配置一致：
 
 ```powershell
 .\scripts\sync-agent-configs.ps1          # Windows
