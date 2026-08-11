@@ -211,13 +211,16 @@ Write-Ok "source copied"
 # [5/6] 复制顶层文档和安装脚本
 # ──────────────────────────────────────────
 Write-Step "[5/6] Copy docs and install scripts..."
-$topFiles = @("install.ps1", "install.sh", "README.md", "DEPLOY.md", "QUICKSTART.md", "LICENSE", "AGENTS.md")
+$topFiles = @("install.ps1", "install.sh", "README.md", "DEPLOY.md", "QUICKSTART.md", "LICENSE", "AGENTS.md", ".workbuddy/README.md", ".hermes/README.md")
 # AGENTS.md 的真相源是 .agents/AGENTS.md（同步生成根目录 AGENTS.md）
 foreach ($f in $topFiles) {
     $srcName = if ($f -eq "AGENTS.md") { ".agents\AGENTS.md" } else { $f }
     $src = Join-Path $projectRoot $srcName
     if (Test-Path $src) {
-        Copy-Item $src (Join-Path $tempDir $f) -Force
+        $dst = Join-Path $tempDir $f
+        $parent = Split-Path $dst -Parent
+        if (-not (Test-Path $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+        Copy-Item $src $dst -Force
     }
 }
 Write-Ok "docs copied"

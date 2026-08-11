@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### 新增个人级 Harness：WorkBuddy / Hermes
+- WorkBuddy 与 Hermes 属于**仅支持个人级配置**的 Agent Runtime，无法通过项目级 `.agents/` 统一配置体系（单向同步到 `.trae/` / `.opencode/` / `.codebuddy/` / `.goose/`）管理，因此不纳入同步生成，亦不在 `scripts/pre-commit` 拦截名单中。
+- 项目根目录新增 `.workbuddy/` 与 `.hermes/` 目录，各自仅含一份 `README.md`，说明如何为个人级 harness 加载配置：配置文件存放路径、MCP stdio 格式要求、符号链接加载机制，以及与现有配置体系的兼容性。
+- `install.*` 增加 `workbuddy` / `hermes` 运行时选项：检测对应可执行文件 → 解析个人配置目录（`~/.workbuddy` / `~/.hermes`，Windows 为 `%USERPROFILE%\.workbuddy` 等）→ 写入绝对路径 `mcp.json` → 为 `AGENTS.md` 与 `skills/` 建立符号链接（失败降级复制）→ 提示验证。
+- `build-release.*` 打包清单新增 `.workbuddy/README.md` 与 `.hermes/README.md`，便于发布包内用户查阅个人级配置说明。
+
 ### Runtime 重命名：WorkBuddy → CodeBuddy
 - 项目面向的是腾讯 **CodeBuddy**（AI 代码编辑器），因此将生成目录由 `.workbuddy/` 改为 `.codebuddy/`，与 CodeBuddy 的配置目录约定一致。
 - `.agents/runtime/workbuddy.json` → `codebuddy.json`；`scripts/sync-agent-configs.*`、`generate-platform-configs.py`、`install.*`、`.git/hooks/pre-commit` 的目标运行时由 workbuddy 改为 codebuddy。

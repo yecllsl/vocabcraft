@@ -92,7 +92,15 @@ VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。T
 1. 运行 `.\install.ps1 -AgentRuntime goose`（或 `bash install.sh --agent-runtime goose`）
 2. 用 Goose 打开项目文件夹，会自动读取 `.goose/config.yaml` 加载 vocabcraft-mcp（绝对路径，无需 `${workspaceFolder}`）
 
-> ✅ 五个运行时操作一致，可同时启用。在哪个环境中使用 `/capture` 等命令，就由哪个环境的 MCP Server 实例响应。
+**WorkBuddy / Hermes（个人级配置）**
+WorkBuddy 与 Hermes **仅支持个人级配置**，无法读取项目目录中的 MCP 配置，因此不纳入 `.agents/` 同步体系。改用个人目录加载同一套配置：
+1. 运行 `.\install.ps1 -AgentRuntime workbuddy`（或 `bash install.sh --agent-runtime workbuddy`）、`...\hermes` 同理
+2. 安装脚本写入个人目录 `~/.workbuddy/mcp.json`（Windows 为 `%USERPROFILE%\.workbuddy`）/ `~/.hermes`，并将 `AGENTS.md` 与 `skills/` 以符号链接接入项目（失败降级复制）
+3. 启动对应客户端即可加载 vocabcraft-mcp
+
+> 💡 配置文件路径、MCP stdio 格式、符号链接加载机制与兼容性详见 `.workbuddy/README.md` 与 `.hermes/README.md`。
+
+> ✅ 五个项目级运行时 + WorkBuddy/Hermes 个人级 harness 共用同一份 `.agents/AGENTS.md` 规则与 `.agents/skills/` 技能，行为一致，可同时启用。在哪个环境中使用 `/capture` 等命令，就由哪个环境的 MCP Server 实例响应。
 
 ### mcp.json 配置内容
 
@@ -165,7 +173,7 @@ Skills 位于 `.agents/skills/`（AAIF 真相源），经 `scripts/sync-agent-co
 
 ### 规则来源
 
-业务规则与开发规范统一存放于 **`.agents/AGENTS.md`**（五个运行时共用，单一真相源，同步到根目录与各平台），不再拆分到 `.trae/rules/`。各 skill 的「约束规则」内联在其 `SKILL.md` 中。
+业务规则与开发规范统一存放于 **`.agents/AGENTS.md`**（五个项目级运行时共用，单一真相源，同步到根目录与各平台；WorkBuddy / Hermes 个人级 harness 通过安装脚本符号链接同样读取该文件），不再拆分到 `.trae/rules/`。各 skill 的「约束规则」内联在其 `SKILL.md` 中。
 
 ## 常见问题
 
@@ -249,6 +257,7 @@ vocabcraft/
 │   └── tools.json / triggers.json / workflows.json           # AAIF 声明
 │
 ├── .trae/  .opencode/  .codebuddy/  .goose/   # 由 scripts/sync-agent-configs 生成
+├── .workbuddy/  .hermes/                       # 个人级 harness（仅含 README.md，配置由安装脚本写入个人目录）
 │
 ├── .github/workflows/                     # test.yml / release.yml
 ├── scripts/                               # build-release.* / sync-agent-configs.*

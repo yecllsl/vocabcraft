@@ -205,11 +205,14 @@ log_ok "source copied"
 # [5/6] 复制顶层文档和安装脚本
 # ──────────────────────────────────────────
 log_step "[5/6] Copy docs and install scripts..."
-for f in install.ps1 install.sh README.md DEPLOY.md QUICKSTART.md LICENSE AGENTS.md; do
+for f in install.ps1 install.sh README.md DEPLOY.md QUICKSTART.md LICENSE AGENTS.md .workbuddy/README.md .hermes/README.md; do
     # AGENTS.md 的真相源是 .agents/AGENTS.md（同步生成根目录 AGENTS.md）
     src_f="$PROJECT_ROOT/$f"
     [ "$f" = "AGENTS.md" ] && src_f="$PROJECT_ROOT/.agents/AGENTS.md"
-    [ -f "$src_f" ] && cp "$src_f" "$STAGING_DIR/$f"
+    if [ -f "$src_f" ]; then
+        mkdir -p "$(dirname "$STAGING_DIR/$f")"
+        cp "$src_f" "$STAGING_DIR/$f"
+    fi
 done
 log_ok "docs copied"
 

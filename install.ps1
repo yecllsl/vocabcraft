@@ -7,7 +7,8 @@
 #
 # 可选参数：
 #   -FixPath       将 .agents/runtime 中 ${workspaceFolder} 替换为绝对路径（并重新同步各平台目录）
-#   -AgentRuntime  配置 Agent 运行时 (trae/codebuddy/opencode/goose/all)
+#   -AgentRuntime  配置 Agent 运行时 (trae/codebuddy/opencode/goose/all/workbuddy/hermes)
+#                  trae/codebuddy/opencode/goose 为项目级运行时；workbuddy/hermes 为个人级 harness
 #
 # 前置要求：
 #   - Python 3.12+
@@ -16,7 +17,7 @@
 param(
     [switch]$FixPath,
     [Parameter(Mandatory=$false)]
-    [ValidateSet("trae", "codebuddy", "opencode", "goose", "all")]
+    [ValidateSet("trae", "codebuddy", "opencode", "goose", "all", "workbuddy", "hermes")]
     [string]$AgentRuntime
 )
 
@@ -31,6 +32,96 @@ Write-Host ""
 
 # 获取脚本所在目录（项目根目录）
 $projectRoot = $PSScriptRoot
+
+# ──────────────────────────────────────────
+# 个人级 harness 安装辅助函数（WorkBuddy / Hermes 仅支持个人级配置，不走 .agents/ 同步）
+# ──────────────────────────────────────────
+function Install-PersonalHarness {
+    param(
+        [string]$HarnessName,    # 目录名，如 "workbuddy"
+        [string]$ExecutableName  # 可执行文件名，如 "workbuddy"
+    )
+
+    Write-Host ""
+    Write-Host "=== 个人级 harness: $HarnessName ===" -ForegroundColor Cyan
+
+    # 1. 检测可执行文件
+    $exe = Get-Command $ExecutableName -ErrorAction SilentlyContinue
+    if ($exe) {
+        Write-Host "  [ok] 检测到 $ExecutableName 可执行文件: $($exe.Source)" -ForegroundColor Green
+    } else {
+        Write-Host "  [warn] 未检测到 $ExecutableName 可执行文件，将仍生成个人级配置；请先安装 $HarnessName 后重启使其生效。" -ForegroundColor Yellow
+    }
+
+    # 2. 解析个人配置目录
+    $isWin = ($IsWindows -or ($env:OS -match "Windows"))
+    if ($isWin) {
+        $homeBase = if ($env:USERPROFILE) { $env:USERPROFILE } else { $env:HOME }
+        $cfgDir = Join-Path $homeBase ".$HarnessName"
+    } else {
+        $cfgDir = Join-Path $env:HOME ".$HarnessName"
+    }
+    New-Item -ItemType Directory -Path $cfgDir -Force | Out-Null
+    Write-Host "  个人配置目录: $cfgDir" -ForegroundColor Cyan
+
+    # 3. 检测 uv（mcp.json 的 command=uv）
+    $uvOk = $false
+    try { uv --version 2>&1 | Out-Null; $uvOk = $true } catch {}
+    if (-not $uvOk) {
+        Write-Host "  [warn] 未检测到 uv，mcp.json 中 command=uv 将不可用，请先安装 uv。" -ForegroundColor Yellow
+    }
+
+    # 4. 写入 mcp.json（绝对路径，无 ${workspaceFolder}）
+    $mcpObj = [ordered]@{
+        mcpServers = [ordered]@{
+            "vocabcraft-mcp" = [ordered]@{
+                command = "uv"
+                args    = @("run", "--no-sync", "--directory", (Join-Path $projectRoot "vocabcraft-mcp"), "vocabcraft-mcp")
+            }
+        }
+    }
+    $mcpJson = $mcpObj | ConvertTo-Json -Depth 10
+    $mcpPath = Join-Path $cfgDir "mcp.json"
+    $mcpJson | Set-Content -Path $mcpPath -Encoding UTF8 -NoNewline
+    Write-Host "  [ok] 已写入 MCP 注册: $mcpPath" -ForegroundColor Green
+
+    # 5. 符号链接 AGENTS.md 与 skills/（失败降级复制）
+    Link-PersonalConfig -Name "AGENTS.md" -Src (Join-Path $projectRoot ".agents\AGENTS.md") -Dst (Join-Path $cfgDir "AGENTS.md")
+    Link-PersonalConfig -Name "skills/"   -Src (Join-Path $projectRoot ".agents\skills")      -Dst (Join-Path $cfgDir "skills")
+}
+
+function Link-PersonalConfig {
+    param(
+        [string]$Name,
+        [string]$Src,
+        [string]$Dst
+    )
+    if (-not (Test-Path $Src)) {
+        Write-Host "  [warn] 源不存在，跳过 $Name : $Src" -ForegroundColor Yellow
+        return
+    }
+    # 移除已有目标（符号链接或真实文件/目录）
+    if (Test-Path $Dst) {
+        try { Remove-Item $Dst -Force -Recurse -ErrorAction Stop } catch { Remove-Item $Dst -Force -Recurse -ErrorAction SilentlyContinue }
+    }
+    $linked = $false
+    try {
+        New-Item -ItemType SymbolicLink -Path $Dst -Target $Src -Force -ErrorAction Stop | Out-Null
+        $linked = $true
+    } catch {
+        $linked = $false
+    }
+    if ($linked) {
+        Write-Host "  [ok] 已建立符号链接: $Dst -> $Src" -ForegroundColor Green
+    } else {
+        if (Test-Path $Src -PSIsContainer) {
+            Copy-Item $Src $Dst -Recurse -Force
+        } else {
+            Copy-Item $Src $Dst -Force
+        }
+        Write-Host "  [warn] 符号链接不可用，已降级复制: $Dst（项目配置更新后需重新运行安装脚本）" -ForegroundColor Yellow
+    }
+}
 
 # ──────────────────────────────────────────
 # [1/5] 检查 uv 包管理器
@@ -150,9 +241,13 @@ if ($AgentRuntime) {
                 Write-Host "  CodeBuddy: 在 MCP 配置中信任 vocabcraft-mcp"
                 Write-Host "  opencode: 在项目目录运行 opencode"
                 Write-Host "  Goose: 打开项目文件夹，自动读取 .goose/config.yaml"
+                Write-Host "  WorkBuddy: 个人级配置 ~/.workbuddy（或 %USERPROFILE%\.workbuddy）"
+                Write-Host "  Hermes:    个人级配置 ~/.hermes（或 %USERPROFILE%\.hermes）"
             } else {
                 Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
             }
+            Install-PersonalHarness -HarnessName "workbuddy" -ExecutableName "workbuddy"
+            Install-PersonalHarness -HarnessName "hermes" -ExecutableName "hermes"
         }
         "goose" {
             Write-Host "正在同步 Goose 配置..." -ForegroundColor Yellow
@@ -165,6 +260,12 @@ if ($AgentRuntime) {
             } else {
                 Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
             }
+        }
+        "workbuddy" {
+            Install-PersonalHarness -HarnessName "workbuddy" -ExecutableName "workbuddy"
+        }
+        "hermes" {
+            Install-PersonalHarness -HarnessName "hermes" -ExecutableName "hermes"
         }
     }
 }

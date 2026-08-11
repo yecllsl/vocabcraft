@@ -1,6 +1,6 @@
 # VocabCraft - 词汇学习与制作一体 MCP 工具
 
-词汇学习与制作一体化解决方案，同时支持 **Trae IDE CN / Trae Work CN**、**CodeBuddy**、**OpenCode** 和 **Goose** 五个 Agent Runtime。核心流程：拍照 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。
+词汇学习与制作一体化解决方案，同时支持 **Trae IDE CN / Trae Work CN**、**CodeBuddy**、**OpenCode** 和 **Goose** 五个项目级 Agent Runtime，以及 **WorkBuddy** / **Hermes** 两个个人级 harness。核心流程：拍照 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。
 
 ## 核心功能
 
@@ -17,7 +17,8 @@
 ```
 用户交互层
 ├── 对话式交互 (命令 / 自然语言)
-├── 五运行时: Trae + CodeBuddy + OpenCode + Goose (共用 .agents/AGENTS.md)
+├── 五运行时: Trae + CodeBuddy + OpenCode + Goose (共用 .agents/AGENTS.md，项目级配置)
+├── 个人级 harness: WorkBuddy + Hermes (仅支持个人级配置，通过个人目录 ~/.workbuddy / ~/.hermes 加载同一份 .agents/AGENTS.md 与 skills/，详见 .workbuddy/README.md 与 .hermes/README.md)
     ↓
 Skills 编排层 (.agents/skills/vocabcraft-*: capture / review / quiz / stats / export)
     ↓
@@ -97,6 +98,16 @@ chmod +x install.sh
 2. 用 Goose 打开项目文件夹，会自动读取 `.goose/config.yaml` 加载 vocabcraft-mcp
 
 > 💡 Goose 配置已内置于 `.goose/config.yaml`（由 `.agents/runtime/goose.json` 经 `scripts/sync-agent-configs` 同步生成），使用绝对路径适配，无需手动配置。
+
+##### WorkBuddy / Hermes（个人级配置）
+
+WorkBuddy 与 Hermes **仅支持个人级配置**，无法读取项目目录中的 MCP 配置，因此不纳入 `.agents/` 同步体系。改用个人目录加载同一套配置：
+
+1. 运行安装脚本：`.\install.ps1 -AgentRuntime workbuddy`（或 `bash install.sh --agent-runtime workbuddy`）、`...\hermes` 同理
+2. 安装脚本写入个人目录 `~/.workbuddy/mcp.json`（Windows 为 `%USERPROFILE%\.workbuddy`）/ `~/.hermes`（Windows 为 `%USERPROFILE%\.hermes`），并将 `AGENTS.md` 与 `skills/` 以符号链接形式接入项目（失败降级复制）
+3. 启动 WorkBuddy / Hermes 即可加载 vocabcraft-mcp
+
+> 💡 详细说明（配置文件路径、MCP stdio 格式、符号链接加载机制、与现有配置体系兼容性）见 [`.workbuddy/README.md`](.workbuddy/README.md) 与 [`.hermes/README.md`](.hermes/README.md)。
 
 #### 4. 开始使用
 
@@ -225,6 +236,8 @@ vocabcraft/
 ├── .opencode/                                # OpenCode 配置（scripts/sync-agent-configs 生成）
 ├── .codebuddy/                               # CodeBuddy 配置（scripts/sync-agent-configs 生成）
 ├── .goose/                                   # Goose 配置（scripts/sync-agent-configs 生成）
+├── .workbuddy/                               # WorkBuddy 个人级 harness（仅含 README.md，配置由安装脚本写入个人目录）
+├── .hermes/                                  # Hermes 个人级 harness（仅含 README.md，配置由安装脚本写入个人目录）
 │
 ├── .github/
 │   └── workflows/
@@ -265,7 +278,7 @@ vocabcraft/
 - **架构定义** — 系统架构、MCP Tools 参考
 - **命令参考** — /capture、/review、/quiz、/stats、/export 的触发条件与约束
 
-五个运行时（Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）都读取 `.agents/AGENTS.md`，保证行为一致。
+五个运行时（Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）都读取 `.agents/AGENTS.md`，保证行为一致；WorkBuddy 与 Hermes 两个个人级 harness 通过安装脚本建立的符号链接同样读取同一份 `.agents/AGENTS.md` 与 `.agents/skills/`，行为无任何差异。
 
 ### 多运行时适配
 
