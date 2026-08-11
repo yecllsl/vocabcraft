@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.5.5] - 2026-08-11
 
 ### 新增个人级 Harness：WorkBuddy / Hermes
 - WorkBuddy 与 Hermes 属于**仅支持个人级配置**的 Agent Runtime，无法通过项目级 `.agents/` 统一配置体系（单向同步到 `.trae/` / `.opencode/` / `.codebuddy/` / `.goose/`）管理，因此不纳入同步生成，亦不在 `scripts/pre-commit` 拦截名单中。
@@ -24,6 +24,9 @@ All notable changes to this project will be documented in this file.
 
 ### 文档清理：移除遗留 WorkBuddy 引用
 - 清理 `.workbuddy/` / `WorkBuddy` 过时引用（`WorkBuddy` 此前已重命名为 `CodeBuddy`，项目实际仅生成 `.codebuddy/`）：同步修正 `.agents/AGENTS.md`、`AGENTS.md`、`README.md`、`DEPLOY.md`、`scripts/pre-commit`、`install.*` 中的生成目录列表、pre-commit 拦截名单与安装提示文案。
+
+### 版本号统一
+- 版本号统一至 0.5.5（pyproject.toml / package.json / install.* / README.md / DEPLOY.md / QUICKSTART.md / CHANGELOG / build-release.*），并通过 `scripts/check_version.py` 校验。
 
 ## [0.5.4] - 2026-08-09
 
