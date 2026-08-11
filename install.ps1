@@ -7,7 +7,7 @@
 #
 # 可选参数：
 #   -FixPath       将 .agents/runtime 中 ${workspaceFolder} 替换为绝对路径（并重新同步各平台目录）
-#   -AgentRuntime  配置 Agent 运行时 (trae/codebuddy/opencode/all)
+#   -AgentRuntime  配置 Agent 运行时 (trae/codebuddy/opencode/goose/all)
 #
 # 前置要求：
 #   - Python 3.12+
@@ -16,7 +16,7 @@
 param(
     [switch]$FixPath,
     [Parameter(Mandatory=$false)]
-    [ValidateSet("trae", "codebuddy", "opencode", "all")]
+    [ValidateSet("trae", "codebuddy", "opencode", "goose", "all")]
     [string]$AgentRuntime
 )
 
@@ -25,7 +25,7 @@ $ErrorActionPreference = "Stop"
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host " VocabCraft v0.5.4 安装向导" -ForegroundColor Cyan
-Write-Host "  (Trae IDE CN + Trae Work CN + CodeBuddy + opencode)" -ForegroundColor Cyan
+Write-Host "  (Trae IDE CN + Trae Work CN + CodeBuddy + opencode + Goose)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -149,6 +149,19 @@ if ($AgentRuntime) {
                 Write-Host "  Trae: 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
                 Write-Host "  CodeBuddy: 在 MCP 配置中信任 vocabcraft-mcp"
                 Write-Host "  opencode: 在项目目录运行 opencode"
+                Write-Host "  Goose: 打开项目文件夹，自动读取 .goose/config.yaml"
+            } else {
+                Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
+            }
+        }
+        "goose" {
+            Write-Host "正在同步 Goose 配置..." -ForegroundColor Yellow
+            if (Test-Path $SyncScript) {
+                & $SyncScript
+                Write-Host ""
+                Write-Host "下一步:" -ForegroundColor Yellow
+                Write-Host "  1. 用 Goose 打开项目文件夹"
+                Write-Host "  2. Goose 会自动读取 .goose/config.yaml 加载 vocabcraft-mcp"
             } else {
                 Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
             }

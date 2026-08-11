@@ -8,6 +8,7 @@ AGENTS_DIR="$PROJECT_ROOT/.agents"
 AGENTS_RUNTIME="$AGENTS_DIR/runtime"
 AGENTS_SKILLS="$AGENTS_DIR/skills"
 AGENTS_MD="$AGENTS_DIR/AGENTS.md"
+PYTHON_BIN="$(command -v python3 || command -v python || echo python3)"
 
 export PROJECT_ROOT AGENTS_RUNTIME
 
@@ -31,11 +32,13 @@ echo "配置源: .agents/ (AAIF 标准)"
 SKIP_TRAE=false
 SKIP_OPENCODE=false
 SKIP_CODEBUDDY=false
+SKIP_GOOSE=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --skip-trae) SKIP_TRAE=true; shift ;;
         --skip-opencode) SKIP_OPENCODE=true; shift ;;
         --skip-codebuddy) SKIP_CODEBUDDY=true; shift ;;
+        --skip-goose) SKIP_GOOSE=true; shift ;;
         *) echo "未知参数: $1"; exit 1 ;;
     esac
 done
@@ -93,6 +96,17 @@ generate_codebuddy_config() {
     fi
 }
 
+generate_goose_config() {
+    local goose_dir="$PROJECT_ROOT/.goose"
+    mkdir -p "$goose_dir"
+    local source_config="$AGENTS_RUNTIME/goose.json"
+    if [ -f "$source_config" ]; then
+        echo -e "${YELLOW}生成 Goose 配置 → $goose_dir/config.yaml${NC}"
+        "$PYTHON_BIN" "$SCRIPT_DIR/generate-goose-config.py"
+        echo -e "${GREEN}  已生成 Goose 配置${NC}"
+    fi
+}
+
 if [ "$SKIP_TRAE" = false ]; then
     echo -e "\n${CYAN}--- Trae ---${NC}"
     sync_skills "$PROJECT_ROOT/.trae"
@@ -110,5 +124,11 @@ if [ "$SKIP_CODEBUDDY" = false ]; then
     sync_skills "$PROJECT_ROOT/.codebuddy"
     sync_agents_md "$PROJECT_ROOT/.codebuddy"
     generate_codebuddy_config
+fi
+if [ "$SKIP_GOOSE" = false ]; then
+    echo -e "\n${CYAN}--- Goose ---${NC}"
+    sync_skills "$PROJECT_ROOT/.goose"
+    sync_agents_md "$PROJECT_ROOT/.goose"
+    generate_goose_config
 fi
 echo -e "\n${CYAN}=== 同步完成 ===${NC}"

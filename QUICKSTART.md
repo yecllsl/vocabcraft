@@ -49,6 +49,16 @@ VocabCraft 支持多个 Agent 运行时，选择你使用的环境进行配置�
 
 2. 在项目目录运行 `opencode`
 
+#### Goose
+
+1. 运行安装脚本：
+   ```powershell
+   .\install.ps1 -AgentRuntime goose  # Windows
+   bash install.sh --agent-runtime goose  # Linux/macOS
+   ```
+
+2. 用 Goose 打开项目文件夹，会自动读取 `.goose/config.yaml` 加载 vocabcraft-mcp
+
 ### 第 4 步：开始使用
 
 输入 `/capture`、`/review`、`/quiz`、`/stats` 或 `/export` 即可！
@@ -263,7 +273,7 @@ Q3. 例句填空
 | 路径变量不替换 | 运行 `.\install.ps1 -FixPath` 修复路径 |
 | 依赖安装失败 / `uv sync` 报错 | 删除 `.venv` 后重试 `uv sync`；确认 Python ≥ 3.12；网络问题检查代理 |
 | Skills 不生效 | 重启 Trae → 检查 .agents/skills/vocabcraft-* 目录 |
-| 多运行时配置冲突 | 不会冲突，共用同一份 `.agents/runtime/trae.json`（→ `.trae/mcp.json`），详见 [DEPLOY.md](DEPLOY.md) |
+| 多运行时配置冲突 | 不会冲突，各运行时共用同一份 `.agents/` 配置（经 `scripts/sync-agent-configs` 同步），详见 [DEPLOY.md](DEPLOY.md) |
 
 ## 下一步
 

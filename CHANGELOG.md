@@ -9,6 +9,13 @@ All notable changes to this project will be documented in this file.
 - `.agents/runtime/workbuddy.json` → `codebuddy.json`；`scripts/sync-agent-configs.*`、`generate-platform-configs.py`、`install.*`、`.git/hooks/pre-commit` 的目标运行时由 workbuddy 改为 codebuddy。
 - 修正先前对 OpenCode 的误判：`.opencode/opencode.json` 是 OpenCode 官方支持的（且优先级更高）的项目配置位置，配置本身有效。
 
+### 新增 Agent Runtime：Goose (AAIF)
+- 根目录新增 `.goose/` 目录，由 AAIF 配置层单向同步生成（Goose 为 Block 开源 Agent 运行时）。
+- 新增 `.agents/runtime/goose.json`（Goose 原生 `extensions`/`stdio` schema）；新增 `scripts/generate-goose-config.py` 将其转换为 `.goose/config.yaml`，并把 `uv --directory` 解析为绝对项目路径（无需 `${workspaceFolder}`）。
+- `scripts/sync-agent-configs.*` 增加 `--skip-goose` / `-SkipGoose`，同步 Skills 与 `AGENTS.md` 到 `.goose/`。
+- `scripts/pre-commit` 生成目录拦截名单新增 `.goose/*`。
+- `install.*` 增加 `goose` 运行时选项；`README.md` / `QUICKSTART.md` / `DEPLOY.md` 增加 Goose 配置说明与运行时计数更新。
+
 ## [0.5.4] - 2026-08-09
 
 ### AAIF Migration

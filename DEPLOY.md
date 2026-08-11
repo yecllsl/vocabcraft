@@ -11,7 +11,7 @@
 # 2. 运行安装脚本
 .\install.ps1
 
-# 3. 用 Trae IDE CN / Trae Work CN / WorkBuddy / OpenCode 打开文件夹
+# 3. 用 Trae IDE CN / Trae Work CN / WorkBuddy / OpenCode / Goose 打开文件夹
 # 4. 启用项目级 MCP（各运行时入口不同，见下文）
 # 5. 重启运行时
 ```
@@ -41,13 +41,13 @@ chmod +x install.sh
 | Python | 3.12+ | https://www.python.org/downloads/ |
 | uv | 最新版 | Windows: `irm https://astral.sh/uv/install.ps1 \| iex` |
 | | | Linux/macOS: `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| 运行时 | 最新版 | Trae IDE CN / Trae Work CN / WorkBuddy / OpenCode（任选其一或全部） |
+| 运行时 | 最新版 | Trae IDE CN / Trae Work CN / WorkBuddy / OpenCode / Goose（任选其一或全部） |
 
-> 💡 四个运行时**共用同一份配置与数据**，也可同时安装。
+> 💡 五个运行时**共用同一份配置与数据**，也可同时安装。
 
 ## 多运行时共用配置（核心）
 
-VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。所有运行时共用 `.agents/runtime/trae.json`（同步生成 `.trae/mcp.json`）与 `.agents/AGENTS.md`（同步到根目录与各平台），无需单独配置。
+VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。Trae / WorkBuddy / OpenCode / CodeBuddy 共用 `.agents/runtime/trae.json`（同步生成 `.trae/mcp.json`）与 `.agents/AGENTS.md`（同步到根目录与各平台）；Goose 单独走 `.agents/runtime/goose.json`（同步生成 `.goose/config.yaml`，使用绝对路径，无需 `${workspaceFolder}`）。无需单独配置。
 
 ```
 ┌─────────────────────────┐  ┌─────────────────────────┐  ┌──────────────────┐  ┌──────────────┐
@@ -88,7 +88,11 @@ VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。�
 1. 运行 `.\install.ps1 -AgentRuntime opencode`（或 `bash install.sh --agent-runtime opencode`）
 2. 在项目目录运行 `opencode`（AGENTS.md 自动加载）
 
-> ✅ 四个运行时操作一致，可同时启用。在哪个环境中使用 `/capture` 等命令，就由哪个环境的 MCP Server 实例响应。
+**Goose**
+1. 运行 `.\install.ps1 -AgentRuntime goose`（或 `bash install.sh --agent-runtime goose`）
+2. 用 Goose 打开项目文件夹，会自动读取 `.goose/config.yaml` 加载 vocabcraft-mcp（绝对路径，无需 `${workspaceFolder}`）
+
+> ✅ 五个运行时操作一致，可同时启用。在哪个环境中使用 `/capture` 等命令，就由哪个环境的 MCP Server 实例响应。
 
 ### mcp.json 配置内容
 
@@ -147,7 +151,7 @@ uv run vocabcraft-mcp
 
 ## Skills 与规则配置
 
-Skills 位于 `.agents/skills/`（AAIF 真相源），经 `scripts/sync-agent-configs` 同步到 `.trae/` / `.opencode/` / `.codebuddy/`。修改后重启运行时即可生效。
+Skills 位于 `.agents/skills/`（AAIF 真相源），经 `scripts/sync-agent-configs` 同步到 `.trae/` / `.opencode/` / `.codebuddy/` / `.goose/`。修改后重启运行时即可生效。
 
 ### Skills 说明（vocabcraft-* 业务编排）
 
@@ -161,7 +165,7 @@ Skills 位于 `.agents/skills/`（AAIF 真相源），经 `scripts/sync-agent-co
 
 ### 规则来源
 
-业务规则与开发规范统一存放于 **`.agents/AGENTS.md`**（四个运行时共用，单一真相源，同步到根目录与各平台），不再拆分到 `.trae/rules/`。各 skill 的「约束规则」内联在其 `SKILL.md` 中。
+业务规则与开发规范统一存放于 **`.agents/AGENTS.md`**（五个运行时共用，单一真相源，同步到根目录与各平台），不再拆分到 `.trae/rules/`。各 skill 的「约束规则」内联在其 `SKILL.md` 中。
 
 ## 常见问题
 
@@ -193,9 +197,9 @@ uv sync
 
 → 运行 `.\install.ps1 -FixPath` 修复路径，或手动添加（见上文）。
 
-### Q4: 四个运行时能否同时使用？
+### Q4: 五个运行时能否同时使用？
 
-可以，且推荐。各运行时共用同一份 `.agents/runtime/trae.json`（→ `.trae/mcp.json`）与 `.agents/AGENTS.md`：
+可以，且推荐。各运行时共用同一份 `.agents/` 配置（`trae.json` 同步生成 `.trae/mcp.json`；`goose.json` 同步生成 `.goose/config.yaml`；`.agents/AGENTS.md` 同步到根目录与各平台）：
 
 - **同一台机器**：各运行时打开同一个项目文件夹，各自启用 MCP 即可，`${workspaceFolder}` 会各自替换为当前路径。
 - **数据共享**：各运行时 MCP Server 实例读写同一个 `vocabcraft-mcp/data/` 目录，词汇数据互通。
@@ -239,12 +243,12 @@ vocabcraft/
 │   └── uv.lock                            # 依赖锁定
 │
 ├── .agents/                                # 配置层（AAIF 唯一真相源，只改这里）
-│   ├── runtime/{trae,opencode,codebuddy}.json          # 各平台 MCP 配置源
+│   ├── runtime/{trae,opencode,codebuddy,goose}.json    # 各平台 MCP 配置源
 │   ├── skills/vocabcraft-*                # capture/review/quiz/stats/export（源文件）
 │   ├── AGENTS.md                          # 统一规则源
 │   └── tools.json / triggers.json / workflows.json           # AAIF 声明
 │
-├── .trae/  .opencode/  .codebuddy/   # 由 scripts/sync-agent-configs 生成
+├── .trae/  .opencode/  .codebuddy/  .goose/   # 由 scripts/sync-agent-configs 生成
 │
 ├── .github/workflows/                     # test.yml / release.yml
 ├── scripts/                               # build-release.* / sync-agent-configs.*

@@ -1,0 +1,19 @@
+{
+  "extensions": {
+    "vocabcraft-mcp": {
+      "name": "vocabcraft-mcp",
+      "enabled": true,
+      "type": "stdio",
+      "cmd": "uv",
+      "args": [
+        "run",
+        "--no-sync",
+        "--directory",
+        "vocabcraft-mcp",
+        "vocabcraft-mcp"
+      ],
+      "timeout": 300,
+      "description": "VocabCraft 词汇学习与制作 MCP 服务"
+    }
+  }
+}

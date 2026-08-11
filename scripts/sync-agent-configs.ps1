@@ -2,7 +2,7 @@
 .SYNOPSIS
     同步 .agents/ 配置到各平台目录。
 .DESCRIPTION
-    从 .agents/runtime/ 目录读取配置，生成 .trae/、.opencode/、.codebuddy/ 配置。
+    从 .agents/runtime/ 目录读取配置，生成 .trae/、.opencode/、.codebuddy/、.goose/ 配置。
     .agents/ 是 AAIF 标准的唯一配置源。
 .PARAMETER SkipTrae
     跳过 Trae 配置生成。
@@ -10,11 +10,14 @@
     跳过 opencode 配置生成。
 .PARAMETER SkipCodebuddy
     跳过 CodeBuddy 配置生成。
+.PARAMETER SkipGoose
+    跳过 Goose 配置生成。
 #>
 param(
     [switch]$SkipTrae,
     [switch]$SkipOpencode,
-    [switch]$SkipCodebuddy
+    [switch]$SkipCodebuddy,
+    [switch]$SkipGoose
 )
 
 $ErrorActionPreference = "Stop"
@@ -85,6 +88,17 @@ function New-CodebuddyConfig {
     }
 }
 
+function New-GooseConfig {
+    $GooseDir = Join-Path $ProjectRoot ".goose"
+    if (-not (Test-Path $GooseDir)) { New-Item -ItemType Directory -Path $GooseDir -Force | Out-Null }
+    $SourceConfig = Join-Path $AgentsRuntime "goose.json"
+    if (Test-Path $SourceConfig) {
+        Write-Host "生成 Goose 配置 -> $GooseDir/config.yaml" -ForegroundColor Yellow
+        python (Join-Path $PSScriptRoot "generate-goose-config.py")
+        Write-Host "  已生成 Goose 配置 (.goose/config.yaml)" -ForegroundColor Green
+    }
+}
+
 if (-not $SkipTrae) {
     Write-Host "`n--- Trae ---" -ForegroundColor Cyan
     Sync-Skills -TargetDir (Join-Path $ProjectRoot ".trae")
@@ -102,5 +116,11 @@ if (-not $SkipCodebuddy) {
     Sync-Skills -TargetDir (Join-Path $ProjectRoot ".codebuddy")
     Sync-AgentsMd -TargetDir (Join-Path $ProjectRoot ".codebuddy")
     New-CodebuddyConfig
+}
+if (-not $SkipGoose) {
+    Write-Host "`n--- Goose ---" -ForegroundColor Cyan
+    Sync-Skills -TargetDir (Join-Path $ProjectRoot ".goose")
+    Sync-AgentsMd -TargetDir (Join-Path $ProjectRoot ".goose")
+    New-GooseConfig
 }
 Write-Host "`n=== 同步完成 ===" -ForegroundColor Cyan
