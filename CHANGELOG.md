@@ -28,6 +28,15 @@ All notable changes to this project will be documented in this file.
 ### 版本号统一
 - 版本号统一至 0.5.5（pyproject.toml / package.json / install.* / README.md / DEPLOY.md / QUICKSTART.md / CHANGELOG / build-release.*），并通过 `scripts/check_version.py` 校验。
 
+### AAIF 声明文件改为脚本生成（消除死配置漂移）
+- 新增 `scripts/generate-aaif-declarations.py`，从**真实源**生成 `.agents/` 下三个 AAIF 标准声明文件，杜绝手工维护漂移：
+  - `tools.json` ← 自省实时 MCP 服务（`vocabcraft_mcp.server`，11 个工具及参数 schema 自动产出）；
+  - `triggers.json` ← 聚合各 Skill 的「When to Use」自然语言触发词 + `/<skill>` 命令别名；
+  - `workflows.json` ← 聚合各 Skill 实际引用的 MCP 工具（按文中出现顺序）。
+- 三个文件现为**生成产物**，由 AAIF 工具链（`agents publish .agents`）消费；`package.json` 新增 `generate-declarations`，`generate-configs` 与 `scripts/sync-agent-configs.*` 在同步时一并重生。
+- 修正原 `triggers.json` 命令触发器格式错误（旧的 `/vocabcraft\s+(capture...)` 改为与真实命令一致的 `/capture`）。
+- README / DEPLOY / 本文件注明其为脚本生成、勿手工编辑。
+
 ### 修复：Release 工作流构建失败
 - 根因：`scripts/build-release.sh` 将四个运行时平台配置写入**不带点前缀**的目录（`trae/` / `opencode/` / `codebuddy/` / `goose/`），但验证步骤与 IDE 识别均要求**带点前缀**目录（`.trae/` / `.opencode/` / `.codebuddy/` / `.goose/`），导致 verify 阶段报 `Missing required files` 后 `exit 1`，Release 工作流失败。PowerShell 版 `build-release.ps1` 本就使用带点目录名，两者不一致。
 - 修复：在 `build-release.sh` 新增 `CFG_DOT` 映射（`[trae]=".trae"` 等），步骤 [2]/[3] 改用 `$STAGING_DIR/${CFG_DOT[$p]}`，与 PowerShell 版对齐；本地复现构建已通过 verify（110 文件、无 `.venv`）。

@@ -2,22 +2,64 @@
   "$schema": "https://agents.aaif.io/schemas/triggers.json",
   "triggers": [
     {
-      "type": "conversation",
-      "pattern": "(?i)(拍|扫描|识别|学习|复习|考试|统计|导出)",
-      "handler": "handle_trigger",
-      "description": "中文对话触发器"
+      "type": "command",
+      "pattern": "^/capture(\\s.*)?$",
+      "handler": "handle_command",
+      "description": "vocabcraft-capture 命令触发器"
     },
     {
       "type": "conversation",
-      "pattern": "(?i)(capture|scan|learn|review|quiz|stats|export)",
+      "pattern": "(?i)(录入词汇|拍照录词|添加生词|采集词汇)",
       "handler": "handle_trigger",
-      "description": "英文对话触发器"
+      "description": "vocabcraft-capture 对话触发器"
     },
     {
       "type": "command",
-      "pattern": "^/vocabcraft\\s+(capture|review|quiz|stats|export)\\s*(.*)?$",
+      "pattern": "^/export(\\s.*)?$",
       "handler": "handle_command",
-      "description": "命令触发器"
+      "description": "vocabcraft-export 命令触发器"
+    },
+    {
+      "type": "conversation",
+      "pattern": "(?i)(导出|备份数据|导出词汇|导出\\ csv)",
+      "handler": "handle_trigger",
+      "description": "vocabcraft-export 对话触发器"
+    },
+    {
+      "type": "command",
+      "pattern": "^/quiz(\\s.*)?$",
+      "handler": "handle_command",
+      "description": "vocabcraft-quiz 命令触发器"
+    },
+    {
+      "type": "conversation",
+      "pattern": "(?i)(出题|考我|测试|练一练|考题)",
+      "handler": "handle_trigger",
+      "description": "vocabcraft-quiz 对话触发器"
+    },
+    {
+      "type": "command",
+      "pattern": "^/review(\\s.*)?$",
+      "handler": "handle_command",
+      "description": "vocabcraft-review 命令触发器"
+    },
+    {
+      "type": "conversation",
+      "pattern": "(?i)(复习词汇|该复习了|今天复习什么|复习单词)",
+      "handler": "handle_trigger",
+      "description": "vocabcraft-review 对话触发器"
+    },
+    {
+      "type": "command",
+      "pattern": "^/stats(\\s.*)?$",
+      "handler": "handle_command",
+      "description": "vocabcraft-stats 命令触发器"
+    },
+    {
+      "type": "conversation",
+      "pattern": "(?i)(统计|词汇量|掌握度|复习进度|学习情况)",
+      "handler": "handle_trigger",
+      "description": "vocabcraft-stats 对话触发器"
     }
   ]
 }

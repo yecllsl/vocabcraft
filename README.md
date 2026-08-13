@@ -228,9 +228,9 @@ vocabcraft/
 │   │   ├── vocabcraft-stats/                 # /stats 统计
 │   │   └── vocabcraft-export/                # /export 导出
 │   ├── AGENTS.md                             # 统一规则源（五个运行时共用）
-│   ├── tools.json                            # AAIF 工具声明
-│   ├── triggers.json                         # AAIF 触发器声明
-│   └── workflows.json                        # AAIF 工作流声明
+│   ├── tools.json                            # AAIF 工具声明（脚本从 MCP server 自省生成，勿手改）
+│   ├── triggers.json                         # AAIF 触发器声明（脚本从 Skills 生成，勿手改）
+│   └── workflows.json                        # AAIF 工作流声明（脚本从 Skills 生成，勿手改）
 │
 ├── .trae/                                    # Trae 配置（scripts/sync-agent-configs 生成）
 ├── .opencode/                                # OpenCode 配置（scripts/sync-agent-configs 生成）

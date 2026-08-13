@@ -254,7 +254,7 @@ vocabcraft/
 │   ├── runtime/{trae,opencode,codebuddy,goose}.json    # 各平台 MCP 配置源
 │   ├── skills/vocabcraft-*                # capture/review/quiz/stats/export（源文件）
 │   ├── AGENTS.md                          # 统一规则源
-│   └── tools.json / triggers.json / workflows.json           # AAIF 声明
+│   └── tools.json / triggers.json / workflows.json           # AAIF 声明（脚本从真实源生成，供 agents publish 消费）
 │
 ├── .trae/  .opencode/  .codebuddy/  .goose/   # 由 scripts/sync-agent-configs 生成
 ├── .workbuddy/  .hermes/                       # 个人级 harness（仅含 README.md，配置由安装脚本写入个人目录）

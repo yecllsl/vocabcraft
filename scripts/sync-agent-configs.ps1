@@ -99,6 +99,19 @@ function New-GooseConfig {
     }
 }
 
+function New-AaifDeclarations {
+    $Uv = Get-Command uv -ErrorAction SilentlyContinue
+    if (-not $Uv) { Write-Error "未找到 uv，无法生成 AAIF 声明文件（tools.json/triggers.json/workflows.json）"; exit 1 }
+    $DeclScript = Join-Path $PSScriptRoot "generate-aaif-declarations.py"
+    $McpDir = Join-Path $ProjectRoot "vocabcraft-mcp"
+    Write-Host "生成 AAIF 声明文件 → .agents/" -ForegroundColor Yellow
+    uv run --no-sync --directory $McpDir python $DeclScript
+    if ($LASTEXITCODE -ne 0) { Write-Error "AAIF 声明文件生成失败"; exit 1 }
+    Write-Host "  已生成 tools.json / triggers.json / workflows.json" -ForegroundColor Green
+}
+
+New-AaifDeclarations
+
 if (-not $SkipTrae) {
     Write-Host "`n--- Trae ---" -ForegroundColor Cyan
     Sync-Skills -TargetDir (Join-Path $ProjectRoot ".trae")

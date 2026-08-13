@@ -107,6 +107,24 @@ generate_goose_config() {
     fi
 }
 
+generate_aaif_declarations() {
+    if ! command -v uv >/dev/null 2>&1; then
+        echo -e "${RED}未找到 uv，无法生成 AAIF 声明文件（tools.json/triggers.json/workflows.json）${NC}" >&2
+        exit 1
+    fi
+    local decl_script="$SCRIPT_DIR/generate-aaif-declarations.py"
+    local mcp_dir="$PROJECT_ROOT/vocabcraft-mcp"
+    echo -e "${YELLOW}生成 AAIF 声明文件 → .agents/${NC}"
+    uv run --no-sync --directory "$mcp_dir" python "$decl_script"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}AAIF 声明文件生成失败${NC}" >&2
+        exit 1
+    fi
+    echo -e "${GREEN}  已生成 tools.json / triggers.json / workflows.json${NC}"
+}
+
+generate_aaif_declarations
+
 if [ "$SKIP_TRAE" = false ]; then
     echo -e "\n${CYAN}--- Trae ---${NC}"
     sync_skills "$PROJECT_ROOT/.trae"

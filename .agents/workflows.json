@@ -3,45 +3,75 @@
   "workflows": [
     {
       "name": "vocabcraft-capture",
-      "description": "完整的词汇采集工作流",
+      "description": "Use when 用户想录入词汇、拍照识别单词、添加生词、采集词汇、保存单词。NOT for 复习到期词汇（用 vocabcraft-review）、出题考我（用 vocabcraft-quiz）、查看统计（用 vocabcraft-stats）、导出数据（用 vocabcraft-export）",
       "steps": [
         {
-          "action": "capture",
-          "description": "拍照或输入词汇"
+          "action": "import_xlsx_vocab",
+          "description": "调用 import_xlsx_vocab：从 .xlsx 文件批量导入词汇"
         },
         {
-          "action": "parse",
-          "description": "AI 解析词汇信息"
+          "action": "parse_vocab",
+          "description": "调用 parse_vocab：AI 结构化解析词汇（词形/音标/词性/释义/例句）。\n三模式优先级：对话多模态（无参数）> 本地路径多模态（image_path）> 文本模式（text）。"
         },
         {
-          "action": "save",
-          "description": "保存词汇到本地"
+          "action": "save_vocab",
+          "description": "调用 save_vocab：保存词汇记录到本地 JSON 文件"
+        }
+      ]
+    },
+    {
+      "name": "vocabcraft-export",
+      "description": "Use when 用户想导出词汇数据、备份数据、导出 csv、导出 json、迁移数据。NOT for 录入新词（用 vocabcraft-capture）、复习到期词汇（用 vocabcraft-review）、出题考我（用 vocabcraft-quiz）、查看统计（用 vocabcraft-stats）",
+      "steps": [
+        {
+          "action": "export_data",
+          "description": "调用 export_data：导出词汇数据为 JSON/CSV"
+        }
+      ]
+    },
+    {
+      "name": "vocabcraft-quiz",
+      "description": "Use when 用户想出题考我、做词汇测试、练习单词、生成考题、随机测一测。NOT for 录入新词（用 vocabcraft-capture）、到期复习（用 vocabcraft-review，复习是 SM-2 排程驱动，quiz 是主动测试）、查看统计（用 vocabcraft-stats）、导出数据（用 vocabcraft-export）",
+      "steps": [
+        {
+          "action": "generate_quiz",
+          "description": "调用 generate_quiz：为指定词汇生成考题（选择/填空/拼写/释义）"
         },
         {
-          "action": "schedule",
-          "description": "安排复习计划"
+          "action": "grade_quiz",
+          "description": "调用 grade_quiz：评分并按 SM-2 更新词汇记忆状态"
         }
       ]
     },
     {
       "name": "vocabcraft-review",
-      "description": "完整的复习工作流",
+      "description": "Use when 用户想复习词汇、查询到期单词、按遗忘曲线复习、做复习测试。NOT for 录入新词（用 vocabcraft-capture）、主动出题练习（用 vocabcraft-quiz，复习是 SM-2 到期排程驱动，quiz 是主动测试）、查看统计（用 vocabcraft-stats）、导出数据（用 vocabcraft-export）",
       "steps": [
         {
-          "action": "get_due_vocab",
-          "description": "获取到期词汇"
+          "action": "schedule_review",
+          "description": "调用 schedule_review：基于遗忘曲线生成复习计划（language 为空则不按语种过滤）"
         },
         {
           "action": "generate_quiz",
-          "description": "生成考题"
+          "description": "调用 generate_quiz：为指定词汇生成考题（选择/填空/拼写/释义）"
         },
         {
-          "action": "grade",
-          "description": "评分"
+          "action": "grade_quiz",
+          "description": "调用 grade_quiz：评分并按 SM-2 更新词汇记忆状态"
+        }
+      ]
+    },
+    {
+      "name": "vocabcraft-stats",
+      "description": "Use when 用户想查看词汇统计、词汇量、掌握度分布、复习进度、学习情况。NOT for 录入新词（用 vocabcraft-capture）、复习到期词汇（用 vocabcraft-review）、出题考我（用 vocabcraft-quiz）、导出数据（用 vocabcraft-export）",
+      "steps": [
+        {
+          "action": "schedule_review",
+          "description": "调用 schedule_review：基于遗忘曲线生成复习计划（language 为空则不按语种过滤）"
         },
         {
-          "action": "update_memory",
-          "description": "更新记忆状态"
+          "action": "get_statistics",
+          "description": "调用 get_statistics：统计词汇量、掌握度、题型分布"
         }
       ]
     }
