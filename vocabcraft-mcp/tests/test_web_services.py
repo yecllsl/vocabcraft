@@ -80,7 +80,6 @@ def test_dashboard_summary_empty(temp_storage):
         {"name": "生疏", "value": 0},
         {"name": "熟悉", "value": 0},
         {"name": "掌握", "value": 0},
-        {"name": "精通", "value": 0},
     ]
     assert len(summary["trends"]) == 30
     assert all(v == 0 for v in summary["trends"].values())
@@ -516,14 +515,14 @@ def test_real_retention_curve_buckets_by_days_since_first_review(temp_storage):
     base = datetime(2026, 7, 1, tzinfo=UTC)
     temp_storage.save_vocab(_make_vocab("hallo", "vocab_001", language="de"))
 
-    # 5 条记录：第 0 天 2 条（grade 5, 2），第 3 天 2 条（grade 4, 1），第 10 天 1 条（grade 5）
+    # 5 条记录：第 0 天 2 条（grade 4, 2），第 3 天 2 条（grade 4, 1），第 10 天 1 条（grade 4）
     # 第 0 天桶：保留率 = 1/2 = 50%（sample_size=2 >= 3? 不，<3，丢弃）
-    # 改为：第 0 天 3 条（grade 5, 4, 2）→ 保留率 2/3，sample_size=3 保留
+    # 改为：第 0 天 3 条（grade 4, 4, 2）→ 保留率 2/3，sample_size=3 保留
     records = [
-        _make_review_record("rec_001", "vocab_001", base, grade=5),                       # 第 0 天
+        _make_review_record("rec_001", "vocab_001", base, grade=4),                       # 第 0 天
         _make_review_record("rec_002", "vocab_001", base + timedelta(days=0), grade=4),   # 第 0 天
         _make_review_record("rec_003", "vocab_001", base + timedelta(days=0), grade=2),   # 第 0 天
-        _make_review_record("rec_004", "vocab_001", base + timedelta(days=3), grade=5),   # 第 3 天 → 桶 2-3
+        _make_review_record("rec_004", "vocab_001", base + timedelta(days=3), grade=4),   # 第 3 天 → 桶 2-3
         _make_review_record("rec_005", "vocab_001", base + timedelta(days=10), grade=1),  # 第 10 天 → 桶 8-15
     ]
     for r in records:
@@ -534,7 +533,7 @@ def test_real_retention_curve_buckets_by_days_since_first_review(temp_storage):
     bucket_0 = next((c for c in curve if c["days"] == 0), None)
     assert bucket_0 is not None
     assert bucket_0["sample_size"] == 3
-    assert bucket_0["retention"] == pytest.approx(100 * 2 / 3, abs=0.1)  # grade 5,4 通过，2 失败 → 66.7%
+    assert bucket_0["retention"] == pytest.approx(100 * 2 / 3, abs=0.1)  # grade 4,4 通过，2 失败 → 66.7%
 
     # 第 2-3 天桶（days=3）sample_size=1 < 3，应被丢弃
     bucket_3 = next((c for c in curve if c["days"] == 3), None)
@@ -549,9 +548,9 @@ def test_real_retention_curve_filters_by_language(temp_storage):
     temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical"))
 
     # de 与 zh_classical 各 3 条第 0 天记录
-    for i, grade in enumerate([5, 4, 3]):
+    for i, grade in enumerate([4, 4, 3]):
         temp_storage.save_review_record(_make_review_record(f"rec_de_{i}", "vocab_de", base, grade=grade))
-    for i, grade in enumerate([2, 1, 0]):
+    for i, grade in enumerate([2, 1, 1]):
         temp_storage.save_review_record(_make_review_record(f"rec_zh_{i}", "vocab_zh", base, grade=grade))
 
     de_curve = _real_retention_curve("de")
@@ -575,7 +574,7 @@ def test_weak_words_by_language_filters_grade_below_3(temp_storage):
     temp_storage.save_vocab(_make_vocab("welt", "vocab_002", language="de", repetitions=2))
 
     # vocab_001 最近一次 grade=2（薄弱）
-    temp_storage.save_review_record(_make_review_record("rec_001", "vocab_001", base, grade=5))
+    temp_storage.save_review_record(_make_review_record("rec_001", "vocab_001", base, grade=4))
     temp_storage.save_review_record(_make_review_record("rec_002", "vocab_001", base + timedelta(days=1), grade=2))
     # vocab_002 最近一次 grade=4（不薄弱）
     temp_storage.save_review_record(_make_review_record("rec_003", "vocab_002", base, grade=4))
@@ -611,12 +610,11 @@ def test_weak_words_by_language_empty_when_no_records(temp_storage):
 def test_mastery_distribution_by_language(temp_storage):
     """按语言统计掌握度分布"""
     from vocabcraft_mcp.web.services import _mastery_distribution_by_language
-    # de: 1 新词(grade=None), 1 生疏(grade=2), 1 熟悉(grade=3), 1 掌握(grade=4), 1 精通(grade=5)
+    # de: 1 新词(grade=None), 1 生疏(grade=2), 1 熟悉(grade=3), 1 掌握(grade=4)
     temp_storage.save_vocab(_make_vocab("w1", "vocab_001", language="de", last_word_grade=None))
     temp_storage.save_vocab(_make_vocab("w2", "vocab_002", language="de", last_word_grade=2))
     temp_storage.save_vocab(_make_vocab("w3", "vocab_003", language="de", last_word_grade=3))
     temp_storage.save_vocab(_make_vocab("w4", "vocab_004", language="de", last_word_grade=4))
-    temp_storage.save_vocab(_make_vocab("w5", "vocab_005", language="de", last_word_grade=5))
     # zh_classical: 1 新词（不应出现在 de 分布中）
     temp_storage.save_vocab(_make_vocab("病", "vocab_zh", language="zh_classical", last_word_grade=None))
 
@@ -626,7 +624,6 @@ def test_mastery_distribution_by_language(temp_storage):
         {"name": "生疏", "value": 1},
         {"name": "熟悉", "value": 1},
         {"name": "掌握", "value": 1},
-        {"name": "精通", "value": 1},
     ]
 
 
@@ -639,7 +636,6 @@ def test_mastery_distribution_by_language_empty(temp_storage):
         {"name": "生疏", "value": 0},
         {"name": "熟悉", "value": 0},
         {"name": "掌握", "value": 0},
-        {"name": "精通", "value": 0},
     ]
 
 
@@ -688,7 +684,7 @@ def test_insights_summary_normal_sample(temp_storage):
     assert "theoretical" in summary["forgetting_curve"]
     assert "real" in summary["forgetting_curve"]
     assert isinstance(summary["weak_words"], list)
-    assert len(summary["mastery_distribution"]) == 5
+    assert len(summary["mastery_distribution"]) == 4
 
 
 def test_insights_summary_small_sample(temp_storage):

@@ -18,27 +18,21 @@ from vocabcraft_mcp.algorithms import (
 # 输入校验
 # ──────────────────────────────────────────
 
-def test_grade_below_zero_rejected():
-    """grade < 0 应抛 ValueError"""
+def test_grade_below_one_rejected():
+    """grade < 1 应抛 ValueError"""
     with pytest.raises(ValueError):
-        compute_next_review(2.5, 0, 0, -1)
+        compute_next_review(2.5, 0, 0, 0)
 
 
-def test_grade_above_five_rejected():
-    """grade > 5 应抛 ValueError"""
+def test_grade_above_four_rejected():
+    """grade > 4 应抛 ValueError"""
     with pytest.raises(ValueError):
-        compute_next_review(2.5, 0, 0, 6)
+        compute_next_review(2.5, 0, 0, 5)
 
 
 # ──────────────────────────────────────────
 # EF 更新公式：EF' = EF + (0.1 - (5-q)*(0.08 + (5-q)*0.02))
 # ──────────────────────────────────────────
-
-def test_grade_5_increases_ef_by_0_1():
-    """q=5: EF' = EF + 0.1"""
-    result = compute_next_review(2.5, 0, 0, 5)
-    assert result["ease_factor"] == pytest.approx(2.6, abs=1e-3)
-
 
 def test_grade_4_ef_unchanged():
     """q=4: EF' = EF + 0 = EF（不变）"""
@@ -52,16 +46,16 @@ def test_grade_3_decreases_ef_by_0_14():
     assert result["ease_factor"] == pytest.approx(2.36, abs=1e-3)
 
 
-def test_grade_0_ef_decreases_by_0_8():
-    """q=0: EF' = EF - 0.8"""
-    result = compute_next_review(2.5, 0, 0, 0)
-    assert result["ease_factor"] == pytest.approx(1.7, abs=1e-3)
+def test_grade_1_ef_decreases():
+    """q=1: EF' = EF - 0.54"""
+    result = compute_next_review(2.5, 0, 0, 1)
+    assert result["ease_factor"] == pytest.approx(1.96, abs=1e-3)
 
 
 def test_ef_minimum_clamp():
     """EF 下限 1.3：连续低分不应使 EF 跌破 1.3"""
-    # 从 1.4 起，grade=0 应使 EF = 1.4 - 0.8 = 0.6，被夹紧到 1.3
-    result = compute_next_review(1.4, 1, 1, 0)
+    # 从 1.5 起，grade=1 应使 EF = 1.5 - 0.54 = 0.96，被夹紧到 1.3
+    result = compute_next_review(1.5, 1, 1, 1)
     assert result["ease_factor"] == MIN_EASE_FACTOR
 
 
@@ -119,7 +113,7 @@ def test_fourth_success_interval_multiplied_by_ef():
 def test_interval_rounding():
     """interval = round(prev_interval * EF) 四舍五入（银行家舍入）"""
     # prev_interval=15, EF=2.3 → round(34.5) = 34（Python3 银行家舍入到偶数）
-    result = compute_next_review(2.3, 15, 3, 5)
+    result = compute_next_review(2.3, 15, 3, 4)
     assert result["interval"] == 34
 
 

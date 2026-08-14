@@ -24,12 +24,10 @@
 .language-fr { background: #10b981; }
 
 /* 评分色标（薄弱词等 grade 标签，缺失会导致白字白底不可见） */
-.grade-0 { background: #dc2626; }
 .grade-1 { background: #ea580c; }
 .grade-2 { background: #f59e0b; }
 .grade-3 { background: #ca8a04; }
 .grade-4 { background: #16a34a; }
-.grade-5 { background: #15803d; }
 
 /* 题型标签 */
 .tag-quiz-选择 { background: #dbeafe; color: #2563eb; }
@@ -457,7 +455,6 @@ a:hover { text-decoration: underline; }
 }
 
 /* 掌握度标签 */
-.mastery-star { background: #fbbf24; color: #92400e; }
 .mastery-green { background: #22c55e; color: #fff; }
 .mastery-yellow { background: #eab308; color: #fff; }
 .mastery-red { background: #ef4444; color: #fff; }

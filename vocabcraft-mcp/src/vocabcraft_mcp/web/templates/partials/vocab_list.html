@@ -33,9 +33,7 @@
                     <div class="vocab-card-header">
                         <span class="vocab-word">{{ v.word }}</span>
                         <span class="tag language-{{ v.language }}">{{ v.language }}</span>
-                        {% if v.mastery_level == "精通" %}
-                        <span class="tag mastery-star">⭐ {{ v.mastery_level }}</span>
-                        {% elif v.mastery_level == "掌握" %}
+                        {% if v.mastery_level == "掌握" %}
                         <span class="tag mastery-green">🟢 {{ v.mastery_level }}</span>
                         {% elif v.mastery_level == "熟悉" %}
                         <span class="tag mastery-yellow">🟡 {{ v.mastery_level }}</span>

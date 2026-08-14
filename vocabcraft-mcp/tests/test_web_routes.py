@@ -212,7 +212,7 @@ def test_grade_quiz_route_classical_pos_definition(client):
         data={"pos": "n.", "definition": "兵器"},
     )
     assert response.status_code == 200
-    assert "回答正确" in response.text
+    assert "完全记住" in response.text
 
 
 def test_grade_quiz_route_falls_back_to_response(client):
@@ -228,7 +228,7 @@ def test_grade_quiz_route_falls_back_to_response(client):
 
     response = test_client.post(f"/api/quiz/{quiz_id}/grade?response=n.|兵器")
     assert response.status_code == 200
-    assert "回答正确" in response.text
+    assert "完全记住" in response.text
 
 
 def test_generate_quiz_route_unknown_vocab(client):
@@ -439,7 +439,7 @@ def test_grade_batch_review_item_classical_pos_definition(client):
         data={"pos": "n.", "definition": "兵器"},
     )
     assert response.status_code == 200
-    assert "词级评分" in response.text  # 单义项词，评完即出词级评分
+    assert "完全记住" in response.text  # 单义项词，评完即出词级评分
 
 
 def test_grade_batch_review_item_falls_back_to_response(client):
@@ -463,7 +463,7 @@ def test_grade_batch_review_item_falls_back_to_response(client):
         data={"response": "n.|兵器"},
     )
     assert response.status_code == 200
-    assert "词级评分" in response.text
+    assert "完全记住" in response.text
 
 
 # ──────────────────────────────────────────

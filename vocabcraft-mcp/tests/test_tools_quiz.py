@@ -535,7 +535,7 @@ def test_generate_classical_quiz_uses_round_robin_definition(isolated_storage):
         record_id="rec_test_001",
         vocab_id="vocab_test_001",
         review_time=datetime.now(UTC),
-        grade=5,
+        grade=4,
         prev_ease=2.5,
         new_ease=2.6,
         definition_index=0,

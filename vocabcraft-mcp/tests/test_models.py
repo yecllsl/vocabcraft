@@ -216,19 +216,24 @@ def test_review_record_required_fields():
     now = datetime.now(UTC)
     r = ReviewRecord(
         record_id="rec_001", vocab_id="vocab_001", review_time=now,
-        grade=5, prev_ease=2.5, new_ease=2.6,
+        grade=4, prev_ease=2.5, new_ease=2.6,
     )
     assert r.record_id == "rec_001"
-    assert r.grade == 5
+    assert r.grade == 4
 
 
 def test_review_record_grade_validation():
-    """grade 必须在 0-5"""
+    """grade 必须在 1-4"""
     now = datetime.now(UTC)
     with pytest.raises(ValueError):
         ReviewRecord(
             record_id="rec_002", vocab_id="vocab_001", review_time=now,
-            grade=6, prev_ease=2.5, new_ease=2.5,
+            grade=5, prev_ease=2.5, new_ease=2.5,
+        )
+    with pytest.raises(ValueError):
+        ReviewRecord(
+            record_id="rec_003", vocab_id="vocab_001", review_time=now,
+            grade=0, prev_ease=2.5, new_ease=2.5,
         )
 
 
@@ -278,7 +283,7 @@ def test_review_record_definition_index_default_none():
         record_id="rec_20260725_001",
         vocab_id="vocab_20260725_001",
         review_time=datetime.now(),
-        grade=5,
+        grade=4,
         prev_ease=2.5,
         new_ease=2.6,
     )
@@ -312,7 +317,7 @@ def test_review_record_legacy_json_without_definition_index():
         "record_id": "rec_20260725_001",
         "vocab_id": "vocab_20260725_001",
         "review_time": "2026-07-25T00:00:00Z",
-        "grade": 5,
+        "grade": 4,
         "prev_ease": 2.5,
         "new_ease": 2.6,
     }

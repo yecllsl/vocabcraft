@@ -9,7 +9,7 @@ SM-2 算法原理（SuperMemo 2, 1987 Piotr Wozniak）:
         3: 勉强记住 → 视为通过（SM-2 标准 grade>=3 即成功）：reps 递增、间隔正常推进
         2: 部分错   → 视为失败：重置 repetitions=0, interval=1（明天重背）
         1: 几乎忘   → 视为失败：重置 repetitions=0, interval=1（明天重背）
-    通用约定（函数兼容 0-5）：grade<3 失败（重置）、grade>=3 成功（推进）。
+    通用约定：grade<3 失败（重置）、grade>=3 成功（推进）。
     ease factor (EF) 无论答对答错都更新（反映真实难度），下限 1.3 防止间隔不增长。
 
 参考: https://www.supermemo.com/en/blog/application-of-a-computer-to-improve-the-results-obtained-in-working-with-the-supermemo-method
@@ -50,7 +50,7 @@ def compute_next_review(
         ease_factor: 当前难度系数（下限 MIN_EASE_FACTOR）
         interval: 当前复习间隔（天）
         repetitions: 已连续答对次数（grade>=3 才递增）
-        grade: 本次评分（应用层四级制 4/3/2/1，函数兼容 0-5；<3 失败、>=3 成功）
+        grade: 本次评分（应用层四级制 4/3/2/1；<3 失败、>=3 成功）
 
     Returns:
         包含以下字段的字典:
@@ -60,10 +60,10 @@ def compute_next_review(
         - next_review_date: 下次到期日期 YYYY-MM-DD
 
     Raises:
-        ValueError: grade 不在 0-5 范围
+        ValueError: grade 不在 1-4 范围
     """
-    if not 0 <= grade <= 5:
-        raise ValueError(f"grade 必须在 0-5 之间，收到: {grade}")
+    if not 1 <= grade <= 4:
+        raise ValueError(f"grade 必须在 1-4 之间，收到: {grade}")
 
     # grade < 3 视为复习失败：重置 repetitions，interval=1（明天重背）
     if grade < 3:
@@ -80,7 +80,7 @@ def compute_next_review(
             new_interval = round(interval * ease_factor)
 
     # 更新 ease_factor：EF = EF + (0.1 - (5-q) * (0.08 + (5-q) * 0.02))
-    # 无论答对答错都更新 EF，反映真实难度
+    # SM-2 标准公式（5 为算法常量，非评分上限）；无论答对答错都更新 EF，反映真实难度
     new_ease = ease_factor + (0.1 - (5 - grade) * (0.08 + (5 - grade) * 0.02))
     if new_ease < MIN_EASE_FACTOR:
         new_ease = MIN_EASE_FACTOR

@@ -285,7 +285,7 @@ class ReviewRecord(BaseModel):
     record_id: str = Field(description="复习记录唯一ID")
     vocab_id: str = Field(description="关联词汇ID")
     review_time: datetime = Field(description="复习时间")
-    grade: int = Field(description="评分 1-4（参考 SM-2：4 完全记住/3 勉强记住/2 部分错/1 几乎忘）")
+    grade: int = Field(description="评分 1-4（4 完全记住/3 勉强记住/2 部分错/1 几乎忘）")
     prev_ease: float = Field(description="评分前 EF")
     new_ease: float = Field(description="评分后 EF")
     definition_index: int | None = Field(
@@ -300,9 +300,9 @@ class ReviewRecord(BaseModel):
     @field_validator("grade")
     @classmethod
     def validate_grade(cls, v: int) -> int:
-        """校验 grade 必须在 0-5 范围内"""
-        if not 0 <= v <= 5:
-            raise ValueError(f"grade 必须在 0-5 之间，收到: {v}")
+        """校验 grade 必须在 1-4 范围内"""
+        if not 1 <= v <= 4:
+            raise ValueError(f"grade 必须在 1-4 之间，收到: {v}")
         return v
 
 

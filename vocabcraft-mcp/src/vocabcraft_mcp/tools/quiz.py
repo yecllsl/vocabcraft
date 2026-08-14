@@ -156,6 +156,7 @@ def _match_meaning(expected: str, actual: str) -> bool:
     - 多义项（含分隔符如 '放逐，流放'）：任一义素匹配即可
     - 单义项（如 '兵器也'）：义素去虚词后严格子串匹配
     - 双向子串：义素⊂答案 或 答案⊂义素
+    - 空白归一化：义素内空格（。后空格等）不影响匹配
     """
     raw_parts = _MEANING_SEP_RE.split(expected.strip())
     # 去除文言虚词后缀，统一比较基准
@@ -165,20 +166,30 @@ def _match_meaning(expected: str, actual: str) -> bool:
     if not parts or not actual_text:
         return False
 
+    # ponytail: 移除所有空格以容忍标点后的格式差异（如 '。' vs '。 '）
+    def _no_ws(s: str) -> str:
+        return s.replace(" ", "")
+
+    actual_clean = _no_ws(actual_text)
+
     if len(parts) > 1:
         # 多义项：任一义素匹配即可（双向子串，但反向匹配要求答案>=2字且>=义素一半长度）
         return any(
-            ep in actual_text
-            or (actual_text in ep and len(actual_text) >= 2 and len(actual_text) >= len(ep) // 2)
+            _no_ws(ep) in actual_clean
+            or (
+                actual_clean in _no_ws(ep)
+                and len(actual_clean) >= 2
+                and len(actual_clean) >= len(_no_ws(ep)) // 2
+            )
             for ep in parts
         )
     else:
         # 单义项：严格匹配（义素是答案的子串，或答案是义素的子串）
         # 但不允许太短的匹配（如 '草' 匹配 '草本植物名'）
-        ep = parts[0]
-        if ep in actual_text:
+        ep_clean = _no_ws(parts[0])
+        if ep_clean in actual_clean:
             return True
-        return actual_text in ep and len(actual_text) >= len(ep) // 2
+        return actual_clean in ep_clean and len(actual_clean) >= len(ep_clean) // 2
 
 
 def _grade_definition(expected_answer: str, user_response: str) -> int:
@@ -208,15 +219,15 @@ def _grade_definition(expected_answer: str, user_response: str) -> int:
 def _composite_word_grade(definition_grades: list[int]) -> int:
     """从义项级 grade 列表计算词级综合 grade
 
-    公式: round((min + avg) / 2)
-    - min 捕捉最薄弱义项
-    - avg 反映整体掌握度
+    公式: round(avg * 0.8 + min * 0.2)
+    - avg 反映整体掌握度（权重 80%）
+    - min 捕捉最薄弱义项（权重 20%，避免单个低分拖垮全词）
     """
     if not definition_grades:
         return 0
     min_g = min(definition_grades)
-    avg_g = round(sum(definition_grades) / len(definition_grades), 1)
-    return round((min_g + avg_g) / 2)
+    avg_g = sum(definition_grades) / len(definition_grades)
+    return round(avg_g * 0.8 + min_g * 0.2)
 
 
 def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:

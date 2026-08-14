@@ -1,15 +1,17 @@
 {# partials/quiz_result.html — 评分结果片段 #}
 <div class="quiz-container">
     {% if result %}
-    <div class="quiz-result {{ 'correct' if result.correct else ('needs-review' if result.correct is none else 'wrong') }}">
+    {% set g = result.grade %}
+    {% set grade_class = 'correct' if g == 4 else ('needs-review' if g == 3 else 'wrong') %}
+    <div class="quiz-result {{ grade_class }}">
         <div class="quiz-result-icon">
-            {% if result.correct %}✅{% elif result.correct is none %}📝{% else %}❌{% endif %}
+            {% if g == 4 %}✅{% elif g == 3 %}⚠️{% elif g == 2 %}🔸{% else %}❌{% endif %}
         </div>
         <div class="quiz-result-title">
-            {% if result.correct %}回答正确{% elif result.correct is none %}已提交（释义题请自评）{% else %}回答错误{% endif %}
+            {% if g == 4 %}完全记住{% elif g == 3 %}勉强记住{% elif g == 2 %}部分记错{% else %}几乎全忘{% endif %}
         </div>
         <div class="quiz-result-detail">
-            <div>评分：{{ result.grade }} / 5</div>
+            <div>评分：{{ result.grade }} / 4</div>
             <div>正确答案：{{ quiz.answer }}</div>
             {% if result.updated_review_state %}
             <div>下次复习：{{ result.updated_review_state.next_review_date }}</div>

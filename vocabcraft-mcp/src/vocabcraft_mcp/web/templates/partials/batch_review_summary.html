@@ -23,7 +23,6 @@
             ("red", "🔴 待重学", "word_grade < 3，需要重新学习"),
             ("yellow", "🟡 需巩固", "勉强记住，需加强"),
             ("green", "🟢 已掌握", "记忆良好"),
-            ("star", "⭐ 已精通", "完美记忆"),
         ] %}
         {% for tier_key, tier_title, tier_desc in tier_config %}
             {% set words = summary.grouped[tier_key] %}

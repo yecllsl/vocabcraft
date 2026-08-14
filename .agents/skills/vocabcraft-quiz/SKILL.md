@@ -33,7 +33,7 @@ description: Use when 用户想出题考我、做词汇测试、练习单词、�
 
 ### 5. 评分
 调用 `grade_quiz` Tool，传入 `vocab_id` 与用户作答：
-- 返回 grade（0-5）与是否正确
+- 返回 grade（1-4）与是否正确
 - 工具内部按 SM-2 算法更新记忆状态
 
 ### 6. 反馈

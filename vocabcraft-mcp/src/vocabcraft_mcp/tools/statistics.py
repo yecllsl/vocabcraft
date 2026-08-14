@@ -24,7 +24,6 @@ def _mastery_level(word_grade: int | None) -> str:
         2:        生疏（部分错，需重学）
         3:        熟悉（勉强记住）
         4:        掌握（完全记住）
-        5:        精通（历史数据兼容，新评分不再产生）
     """
     if word_grade is None or word_grade <= 1:
         return "新词"
@@ -32,9 +31,7 @@ def _mastery_level(word_grade: int | None) -> str:
         return "生疏"
     if word_grade == 3:
         return "熟悉"
-    if word_grade == 4:
-        return "掌握"
-    return "精通"
+    return "掌握"
 
 
 def get_statistics(group_by: str) -> dict:

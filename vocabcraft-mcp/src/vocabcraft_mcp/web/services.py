@@ -69,7 +69,7 @@ def get_dashboard_summary() -> dict:
     # 掌握度分布
     mastery_counter = Counter(_mastery_level(v.review_state.last_word_grade) for v in vocabs)
     # 固定顺序，保证图表颜色稳定
-    mastery_order = ["新词", "生疏", "熟悉", "掌握", "精通"]
+    mastery_order = ["新词", "生疏", "熟悉", "掌握"]
 
     # 30天创建趋势
     trend_counter = Counter(v.created_at.date().isoformat() for v in vocabs)
@@ -615,8 +615,8 @@ def get_batch_review_summary(batch_id: str) -> dict | None:
     avg_grade = round(sum(grades) / len(grades), 2) if grades else 0.0
 
     # 按掌握度分组
-    tier_marks = {0: "red", 1: "red", 2: "red", 3: "yellow", 4: "green", 5: "star"}
-    grouped: dict[str, list[dict]] = {"red": [], "yellow": [], "green": [], "star": []}
+    tier_marks = {0: "red", 1: "red", 2: "red", 3: "yellow", 4: "green"}
+    grouped: dict[str, list[dict]] = {"red": [], "yellow": [], "green": []}
 
     for vid, wg in word_grades.items():
         tier = tier_marks.get(wg, "red")
@@ -701,7 +701,6 @@ MASTERY_OPTIONS = [
     ("生疏", "生疏"),
     ("熟悉", "熟悉"),
     ("掌握", "掌握"),
-    ("精通", "精通"),
 ]
 
 
@@ -959,7 +958,7 @@ def _mastery_distribution_by_language(language: str) -> list[dict]:
     复用 _mastery_level，固定顺序保证图表颜色稳定。
     """
     storage = _get_storage()
-    mastery_counter: dict[str, int] = {"新词": 0, "生疏": 0, "熟悉": 0, "掌握": 0, "精通": 0}
+    mastery_counter: dict[str, int] = {"新词": 0, "生疏": 0, "熟悉": 0, "掌握": 0}
     for v in storage.get_all_vocabs_for_statistics():
         if v.structured.language != language:
             continue
