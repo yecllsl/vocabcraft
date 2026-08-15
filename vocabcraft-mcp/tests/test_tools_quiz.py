@@ -856,3 +856,73 @@ def test_generate_quiz_loan_char_missing_original_char(isolated_storage):
     result = generate_quiz("vocab_001", "释义")
     assert "error" in result
     assert "本字" in result["error"]
+
+
+# ──────────────────────────────────────────
+# 通假字评分（_grade_loan_char 四档）
+# ──────────────────────────────────────────
+
+def test_grade_loan_char_all_ok(isolated_storage):
+    """通假字本字+释义都对 → 4"""
+    save_vocab(_make_loan_vocab())
+    gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
+    result = grade_quiz(q["quiz_id"], "悦|喜悦")
+    assert result["individual_grade"] == 4
+    assert result["correct"] is True
+
+
+def test_grade_loan_char_char_only(isolated_storage):
+    """通假字本字对释义错 → 3"""
+    save_vocab(_make_loan_vocab())
+    gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
+    result = grade_quiz(q["quiz_id"], "悦|高兴")
+    assert result["individual_grade"] == 3
+    assert result["correct"] is False
+
+
+def test_grade_loan_char_meaning_only(isolated_storage):
+    """通假字本字错释义对 → 2"""
+    save_vocab(_make_loan_vocab())
+    gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
+    result = grade_quiz(q["quiz_id"], "说|喜悦")
+    assert result["individual_grade"] == 2
+
+
+def test_grade_loan_char_all_wrong(isolated_storage):
+    """通假字都错 → 1"""
+    save_vocab(_make_loan_vocab())
+    gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
+    result = grade_quiz(q["quiz_id"], "曰|高兴")
+    assert result["individual_grade"] == 1
+
+
+def test_grade_loan_char_char_case_insensitive(isolated_storage):
+    """通假字本字忽略大小写（字母型本字）"""
+    save_vocab({
+        "id": "vocab_001",
+        "structured": {
+            "word": "假",
+            "phonetic": "",
+            "word_type": "通假字",
+            "original_char": "A",
+            "definitions": [{"text": "借", "part_of_speech": "动词", "examples": []}],
+            "language": "zh_classical",
+        },
+    })
+    gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
+    result = grade_quiz(q["quiz_id"], "a|借")
+    assert result["individual_grade"] == 4
+
+
+def test_grade_virtual_definition_still_uses_definition_grader(isolated_storage):
+    """虚词释义题评分复用 _grade_definition（回归：词性对释义错→3）"""
+    save_vocab(_make_virtual_vocab())
+    gen = generate_quiz("vocab_001", "释义")
+    q = gen["quizzes"][0]
+    result = grade_quiz(q["quiz_id"], "v.|跑")
+    assert result["individual_grade"] == 3

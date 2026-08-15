@@ -219,6 +219,30 @@ def _grade_definition(expected_answer: str, user_response: str) -> int:
     return 1
 
 
+def _grade_loan_char(expected_answer: str, user_response: str) -> int:
+    """通假字评分：本字精确匹配 + 释义模糊匹配（四级制 4/3/2/1）
+
+    答案格式 '本字|释义'（如 '悦|喜悦'），与 _grade_definition 的 '词性|释义' 对齐：
+        4: 本字+释义都对（完全记住）
+        3: 本字对但释义错（勉强记住）
+        2: 本字错但释义对（部分错）
+        1: 都错（几乎忘）
+    """
+    exp_char, _, exp_meaning = expected_answer.partition("|")
+    act_char, _, act_meaning = user_response.partition("|")
+
+    char_ok = exp_char.strip().lower() == act_char.strip().lower()
+    meaning_ok = _match_meaning(exp_meaning, act_meaning)
+
+    if char_ok and meaning_ok:
+        return 4
+    if char_ok:
+        return 3
+    if meaning_ok:
+        return 2
+    return 1
+
+
 def _composite_word_grade(definition_grades: list[int]) -> int:
     """从义项级 grade 列表计算词级综合 grade
 
@@ -437,7 +461,11 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
         individual_grade = 4 if correct else 1
         result["correct"] = correct
     elif quiz.quiz_type == "释义" and vocab.structured.language == "zh_classical":
-        individual_grade = _grade_definition(quiz.answer, response)
+        # 通假字走专用评分（本字|释义），虚词/实词复用词性+释义双维评分
+        if vocab.structured.word_type == "通假字":
+            individual_grade = _grade_loan_char(quiz.answer, response)
+        else:
+            individual_grade = _grade_definition(quiz.answer, response)
         result["correct"] = individual_grade == 4
     else:
         result["grade_prompt"] = GRADE_PROMPT.format(
