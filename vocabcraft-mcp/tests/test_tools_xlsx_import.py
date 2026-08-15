@@ -327,6 +327,118 @@ def test_import_classical_chinese_no_data_rows(isolated_storage):
     assert "未解析到任何释义" in result["errors"][0]
 
 
+def test_import_xlsx_word_type_and_original_char(isolated_storage):
+    """标准格式支持 word_type / original_char 列导入"""
+    path = _create_xlsx(
+        isolated_storage,
+        "test_word_type.xlsx",
+        ["word", "definitions", "language", "word_type", "original_char"],
+        [
+            ["之", "助词：用在主谓之间", "zh_classical", "虚词", ""],
+            ["说", "喜悦", "zh_classical", "通假字", "悦"],
+        ],
+    )
+    result = import_xlsx_vocab(str(path))
+    assert result["success_count"] == 2
+    assert result["error_count"] == 0
+
+    from vocabcraft_mcp.storage import Storage
+
+    storage = Storage(isolated_storage)
+    for vid in result["imported_vocabs"]:
+        rec = storage.load_vocab(vid)
+        assert rec is not None
+        if rec.structured.word == "之":
+            assert rec.structured.word_type == "虚词"
+        else:
+            assert rec.structured.word == "说"
+            assert rec.structured.word_type == "通假字"
+            assert rec.structured.original_char == "悦"
+
+
+def test_import_xlsx_default_word_type(isolated_storage):
+    """标准格式缺省 word_type 列时默认实词"""
+    path = _create_xlsx(
+        isolated_storage,
+        "test_default_wt.xlsx",
+        ["word", "definitions", "language"],
+        [["之", "助词：用在主谓之间", "zh_classical"]],
+    )
+    result = import_xlsx_vocab(str(path))
+    assert result["success_count"] == 1
+
+    from vocabcraft_mcp.storage import Storage
+
+    rec = Storage(isolated_storage).load_vocab(result["imported_vocabs"][0])
+    assert rec is not None
+    assert rec.structured.word_type == "实词"
+    assert rec.structured.original_char == ""
+
+
+def test_import_classical_chinese_with_word_type(isolated_storage):
+    """文言文格式支持"词汇类型"列导入 word_type"""
+    path = _create_classical_xlsx(
+        isolated_storage,
+        "classical_wt.xlsx",
+        "1. 之 (zhī)",
+        ["词性", "词义", "例句", "篇名", "词汇类型", "本字"],
+        [
+            ["助词", "用于主谓之间取消句子独立性", "臣之壮也，犹不如人。", "烛之武退秦师", "虚词", ""],
+            ["代词", "他、它", "使之然也。", "劝学", "", ""],  # 类型继承上一行
+        ],
+    )
+    result = import_xlsx_vocab(str(path))
+    assert result["success_count"] == 1
+    assert result["error_count"] == 0
+
+    from vocabcraft_mcp.storage import Storage
+
+    rec = Storage(isolated_storage).load_vocab(result["imported_vocabs"][0])
+    assert rec is not None
+    assert rec.structured.language == "zh_classical"
+    assert rec.structured.word_type == "虚词"
+
+
+def test_import_classical_chinese_with_loan_char(isolated_storage):
+    """文言文格式支持"本字"列导入通假字 original_char"""
+    path = _create_classical_xlsx(
+        isolated_storage,
+        "classical_loan.xlsx",
+        "2. 说 (yuè)",
+        ["词性", "词义", "例句", "篇名", "词汇类型", "本字"],
+        [
+            ["动词", "高兴、喜悦", "学而时习之，不亦说乎？", "论语", "通假字", "悦"],
+        ],
+    )
+    result = import_xlsx_vocab(str(path))
+    assert result["success_count"] == 1
+    assert result["error_count"] == 0
+
+    from vocabcraft_mcp.storage import Storage
+
+    rec = Storage(isolated_storage).load_vocab(result["imported_vocabs"][0])
+    assert rec is not None
+    assert rec.structured.word_type == "通假字"
+    assert rec.structured.original_char == "悦"
+
+
+def test_import_xlsx_invalid_word_type_reported(isolated_storage):
+    """标准格式非法 word_type 被跳过并报告，不影响其他词"""
+    path = _create_xlsx(
+        isolated_storage,
+        "test_invalid_wt.xlsx",
+        ["word", "definitions", "language", "word_type"],
+        [
+            ["之", "助词", "zh_classical", "副词"],  # 非法类型：应为实词/虚词/通假字
+            ["而", "连词", "zh_classical", "虚词"],
+        ],
+    )
+    result = import_xlsx_vocab(str(path))
+    assert result["success_count"] == 1  # 合法词"而"正常导入
+    assert result["error_count"] == 1
+    assert "词汇类型非法" in result["errors"][0]
+
+
 def test_import_classical_chinese_save_failure(monkeypatch, isolated_storage):
     """保存失败时 error_count 递增并报告"""
     path = _create_classical_xlsx(

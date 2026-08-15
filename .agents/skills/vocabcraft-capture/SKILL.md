@@ -26,6 +26,9 @@ description: Use when 用户想录入词汇、拍照识别单词、添加生词�
   2. 调用 `import_xlsx_vocab` 工具解析文件
   3. 展示解析结果（成功数、失败数、错误详情）
   4. 用户确认后保存
+- **列说明**：
+  - 标准格式：`word/phonetic/part_of_speech/definitions/examples/language`，可选列 `word_type`（实词/虚词/通假字）和 `original_char`（通假字本字）
+  - 文言文实词表格式（自动检测）：`词性/词义/例句/篇名`，可选列 `词汇类型` 和 `本字`
 - **降级方案**：.xlsx 格式错误时提示用户修正文件格式，或改用图片/文本录入
 
 ### 1. 获取输入

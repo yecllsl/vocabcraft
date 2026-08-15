@@ -3,14 +3,16 @@
 
 从 .xlsx 文件批量导入词汇到词汇学习系统。
 支持两种格式:
-1. 标准格式: 列名 word/phonetic/part_of_speech/definitions/examples/language
-2. 文言文实词表格式: 标题行 + 词性/词义/例句/篇名 列
+1. 标准格式: 列名 word/phonetic/part_of_speech/definitions/examples/language，
+   可选列 word_type/original_char（zh_classical 虚词/通假字）
+2. 文言文实词表格式: 标题行 + 词性/词义/例句/篇名 列，
+   可选列 词汇类型/本字（对应 word_type/original_char）
 """
 import re
 from pathlib import Path
 from typing import Any
 
-from vocabcraft_mcp.models import normalize_language, normalize_pos
+from vocabcraft_mcp.models import VALID_WORD_TYPES, normalize_language, normalize_pos
 from vocabcraft_mcp.tools.crud import save_vocab
 
 
@@ -79,8 +81,12 @@ def _find_classical_chinese_header_row(worksheet: Any) -> tuple[int, dict[str, i
         column_map: dict[str, int] = {}
         for col_idx, cell in enumerate(row):
             cell_text = str(cell).strip() if cell else ""
-            # 模糊匹配列名
-            if "词性" in cell_text:
+            # 模糊匹配列名（"词汇类型"须先于"词性"匹配，避免子串误判）
+            if "词汇类型" in cell_text or "词类" in cell_text:
+                column_map["词汇类型"] = col_idx
+            elif "本字" in cell_text or "原字" in cell_text:
+                column_map["本字"] = col_idx
+            elif "词性" in cell_text:
                 column_map["词性"] = col_idx
             elif "词义" in cell_text:
                 column_map["词义"] = col_idx
@@ -140,6 +146,8 @@ def _import_classical_chinese(
     # 3. 解析数据行
     definitions: list[dict] = []
     current_pos = ""  # 当前词性（行内继承）
+    word_type = ""  # 词汇类型（取首个非空值）
+    original_char = ""  # 通假字本字（取首个非空值）
 
     for _, row in enumerate(
         worksheet.iter_rows(min_row=header_row + 1, values_only=True),
@@ -153,6 +161,22 @@ def _import_classical_chinese(
         raw_def = _cell_str(row[col_pos.get("词义", -1)]) if col_pos.get("词义", -1) < len(row) else ""
         raw_example = _cell_str(row[col_pos.get("例句", -1)]) if col_pos.get("例句", -1) < len(row) else ""
         raw_source = _cell_str(row[col_pos.get("篇名", -1)]) if col_pos.get("篇名", -1) < len(row) else ""
+        raw_wt = (
+            _cell_str(row[col_pos["词汇类型"]])
+            if "词汇类型" in col_pos and col_pos["词汇类型"] < len(row)
+            else ""
+        )
+        raw_orig = (
+            _cell_str(row[col_pos["本字"]])
+            if "本字" in col_pos and col_pos["本字"] < len(row)
+            else ""
+        )
+
+        # 词汇类型 / 本字：整个表一个词，取首个非空值
+        if not word_type and raw_wt:
+            word_type = raw_wt
+        if not original_char and raw_orig:
+            original_char = raw_orig
 
         # 跳过完全空行
         if not raw_pos and not raw_def and not raw_example and not raw_source:
@@ -208,15 +232,28 @@ def _import_classical_chinese(
             seen_pos.append(pos)
     top_pos = "、".join(seen_pos)
 
-    vocab_data = {
-        "structured": {
-            "word": word,
-            "phonetic": phonetic,
-            "part_of_speech": top_pos,
-            "definitions": definitions,
-            "language": lang,
+    # 5. 校验词汇类型（非法值拒绝导入，避免模型校验中断批次）
+    if word_type and word_type not in VALID_WORD_TYPES:
+        return {
+            "success_count": 0,
+            "error_count": 1,
+            "errors": [f"词汇 '{word}' 的词汇类型非法: {word_type}（应为实词/虚词/通假字）"],
+            "imported_vocabs": [],
         }
+
+    structured = {
+        "word": word,
+        "phonetic": phonetic,
+        "part_of_speech": top_pos,
+        "definitions": definitions,
+        "language": lang,
     }
+    if word_type:
+        structured["word_type"] = word_type
+    if original_char:
+        structured["original_char"] = original_char
+
+    vocab_data = {"structured": structured}
 
     result = save_vocab(vocab_data)
     if "error" in result:
@@ -380,12 +417,18 @@ def import_xlsx_vocab(
         definitions: list[dict] = []
         phonetic = ""
         part_of_speech = ""
+        word_type = ""
+        original_char = ""
 
         for row in rows:
             if not phonetic and row.get("phonetic"):
                 phonetic = str(row["phonetic"]).strip()
             if not part_of_speech and row.get("part_of_speech"):
                 part_of_speech = normalize_pos(str(row["part_of_speech"]).strip())
+            if not word_type and row.get("word_type"):
+                word_type = str(row["word_type"]).strip()
+            if not original_char and row.get("original_char"):
+                original_char = str(row["original_char"]).strip()
 
             def_text = str(row.get("definitions", "")).strip()
             if def_text:
@@ -404,15 +447,27 @@ def import_xlsx_vocab(
                     "examples": examples,
                 })
 
-        vocab_data = {
-            "structured": {
-                "word": word,
-                "phonetic": phonetic,
-                "part_of_speech": part_of_speech,
-                "definitions": definitions,
-                "language": word_language,
-            }
+        # 校验词汇类型（非法值跳过该词并报告，避免模型校验中断批次）
+        if word_type and word_type not in VALID_WORD_TYPES:
+            error_count += 1
+            errors.append(
+                f"词汇 '{word}' 的词汇类型非法: {word_type}（应为实词/虚词/通假字）"
+            )
+            continue
+
+        structured = {
+            "word": word,
+            "phonetic": phonetic,
+            "part_of_speech": part_of_speech,
+            "definitions": definitions,
+            "language": word_language,
         }
+        if word_type:
+            structured["word_type"] = word_type
+        if original_char:
+            structured["original_char"] = original_char
+
+        vocab_data = {"structured": structured}
 
         result = save_vocab(vocab_data)
         if "error" in result:

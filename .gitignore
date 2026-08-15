@@ -44,6 +44,7 @@ vocabcraft-mcp/data/quizzes/*.json
 vocabcraft-mcp/data/exports/*.json
 vocabcraft-mcp/data/exports/*.md
 vocabcraft-mcp/data/images/*
+vocabcraft-mcp/data/backups/
 !vocabcraft-mcp/data/vocabs/.gitkeep
 !vocabcraft-mcp/data/reviews/.gitkeep
 !vocabcraft-mcp/data/quizzes/.gitkeep
