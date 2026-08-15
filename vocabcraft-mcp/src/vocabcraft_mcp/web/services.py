@@ -379,8 +379,16 @@ def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> dict | None:
             else:
                 prompt = f"请写出「{word}」的词性与释义"
 
-            answer = f"{correct_pos_en}|{meaning}" if meaning else f"{correct_pos_en}|"
-            options = _build_classical_pos_options(correct_pos_en)
+            # 通假字：答案=本字|释义，无词性选项；缺本字时 Web 层直接放弃出题
+            if vocab.structured.word_type == "通假字":
+                original = vocab.structured.original_char.strip()
+                if not original:
+                    return None
+                answer = f"{original}|{meaning}"
+                options = None
+            else:
+                answer = f"{correct_pos_en}|{meaning}" if meaning else f"{correct_pos_en}|"
+                options = _build_classical_pos_options(correct_pos_en)
 
             updated_quiz = quiz.model_copy(update={
                 "question": prompt,
@@ -418,8 +426,17 @@ def generate_web_quiz(vocab_id: str, quiz_type: str = "") -> dict | None:
 
             from vocabcraft_mcp.tools.quiz import strip_pos_prefix
             meaning = strip_pos_prefix(meaning)
-            answer = f"{correct_pos_en}|{meaning}" if meaning else f"{correct_pos_en}|"
-            options = _build_classical_pos_options(correct_pos_en)
+
+            # 通假字：答案=本字|释义，无词性选项；缺本字时 Web 层直接放弃出题
+            if vocab.structured.word_type == "通假字":
+                original = vocab.structured.original_char.strip()
+                if not original:
+                    return None
+                answer = f"{original}|{meaning}"
+                options = None
+            else:
+                answer = f"{correct_pos_en}|{meaning}" if meaning else f"{correct_pos_en}|"
+                options = _build_classical_pos_options(correct_pos_en)
 
             if selected_def and selected_def.examples and q.example_index is not None:
                 ex_idx = q.example_index

@@ -397,6 +397,40 @@ def test_update_vocab_from_web_word_type(temp_storage):
     assert reloaded.structured.source_image == "images/test.png"
 
 
+def test_generate_web_quiz_loan_char_answer_format(temp_storage):
+    """Web 通假字释义题答案格式为 本字|释义（闭环必需）"""
+    v = _make_classical_vocab("说", "vocab_001")
+    v.structured.word_type = "通假字"
+    v.structured.original_char = "悦"
+    v.structured.phonetic = "/yuè/"
+    v.structured.definitions = [
+        Definition(text="喜悦", examples=["学而时习之，不亦说乎"], part_of_speech="形容词"),
+    ]
+    temp_storage.save_vocab(v)
+
+    result = services.generate_web_quiz("vocab_001", "")
+    assert result is not None
+    assert result["quiz"]["answer"] == "悦|喜悦"
+    assert result["quiz"]["options"] is None
+
+
+def test_grade_web_quiz_loan_char_correct(temp_storage):
+    """Web 通假字题用户答对本字|释义 → grade=4"""
+    v = _make_classical_vocab("说", "vocab_001")
+    v.structured.word_type = "通假字"
+    v.structured.original_char = "悦"
+    v.structured.phonetic = "/yuè/"
+    v.structured.definitions = [
+        Definition(text="喜悦", examples=["学而时习之，不亦说乎"], part_of_speech="形容词"),
+    ]
+    temp_storage.save_vocab(v)
+
+    result = services.generate_web_quiz("vocab_001", "")
+    assert result is not None
+    grade = services.grade_web_quiz(result["quiz_id"], "悦|喜悦")
+    assert grade["grade"] == 4
+
+
 def test_delete_vocab(temp_storage):
     """删除词汇应成功"""
     temp_storage.save_vocab(_make_vocab("hello", "vocab_001"))
