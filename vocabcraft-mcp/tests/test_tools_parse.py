@@ -90,3 +90,38 @@ def test_parse_text_empty_image_path():
 # - test_parse_llm_integration: 验证 LLM 返回的 structured_vocab 结构
 # - test_parse_multi_definition: 多义词解析
 # - test_parse_unrecognizable_text: 无法识别为词汇时的兜底
+
+
+# ── 文言文虚词/通假字字段（word_type / original_char） ──
+
+def test_parse_prompt_contains_word_type_fields():
+    """文本解析 prompt 包含 word_type/original_char 字段"""
+    from vocabcraft_mcp.prompts.vocab_parse_prompt import render_parse_prompt
+    prompt = render_parse_prompt("之", "zh_classical")
+    assert "word_type" in prompt
+    assert "original_char" in prompt
+
+
+def test_parse_multimodal_prompt_contains_word_type_fields():
+    """多模态解析 prompt 包含 word_type/original_char 字段"""
+    from vocabcraft_mcp.prompts.vocab_parse_prompt import render_multimodal_parse_prompt
+    prompt = render_multimodal_parse_prompt("zh_classical")
+    assert "word_type" in prompt
+    assert "original_char" in prompt
+
+
+def test_parse_prompt_en_contains_word_type_fields():
+    """非文言文语言的 prompt 同样包含新字段（默认实词/空串）"""
+    from vocabcraft_mcp.prompts.vocab_parse_prompt import render_parse_prompt
+    prompt = render_parse_prompt("hello", "en")
+    assert "word_type" in prompt
+    assert "original_char" in prompt
+
+
+def test_parse_prompt_zh_classical_virtual_loan_guide():
+    """zh_classical 引导含虚词用法与通假字本字说明"""
+    from vocabcraft_mcp.prompts.vocab_parse_prompt import render_parse_prompt
+    prompt = render_parse_prompt("说", "zh_classical")
+    assert "通假字" in prompt
+    assert "本字" in prompt
+    assert "虚词" in prompt
