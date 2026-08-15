@@ -8,14 +8,11 @@ Root cause: quiz_005 for word "反" got grade=3 when user typed
    (one grade=3 among nine grade=4s → word_grade=3)
 """
 
-import pytest
-
 from vocabcraft_mcp.tools.quiz import (
     _composite_word_grade,
     _grade_definition,
     _match_meaning,
 )
-
 
 # ── _match_meaning: whitespace normalization ──
 
