@@ -767,3 +767,92 @@ def test_loan_char_generate_prompt_exists():
     """通假字写本字 prompt 存在且含本字|释义格式"""
     assert "本字|释义" in LOAN_CHAR_GENERATE_PROMPT
     assert "{original_char}" in LOAN_CHAR_GENERATE_PROMPT
+
+
+# ──────────────────────────────────────────
+# 虚词 / 通假字出题（word_type 分支）
+# ──────────────────────────────────────────
+
+def _make_virtual_vocab(vocab_id="vocab_001", word_type="虚词", word="之"):
+    """构造文言文虚词测试词汇（两义项：有例句 + 无例句）"""
+    return {
+        "id": vocab_id,
+        "structured": {
+            "word": word,
+            "phonetic": "",
+            "part_of_speech": "",
+            "word_type": word_type,
+            "definitions": [
+                {"text": "往，到", "part_of_speech": "动词", "examples": ["辍耕之垄上"]},
+                {"text": "的", "part_of_speech": "助词", "examples": []},
+            ],
+            "language": "zh_classical",
+        },
+    }
+
+
+def _make_loan_vocab(vocab_id="vocab_001", original_char="悦"):
+    """构造文言文通假字测试词汇"""
+    return {
+        "id": vocab_id,
+        "structured": {
+            "word": "说",
+            "phonetic": "/yuè/",
+            "word_type": "通假字",
+            "original_char": original_char,
+            "definitions": [
+                {"text": "喜悦", "part_of_speech": "形容词", "examples": ["学而时习之，不亦说乎"]},
+            ],
+            "language": "zh_classical",
+        },
+    }
+
+
+def test_generate_quiz_virtual_definition_answer_pos_meaning(isolated_storage):
+    """虚词释义题答案格式仍为 词性|释义，使用 VIRTUAL_GENERATE_PROMPT"""
+    save_vocab(_make_virtual_vocab())
+    result = generate_quiz("vocab_001", "释义")
+    quizzes = result["quizzes"]
+    # 义项0有例句→1道 + 义项1无例句→1道
+    assert len(quizzes) == 2
+    assert quizzes[0]["quiz"]["answer"] == "v.|往，到"
+    assert "句中用法辨析" in quizzes[0]["generate_prompt"]
+
+
+def test_generate_quiz_virtual_definition_no_example_fallback(isolated_storage):
+    """虚词无例句义项降级为'直接写词性与释义'"""
+    save_vocab(_make_virtual_vocab())
+    result = generate_quiz("vocab_001", "释义")
+    q1 = result["quizzes"][1]
+    assert q1["quiz"]["definition_index"] == 1
+    assert q1["quiz"]["example_index"] is None
+    assert "写出虚词" in q1["generate_prompt"]
+
+
+def test_generate_quiz_virtual_usage_select(isolated_storage):
+    """虚词选择题生成'用法相同选择'，答案占位，客观题"""
+    save_vocab(_make_virtual_vocab())
+    result = generate_quiz("vocab_001", "选择")
+    assert "quiz_id" in result
+    assert result["quiz"]["quiz_type"] == "选择"
+    assert "用法相同" in result["generate_prompt"]
+    assert "之" in result["generate_prompt"]
+
+
+def test_generate_quiz_loan_char_answer_format(isolated_storage):
+    """通假字释义题答案格式为 本字|释义，使用 LOAN_CHAR_GENERATE_PROMPT"""
+    save_vocab(_make_loan_vocab())
+    result = generate_quiz("vocab_001", "释义")
+    quizzes = result["quizzes"]
+    assert len(quizzes) == 1
+    assert quizzes[0]["quiz"]["answer"] == "悦|喜悦"
+    assert "本字" in quizzes[0]["generate_prompt"]
+    assert "悦" in quizzes[0]["generate_prompt"]
+
+
+def test_generate_quiz_loan_char_missing_original_char(isolated_storage):
+    """通假字缺 original_char 返回 error，不静默出题"""
+    save_vocab(_make_loan_vocab(original_char=""))
+    result = generate_quiz("vocab_001", "释义")
+    assert "error" in result
+    assert "本字" in result["error"]

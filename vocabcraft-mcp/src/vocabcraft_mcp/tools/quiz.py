@@ -19,6 +19,9 @@ from vocabcraft_mcp.models import Quiz, ReviewRecord
 from vocabcraft_mcp.prompts.quiz_generate_prompt import (
     CLASSICAL_GENERATE_PROMPT,
     GENERATE_PROMPT,
+    LOAN_CHAR_GENERATE_PROMPT,
+    VIRTUAL_GENERATE_PROMPT,
+    VIRTUAL_USAGE_SELECT_PROMPT,
 )
 from vocabcraft_mcp.prompts.quiz_grade_prompt import GRADE_PROMPT
 from vocabcraft_mcp.tools.crud import _now_utc, get_storage, update_vocab
@@ -252,26 +255,50 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
     # ponytail: 中文/文言文默认"释义"（汉字无"拼写"概念），英语/德语默认"拼写"
     qtype = quiz_type or ("释义" if v.structured.language.startswith("zh") else "拼写")
 
-    # zh_classical 释义题：遍历所有义项的所有例句，每条例句生成独立 quiz
-    # 确保每个义项的所有例句都被考查到，避免只考一个义项的部分例句
     defs = v.structured.definitions
+    word_type = v.structured.word_type  # 实词/虚词/通假字（默认实词）
+
+    # zh_classical 释义题：遍历所有义项的所有例句，每条例句生成独立 quiz
     if qtype == "释义" and v.structured.language == "zh_classical":
         if not defs:
             return {"error": "词汇无释义，无法生成考题"}
+        # 通假字缺本字无法出题，报错而非静默生成错误答案
+        if word_type == "通假字" and not v.structured.original_char.strip():
+            return {"error": f"通假字「{v.structured.word}」缺少本字 original_char，请先补全"}
+
+        def _classical_prompt(di: int, meaning: str, defs_block: str) -> str:
+            """按 word_type 选择命题 prompt"""
+            if word_type == "虚词":
+                return VIRTUAL_GENERATE_PROMPT.format(
+                    word=v.structured.word, definitions_block=defs_block)
+            if word_type == "通假字":
+                return LOAN_CHAR_GENERATE_PROMPT.format(
+                    word=v.structured.word,
+                    original_char=v.structured.original_char,
+                    phonetic=v.structured.phonetic,
+                    definitions_block=defs_block,
+                )
+            return CLASSICAL_GENERATE_PROMPT.format(
+                word=v.structured.word,
+                part_of_speech=v.structured.part_of_speech,
+                definitions_block=defs_block,
+            )
+
         quizzes = []
         for di, d in enumerate(defs):
             pos = d.part_of_speech or v.structured.part_of_speech.strip()
             pos = zh_to_en_pos(pos) if pos else "?"
             meaning = strip_pos_prefix(d.text)
-            answer = f"{pos}|{meaning}"
+            # 通假字答案格式：本字|释义；虚词/实词：词性|释义
+            answer = (
+                f"{v.structured.original_char}|{meaning}"
+                if word_type == "通假字"
+                else f"{pos}|{meaning}"
+            )
             if d.examples:
                 for ex_idx, example in enumerate(d.examples):
                     defs_block = f"1. {meaning}\n   - {example}"
-                    prompt = CLASSICAL_GENERATE_PROMPT.format(
-                        word=v.structured.word,
-                        part_of_speech=v.structured.part_of_speech,
-                        definitions_block=defs_block,
-                    )
+                    prompt = _classical_prompt(di, meaning, defs_block)
                     quiz = Quiz(
                         id=_generate_quiz_id(storage),
                         vocab_id=vocab_id,
@@ -287,11 +314,7 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
             else:
                 # 无例句的义项也考释义
                 defs_block = f"1. {meaning}\n   （无例句）"
-                prompt = CLASSICAL_GENERATE_PROMPT.format(
-                    word=v.structured.word,
-                    part_of_speech=v.structured.part_of_speech,
-                    definitions_block=defs_block,
-                )
+                prompt = _classical_prompt(di, meaning, defs_block)
                 quiz = Quiz(
                     id=_generate_quiz_id(storage),
                     vocab_id=vocab_id,
@@ -305,6 +328,35 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
                 storage.save_quiz(quiz)
                 quizzes.append({"quiz_id": quiz.id, "quiz": quiz.model_dump(), "generate_prompt": prompt})
         return {"quizzes": quizzes}
+
+    # 虚词 + 选择：用法相同选择（客观题，答案=选项文本，由宿主 LLM 回写）
+    if qtype == "选择" and v.structured.language == "zh_classical" and word_type == "虚词":
+        if not defs:
+            return {"error": "词汇无释义，无法生成考题"}
+        definitions_block = "".join(
+            f"{i}. {strip_pos_prefix(d.text)}\n   - " + "\n   - ".join(d.examples)
+            for i, d in enumerate(defs, start=1)
+        )
+        prompt = VIRTUAL_USAGE_SELECT_PROMPT.format(
+            word=v.structured.word,
+            definitions_block=definitions_block,
+        )
+        quiz = Quiz(
+            id=_generate_quiz_id(storage),
+            vocab_id=vocab_id,
+            quiz_type=qtype,
+            question="（占位题干，请用 generate_prompt 调用 LLM 生成真实题干）",
+            answer="",  # 占位，宿主 LLM 回写与题干用法相同的选项文本
+            generated_at=_now_utc(),
+            definition_index=0,
+        )
+        storage.save_quiz(quiz)
+        return {
+            "quiz_id": quiz.id,
+            "quiz": quiz.model_dump(),
+            "generate_prompt": prompt,
+            "message": "请使用 generate_prompt 调用 LLM 生成题干与选项，结果可回写 quizzes/" + quiz.id + ".json",
+        }
 
     # 非 zh_classical：选一个义项，单个 quiz
     if defs:
