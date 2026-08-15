@@ -32,6 +32,23 @@
                 </select>
             </div>
 
+            {% if vocab.language == "zh_classical" %}
+            <div class="form-group">
+                <label for="word_type">词汇类型</label>
+                <select id="word_type" name="word_type"
+                        onchange="document.getElementById('original_char_wrap').style.display = (this.value === '通假字') ? '' : 'none';">
+                    <option value="实词" {% if vocab.word_type == "实词" %}selected{% endif %}>实词</option>
+                    <option value="虚词" {% if vocab.word_type == "虚词" %}selected{% endif %}>虚词</option>
+                    <option value="通假字" {% if vocab.word_type == "通假字" %}selected{% endif %}>通假字</option>
+                </select>
+            </div>
+            <div class="form-group" id="original_char_wrap"
+                 {% if vocab.word_type != "通假字" %}style="display:none;"{% endif %}>
+                <label for="original_char">通假字本字（如 说→悦）</label>
+                <input type="text" id="original_char" name="original_char" value="{{ vocab.original_char }}">
+            </div>
+            {% endif %}
+
             <div class="form-group">
                 <label for="definitions">释义与例句（每行一条，格式：<code>释义文本|例句1;例句2</code>）</label>
                 <textarea id="definitions" name="definitions" rows="6"

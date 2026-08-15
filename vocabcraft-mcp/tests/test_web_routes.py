@@ -562,3 +562,42 @@ def test_pos_to_zh_filter_exists(client):
     render = env.from_string('{{ pos | pos_to_zh }}')
     assert render.render({"pos": "n."}) == "名词"
     assert render.render({"pos": "n./v."}) == "名词/动词"
+
+
+def test_vocab_edit_partial_shows_word_type_for_classical(client):
+    """zh_classical 词汇编辑表单应含 word_type 下拉"""
+    test_client, storage = client
+    vocab = VocabRecord(
+        id="vocab_001",
+        structured=StructuredVocab(
+            word="之", phonetic="", part_of_speech="",
+            definitions=[Definition(text="往，到")],
+            language="zh_classical", word_type="虚词",
+        ),
+        review_state=ReviewState(),
+        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+    )
+    storage.save_vocab(vocab)
+    resp = test_client.get("/partials/vocab/vocab_001/edit")
+    assert resp.status_code == 200
+    assert "word_type" in resp.text
+    assert "虚词" in resp.text
+    assert "通假字" in resp.text
+
+
+def test_vocab_edit_partial_hides_word_type_for_en(client):
+    """非文言文词汇编辑表单不含 word_type 下拉"""
+    test_client, storage = client
+    vocab = VocabRecord(
+        id="vocab_001",
+        structured=StructuredVocab(
+            word="hello", phonetic="/həˈloʊ/", part_of_speech="n.",
+            definitions=[Definition(text="你好")], language="en",
+        ),
+        review_state=ReviewState(),
+        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+    )
+    storage.save_vocab(vocab)
+    resp = test_client.get("/partials/vocab/vocab_001/edit")
+    assert resp.status_code == 200
+    assert "word_type" not in resp.text
