@@ -43,6 +43,13 @@ description: Use when 用户想录入词汇、拍照识别单词、添加生词�
 ### 3. 展示确认
 将解析结果以结构化格式展示给用户，请用户确认或修改。
 
+### 3.5 文言文（zh_classical）类型确认
+- 解析结果须向用户确认 `word_type`（实词/虚词/通假字）；通假字必填 `original_char`（本字），
+  并校验落位：本字读音填 `phonetic`、本字释义填 `definitions[0].text`、词性填本义词性。
+- 虚词每个义项即一个用法：`part_of_speech` 填该用法的虚词词性（代词/介词/连词/助词/副词/叹词/动词），
+  `text` 填用法释义，`examples` 挂该用法例句。
+- 旧数据 `part_of_speech="通假"` 文本约定不迁移，按实词展示，用户可在编辑页改为"通假字"类型。
+
 ### 4. 保存记录
 调用 `save_vocab` Tool，生成 `vocab_id`（格式：`vocab_YYYYMMDD_NNN`），并初始化 SM-2 记忆状态（repetitions=0、easiness=2.5、首次复习次日）。
 
@@ -70,6 +77,9 @@ description: Use when 用户想录入词汇、拍照识别单词、添加生词�
 - **vocab_id格式错误**：必须使用 `vocab_YYYYMMDD_NNN` 格式，NNN按当日已有编号递增
 - **图片外传**：图片仅本地存储于 `data/images/`，禁止上传外部服务
 - **例句未按义项分组**：多义词必须将例句挂到对应释义的 `definitions[i].examples` 下，禁止堆在某一条释义或顶层
+- **通假字漏填本字**：`word_type=通假字` 时必须填 `original_char`（本字），缺本字会导致出题报错
+- **虚词词性用实词词性填**：虚词义项的 `part_of_speech` 应为虚词词性（助/介/连/代/副/叹/动），非实词名词/动词等
+- **旧"通假"词性不迁移**：`part_of_speech="通假"` 的旧数据不自动迁移，编辑页手动改为"通假字"类型
 
 ## Common Rationalizations
 
