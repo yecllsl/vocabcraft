@@ -680,6 +680,8 @@ def get_vocab_detail(vocab_id: str) -> dict | None:
         "word": vocab.structured.word,
         "phonetic": vocab.structured.phonetic,
         "part_of_speech": vocab.structured.part_of_speech,
+        "word_type": vocab.structured.word_type,
+        "original_char": vocab.structured.original_char,
         "definitions": [d.model_dump() for d in vocab.structured.definitions],
         "language": vocab.structured.language,
         "review_state": vocab.review_state.model_dump(),
@@ -728,6 +730,7 @@ def list_vocabs_for_web(language: str = "", keyword: str = "", mastery: str = ""
             "word": v["structured"]["word"],
             "language": v["structured"]["language"],
             "part_of_speech": v["structured"]["part_of_speech"],
+            "word_type": v["structured"].get("word_type", "实词"),
             "definitions": [
                 f"【{d.get('part_of_speech', '')}】{d['text']}" if d.get("part_of_speech") else d["text"]
                 for d in v["structured"]["definitions"]
@@ -802,6 +805,8 @@ def update_vocab_from_web(vocab_id: str, form: dict) -> dict | None:
             "word": form.get("word", existing.structured.word).strip(),
             "phonetic": form.get("phonetic", existing.structured.phonetic).strip(),
             "part_of_speech": form.get("part_of_speech", existing.structured.part_of_speech).strip(),
+            "word_type": form.get("word_type", existing.structured.word_type).strip(),
+            "original_char": form.get("original_char", existing.structured.original_char).strip(),
             "language": form.get("language", existing.structured.language).strip(),
             "definitions": new_defs,
             "source_image": existing.structured.source_image,

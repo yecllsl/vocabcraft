@@ -356,6 +356,47 @@ def test_update_vocab_from_web(temp_storage):
     assert reloaded.structured.source_image == "images/test.png"
 
 
+def test_get_vocab_detail_includes_word_type(temp_storage):
+    """词汇详情应返回 word_type/original_char"""
+    v = _make_classical_vocab("之", "vocab_001")
+    v.structured.word_type = "虚词"
+    temp_storage.save_vocab(v)
+    detail = services.get_vocab_detail("vocab_001")
+    assert detail["word_type"] == "虚词"
+    assert detail["original_char"] == ""
+
+
+def test_list_vocabs_for_web_includes_word_type(temp_storage):
+    """词汇列表项应返回 word_type"""
+    v = _make_classical_vocab("说", "vocab_001")
+    v.structured.word_type = "通假字"
+    v.structured.original_char = "悦"
+    temp_storage.save_vocab(v)
+    items = services.list_vocabs_for_web(language="zh_classical")
+    assert items[0]["word_type"] == "通假字"
+
+
+def test_update_vocab_from_web_word_type(temp_storage):
+    """Web 表单可更新 word_type/original_char 并保留 source_image"""
+    v = _make_classical_vocab("之", "vocab_001")
+    v.structured.source_image = "images/test.png"
+    temp_storage.save_vocab(v)
+    updated = services.update_vocab_from_web("vocab_001", {
+        "word": "之",
+        "phonetic": "",
+        "part_of_speech": "",
+        "language": "zh_classical",
+        "word_type": "虚词",
+        "original_char": "",
+        "definitions": "往，到",
+    })
+    assert updated is not None
+    assert updated["word_type"] == "虚词"
+    reloaded = temp_storage.load_vocab("vocab_001")
+    assert reloaded.structured.word_type == "虚词"
+    assert reloaded.structured.source_image == "images/test.png"
+
+
 def test_delete_vocab(temp_storage):
     """删除词汇应成功"""
     temp_storage.save_vocab(_make_vocab("hello", "vocab_001"))
