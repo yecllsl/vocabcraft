@@ -9,9 +9,10 @@
 这些文件是 AAIF 工具链（`agents publish .agents`）消费的声明产物，属**生成文件**，
 请勿手工编辑；运行本脚本或 `scripts/sync-agent-configs` 即可重新生成。
 
-工具自省依赖 vocabcraft-mcp 的运行环境，因此须通过 uv 运行：
+工具自省依赖 vocabcraft-mcp 的运行环境，因此须通过 uv 运行（脚本位于项目级
+根目录 scripts/，故 --directory 后需用 ../scripts/ 相对路径指向它）：
 
-    uv run --no-sync --directory vocabcraft-mcp python scripts/generate-aaif-declarations.py
+    uv run --no-sync --directory vocabcraft-mcp python ../scripts/generate-aaif-declarations.py
 """
 from __future__ import annotations
 
@@ -50,7 +51,7 @@ def introspect_tools() -> list[dict]:
         raise SystemExit(
             "无法导入 vocabcraft_mcp。请通过 uv 运行本脚本：\n"
             "  uv run --no-sync --directory vocabcraft-mcp "
-            "python scripts/generate-aaif-declarations.py"
+            "python ../scripts/generate-aaif-declarations.py"
         ) from exc
     tools = asyncio.run(server.mcp.list_tools())
     return [

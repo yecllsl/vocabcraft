@@ -1,11 +1,11 @@
 {
   "name": "vocabcraft",
-  "version": "0.5.5",
+  "version": "0.6.0",
   "description": "VocabCraft - 词汇学习与制作智能体",
   "main": ".agents/tools.json",
   "scripts": {
-    "generate-configs": "python scripts/generate-platform-configs.py && uv run --no-sync --directory vocabcraft-mcp python scripts/generate-aaif-declarations.py",
-    "generate-declarations": "uv run --no-sync --directory vocabcraft-mcp python scripts/generate-aaif-declarations.py",
+    "generate-configs": "python scripts/generate-platform-configs.py && uv run --no-sync --directory vocabcraft-mcp python ../scripts/generate-aaif-declarations.py",
+    "generate-declarations": "uv run --no-sync --directory vocabcraft-mcp python ../scripts/generate-aaif-declarations.py",
     "sync-configs": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-agent-configs.ps1",
     "publish": "agents publish .agents"
   },

@@ -5,7 +5,7 @@
 ### Windows 用户
 
 ```powershell
-# 1. 从 GitHub Releases 下载 VocabCraft-v0.5.5.zip，解压到任意目录（如 D:\vocabcraft\）
+# 1. 从 GitHub Releases 下载 VocabCraft-v0.6.0.zip，解压到任意目录（如 D:\vocabcraft\）
 #    或用 7-Zip 解压 .tar.zst / .tar.gz
 
 # 2. 运行安装脚本
@@ -20,8 +20,8 @@
 
 ```bash
 # 1. 从 GitHub Releases 下载并解压
-#    tar.zst (推荐):  tar --zstd -xf VocabCraft-v0.5.5.tar.zst
-#    tar.gz:          tar -xzf VocabCraft-v0.5.5.tar.gz
+#    tar.zst (推荐):  tar --zstd -xf VocabCraft-v0.6.0.tar.zst
+#    tar.gz:          tar -xzf VocabCraft-v0.6.0.tar.gz
 
 # 2. 运行安装脚本
 chmod +x install.sh
@@ -271,15 +271,15 @@ vocabcraft/
 
 ```powershell
 # Windows (PowerShell 5.1+)
-.\scripts\build-release.ps1 -Version 0.5.5
+.\scripts\build-release.ps1 -Version 0.6.0
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.5.5
+bash scripts/build-release.sh 0.6.0
 ```
 
-产物：`dist/VocabCraft-v0.5.5.{zip,tar.zst,tar.gz}`，结构与 GitHub Release 资产一致。
+产物：`dist/VocabCraft-v0.6.0.{zip,tar.zst,tar.gz}`，结构与 GitHub Release 资产一致。
 
 构建脚本采用**白名单复制策略**，只打包必要文件：
 

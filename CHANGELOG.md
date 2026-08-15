@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2026-08-15
+
+### 文言文虚词与通假字功能闭环
+- `StructuredVocab` 新增 `word_type`（实词/虚词/通假字）与 `original_char`（通假字本字）字段，`VALID_WORD_TYPES = {"实词", "虚词", "通假字"}`。
+- 文言文解析提示词增强：虚词每个义项即一个用法，通假字必须输出本字。
+- 出题按 `word_type` 分支：虚词支持「句中用法辨析」「用法相同选择」，通假字支持「写本字 + 释义」。
+- 评分新增 `_grade_loan_char`：本字精确匹配 + 释义模糊匹配双维度。
+- Web 词汇列表 / 详情 / 编辑页新增 `word_type` 与 `original_char` 的展示与编辑。
+- 五平台 Skill 文档同步更新（capture / review / quiz）。
+
+### 文言文历史数据迁移与修复
+- 为 202 个文言文词汇自动补齐 `word_type="实词"`、`original_char=""`；迁移前完整备份至 `data/backups/20260815/`。
+- 修复 98 个文言文词汇顶层 `part_of_speech` 为空：从义项词性去重后按顿号连接填充，并清理释义中残留的 `【X】` 词性前缀；全部 315 个词汇文件通过 `VocabRecord` 模型校验。
+
+### Excel 批量导入支持通假字 / 虚词
+- 标准格式支持 `word_type` / `original_char` 列，文言文格式支持「词汇类型」/「本字」列。
+- 非法 `word_type` 值（非 实词/虚词/通假字）校验并跳过，错误行汇总报告。
+
+### 版本号统一
+- 版本号统一至 0.6.0（pyproject.toml / package.json / install.* / README.md / DEPLOY.md / CHANGELOG / build-release.* / web/app.py），并通过 `scripts/check_version.py` 校验。
+
 ## [0.5.5] - 2026-08-11
 
 ### 新增个人级 Harness：WorkBuddy / Hermes
