@@ -23,6 +23,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 VALID_QUIZ_TYPES = {"选择", "填空", "拼写", "释义"}
 # 复习计划状态枚举
 VALID_SCHEDULE_STATUS = {"待复习", "已完成", "已跳过"}
+# 词汇类型枚举（仅 zh_classical 有意义，虚词/通假字出题分支依赖）
+VALID_WORD_TYPES = {"实词", "虚词", "通假字"}
 
 # 支持的语言 canonical 代码（中/德/英完整处理，其他语言可存储但不保证完整处理）
 SUPPORTED_LANGUAGES = {"en", "zh", "zh_classical", "de"}
@@ -142,6 +144,8 @@ class StructuredVocab(BaseModel):
     definitions: list[Definition] = Field(default_factory=list, description="释义列表，每项含 text 与关联例句 examples")
     language: str = Field(default="en", description="语言代码（en/zh/zh_classical/de，支持别名归一化）")
     source_image: str | None = Field(default=None, description="原图路径，手动录入为 None")
+    word_type: str = Field(default="实词", description="词汇类型：实词/虚词/通假字，仅 zh_classical 有意义")
+    original_char: str = Field(default="", description="通假字的本字（如“说”→“悦”），仅 word_type=通假字 时填写")
 
     @model_validator(mode="before")
     @classmethod
@@ -195,6 +199,14 @@ class StructuredVocab(BaseModel):
     def normalize_language(cls, v: str) -> str:
         """语言代码归一化（委托模块级 normalize_language，详见该函数 docstring）"""
         return normalize_language(v)
+
+    @field_validator("word_type")
+    @classmethod
+    def validate_word_type(cls, v: str) -> str:
+        """校验 word_type 必须为预定义值，非法值拒绝入库"""
+        if v not in VALID_WORD_TYPES:
+            raise ValueError(f"word_type 必须是{VALID_WORD_TYPES}之一，收到: {v}")
+        return v
 
 
 class ReviewState(BaseModel):

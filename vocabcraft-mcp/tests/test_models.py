@@ -339,3 +339,48 @@ def test_definition_part_of_speech_explicit():
     """Definition.part_of_speech 可显式传入"""
     d = Definition(text="兵器", examples=["收天下之兵"], part_of_speech="名词")
     assert d.part_of_speech == "名词"
+
+
+# ──────────────────────────────────────────
+# word_type / original_char（虚词、通假字）
+# ──────────────────────────────────────────
+
+def test_structured_vocab_word_type_default():
+    """StructuredVocab.word_type 默认'实词'"""
+    v = StructuredVocab(word="之")
+    assert v.word_type == "实词"
+
+
+def test_structured_vocab_word_type_valid():
+    """word_type 接受 实词/虚词/通假字"""
+    for wt in ["实词", "虚词", "通假字"]:
+        v = StructuredVocab(word="之", word_type=wt)
+        assert v.word_type == wt
+
+
+def test_structured_vocab_word_type_invalid():
+    """word_type 非法值拒绝（白名单硬防线）"""
+    with pytest.raises(ValueError):
+        StructuredVocab(word="之", word_type="名词")
+
+
+def test_structured_vocab_original_char_default():
+    """original_char 默认空串"""
+    v = StructuredVocab(word="说")
+    assert v.original_char == ""
+
+
+def test_structured_vocab_original_char_transparent():
+    """original_char 透传保存"""
+    v = StructuredVocab(word="说", word_type="通假字", original_char="悦")
+    assert v.original_char == "悦"
+
+
+def test_structured_vocab_legacy_json_default_word_type():
+    """旧 JSON（无 word_type/original_char）反序列化为默认值，不报错"""
+    import json
+
+    legacy = {"word": "兵", "definitions": [{"text": "兵器"}]}
+    v = StructuredVocab.model_validate(json.loads(json.dumps(legacy)))
+    assert v.word_type == "实词"
+    assert v.original_char == ""
