@@ -51,7 +51,7 @@ Rules 约束层 (.agents/AGENTS.md — 统一规则源，五个运行时共用)
 
 #### 1. 下载并解压
 
-下载 `VocabCraft-v0.6.0.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
+下载 `VocabCraft-v0.6.1.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
 
 #### 2. 运行安装脚本
 
@@ -357,15 +357,15 @@ uv run pytest tests/ -m "not e2e"
 
 ```powershell
 # Windows
-pwsh .\scripts\build-release.ps1 -Version 0.6.0
+pwsh .\scripts\build-release.ps1 -Version 0.6.1
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.6.0
+bash scripts/build-release.sh 0.6.1
 ```
 
-产物：`dist/VocabCraft-v0.6.0.{zip,tar.zst,tar.gz}`。
+产物：`dist/VocabCraft-v0.6.1.{zip,tar.zst,tar.gz}`。
 
 ### CI/CD
 
