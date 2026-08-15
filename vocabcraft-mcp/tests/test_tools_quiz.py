@@ -12,7 +12,12 @@ from datetime import UTC
 
 import pytest
 
-from vocabcraft_mcp.prompts.quiz_generate_prompt import CLASSICAL_GENERATE_PROMPT
+from vocabcraft_mcp.prompts.quiz_generate_prompt import (
+    CLASSICAL_GENERATE_PROMPT,
+    LOAN_CHAR_GENERATE_PROMPT,
+    VIRTUAL_GENERATE_PROMPT,
+    VIRTUAL_USAGE_SELECT_PROMPT,
+)
 from vocabcraft_mcp.tools.crud import get_storage, save_vocab
 from vocabcraft_mcp.tools.quiz import generate_quiz, grade_quiz
 
@@ -738,3 +743,27 @@ def test_generate_classical_quiz_no_examples_fallback(isolated_storage):
     assert "quizzes" in result
     assert len(result["quizzes"]) == 1
     assert result["quizzes"][0]["quiz"]["example_index"] is None
+
+
+# ──────────────────────────────────────────
+# 虚词 / 通假字命题 Prompt 常量（Task 3）
+# ──────────────────────────────────────────
+
+def test_virtual_generate_prompt_exists():
+    """虚词释义（句中用法辨析）prompt 存在且含关键要求"""
+    assert "句中用法辨析" in VIRTUAL_GENERATE_PROMPT
+    assert "词性|释义" in VIRTUAL_GENERATE_PROMPT
+    assert "<mark>{word}</mark>" in VIRTUAL_GENERATE_PROMPT
+
+
+def test_virtual_usage_select_prompt_exists():
+    """虚词用法相同选择题 prompt 存在且含关键要求"""
+    assert "用法相同" in VIRTUAL_USAGE_SELECT_PROMPT
+    assert "options" in VIRTUAL_USAGE_SELECT_PROMPT
+    assert "{definitions_block}" in VIRTUAL_USAGE_SELECT_PROMPT
+
+
+def test_loan_char_generate_prompt_exists():
+    """通假字写本字 prompt 存在且含本字|释义格式"""
+    assert "本字|释义" in LOAN_CHAR_GENERATE_PROMPT
+    assert "{original_char}" in LOAN_CHAR_GENERATE_PROMPT
