@@ -84,6 +84,21 @@ _CLASSICAL_POS_POOL = ["n.", "v.", "adj.", "adv.", "pron.", "num.", "量", "连"
 # 义项文本中的 【词性】 前缀模式
 _POS_PREFIX_RE = __import__("re").compile(r"^[【\[](.*?)[】\]]\s*")
 
+# 义项级通假识别：释义以"同X，"开头（如"同阵，布阵（音 zhèn）"）→ 通假义项
+_LOAN_SENSE_RE = __import__("re").compile(r"^同(.)[，,]")
+# 释义尾部注音"（音 zhèn）"剥离（仅出题答案用，不改原始数据）
+_PHONETIC_SUFFIX_RE = __import__("re").compile(r"（音[^）]*）$")
+
+
+def extract_loan_char(text: str) -> str:
+    """从"同X，"通假义项文本提取本字
+
+    '同阵，布阵（音 zhèn）' → '阵'
+    '同"避"。躲避' → '' (引号包裹格式不作为义项级通假，交由记录级 original_char)
+    """
+    m = _LOAN_SENSE_RE.match(text.strip())
+    return m.group(1) if m else ""
+
 
 def strip_pos_prefix(text: str) -> str:
     """去除义项文本开头的 【词性】 前缀
@@ -291,14 +306,17 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
             return {"error": f"通假字「{v.structured.word}」缺少本字 original_char，请先补全"}
 
         def _classical_prompt(di: int, meaning: str, defs_block: str) -> str:
-            """按 word_type 选择命题 prompt"""
+            """按 word_type / 义项级通假选择命题 prompt"""
             if word_type == "虚词":
                 return VIRTUAL_GENERATE_PROMPT.format(
                     word=v.structured.word, definitions_block=defs_block)
-            if word_type == "通假字":
+            # 记录级通假字（独立记录）或义项级"同X"通假义项 → 写本字题
+            if word_type == "通假字" or extract_loan_char(defs[di].text):
                 return LOAN_CHAR_GENERATE_PROMPT.format(
                     word=v.structured.word,
-                    original_char=v.structured.original_char,
+                    original_char=(
+                        v.structured.original_char or extract_loan_char(defs[di].text)
+                    ),
                     phonetic=v.structured.phonetic,
                     definitions_block=defs_block,
                 )
@@ -313,12 +331,19 @@ def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
             pos = d.part_of_speech or v.structured.part_of_speech.strip()
             pos = zh_to_en_pos(pos) if pos else "?"
             meaning = strip_pos_prefix(d.text)
-            # 通假字答案格式：本字|释义；虚词/实词：词性|释义
-            answer = (
-                f"{v.structured.original_char}|{meaning}"
-                if word_type == "通假字"
-                else f"{pos}|{meaning}"
-            )
+            # 义项级通假：识别"同X，"前缀，本字自文本提取，注音剥离
+            loan_char = extract_loan_char(d.text) if word_type != "通假字" else ""
+            if loan_char:
+                # 释义去掉"同X，"前缀与尾部注音："同阵，布阵（音 zhèn）" → "布阵"
+                meaning = _PHONETIC_SUFFIX_RE.sub("", meaning)
+                meaning = meaning.split("，", 1)[1] if "，" in meaning else meaning
+                answer = f"{loan_char}|{meaning}"
+            # 记录级通假字：答案格式 本字|释义
+            elif word_type == "通假字":
+                answer = f"{v.structured.original_char}|{meaning}"
+            # 虚词/实词：词性|释义
+            else:
+                answer = f"{pos}|{meaning}"
             if d.examples:
                 for ex_idx, example in enumerate(d.examples):
                     defs_block = f"1. {meaning}\n   - {example}"
@@ -461,8 +486,12 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
         individual_grade = 4 if correct else 1
         result["correct"] = correct
     elif quiz.quiz_type == "释义" and vocab.structured.language == "zh_classical":
-        # 通假字走专用评分（本字|释义），虚词/实词复用词性+释义双维评分
-        if vocab.structured.word_type == "通假字":
+        # 通假评分分派：记录级通假字（本字|释义）或义项级"同X"通假义项
+        # 虚词/实词复用词性+释义双维评分
+        defs = vocab.structured.definitions
+        di = quiz.definition_index if quiz.definition_index is not None else 0
+        sense_text = defs[di].text if di < len(defs) else ""
+        if vocab.structured.word_type == "通假字" or extract_loan_char(sense_text):
             individual_grade = _grade_loan_char(quiz.answer, response)
         else:
             individual_grade = _grade_definition(quiz.answer, response)

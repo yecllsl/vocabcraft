@@ -926,3 +926,79 @@ def test_grade_virtual_definition_still_uses_definition_grader(isolated_storage)
     q = gen["quizzes"][0]
     result = grade_quiz(q["quiz_id"], "v.|跑")
     assert result["individual_grade"] == 3
+
+
+# ──────────────────────────────────────────
+# 义项级通假（实词记录中的"同X，"通假义项）
+# ──────────────────────────────────────────
+
+def _make_loan_sense_vocab(vocab_id="vocab_001"):
+    """构造含"同X"通假义项的实词记录（如"陈"）"""
+    return {
+        "id": vocab_id,
+        "structured": {
+            "word": "陈",
+            "phonetic": "",
+            "word_type": "实词",
+            "original_char": "",
+            "definitions": [
+                {"text": "陈列，陈设", "part_of_speech": "动词",
+                 "examples": ["信臣精卒陈利兵而谁何"]},
+                {"text": "同阵，布阵（音 zhèn）", "part_of_speech": "动词",
+                 "examples": ["既陈而后击之，宋师败绩"]},
+            ],
+            "language": "zh_classical",
+        },
+    }
+
+
+def test_generate_quiz_loan_sense_in_content_word(isolated_storage):
+    """实词记录中的'同X，'通假义项 → 答案格式 本字|释义（注音剥离）"""
+    save_vocab(_make_loan_sense_vocab())
+    result = generate_quiz("vocab_001", "释义")
+    quizzes = result["quizzes"]
+    # 每个义项各 1 道（各含 1 条例句）
+    assert len(quizzes) == 2
+    by_idx = {q["quiz"]["definition_index"]: q for q in quizzes}
+    assert by_idx[0]["quiz"]["answer"] == "v.|陈列，陈设"
+    assert by_idx[1]["quiz"]["answer"] == "阵|布阵"  # 本字自"同阵"提取，注音剥离
+
+
+def test_generate_quiz_loan_sense_uses_loan_prompt(isolated_storage):
+    """'同X'通假义项的 prompt 使用 LOAN_CHAR_GENERATE_PROMPT（含本字）"""
+    save_vocab(_make_loan_sense_vocab())
+    result = generate_quiz("vocab_001", "释义")
+    quizzes = result["quizzes"]
+    loan_q = next(q for q in quizzes if q["quiz"]["definition_index"] == 1)
+    assert "本字" in loan_q["generate_prompt"]
+    assert "阵" in loan_q["generate_prompt"]
+
+
+def test_generate_quiz_loan_sense_original_char_untouched(isolated_storage):
+    """义项级通假不依赖 original_char 字段（空串也能识别）"""
+    save_vocab(_make_loan_sense_vocab())  # original_char=""
+    result = generate_quiz("vocab_001", "释义")
+    loan_q = next(q for q in result["quizzes"] if q["quiz"]["definition_index"] == 1)
+    assert loan_q["quiz"]["answer"] == "阵|布阵"
+
+
+def test_grade_quiz_loan_sense_four_tiers(isolated_storage):
+    """义项级通假评分四档：本字精确 + 释义模糊"""
+    save_vocab(_make_loan_sense_vocab())
+    gen = generate_quiz("vocab_001", "释义")
+    loan_q = next(q for q in gen["quizzes"] if q["quiz"]["definition_index"] == 1)
+    qid = loan_q["quiz_id"]
+    assert grade_quiz(qid, "阵|布阵")["individual_grade"] == 4   # 都对
+    assert grade_quiz(qid, "阵|阵地")["individual_grade"] == 3   # 本字对释义错
+    assert grade_quiz(qid, "陈|布阵")["individual_grade"] == 2   # 本字错释义对
+    assert grade_quiz(qid, "陈|阵地")["individual_grade"] == 1   # 都错
+
+
+def test_grade_quiz_content_sense_still_definition_grader(isolated_storage):
+    """同记录内非通假义项仍走 _grade_definition（回归）"""
+    save_vocab(_make_loan_sense_vocab())
+    gen = generate_quiz("vocab_001", "释义")
+    content_q = next(q for q in gen["quizzes"] if q["quiz"]["definition_index"] == 0)
+    # 词性对、释义错 → 3（_grade_definition 语义）
+    assert grade_quiz(content_q["quiz_id"], "v.|摆放")["individual_grade"] == 3
+

@@ -16,6 +16,14 @@
         {
           "action": "save_vocab",
           "description": "调用 save_vocab：保存词汇记录到本地 JSON 文件"
+        },
+        {
+          "action": "update_vocab",
+          "description": "调用 update_vocab：更新词汇记录"
+        },
+        {
+          "action": "query_vocab",
+          "description": "调用 query_vocab：按条件查询词汇"
         }
       ]
     },

@@ -119,6 +119,7 @@ Not lazy about: input validation at trust boundaries, error handling that preven
 8. 保存时初始化 SM-2 记忆状态（repetitions=0、ease_factor=2.5、next_review=次日）。
 9. **多义词按义项关联例句**：每条例句挂在 `definitions[i].examples`，禁止堆在某条释义或顶层。
 10. **Excel 批量导入**：`import_xlsx_vocab` 支持 .xlsx（列：word/phonetic/part_of_speech/definitions/examples/language）；多义词每义项一行；word 与 definitions 必填；格式错误跳过并报告。
+11. **重复冲突降级（按义项合并，采集顺序无关）**：`save_vocab` 返回"已存在"（`existing_vocab_id`）时，**不新建记录**。`query_vocab` 读取已有记录后逐义项比对：义素相同（含"同X，"通假义项）→ 报告"已收录"跳过；有缺失义项 → 列出差异，**经用户确认后** `update_vocab` 追加进 `structured.definitions`（回写全量，不动 `review_state`）。合并方向与 word_type 处理：**先实词后通假**（已有记录为实词）→ 通假义项并入，`word_type` 保持"实词"；**先通假后实词**（已有记录为 `word_type="通假字"` 的独立记录）→ 实词义项并入，经确认后把 `word_type` 改标"实词"（混合记录下记录级通假分支会让所有义项出成"写本字"题），`original_char` 保留作溯源。通假义项以释义文本"同X，"前缀识别（义项级出题）。
 
 ### 复习规则
 
