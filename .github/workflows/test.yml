@@ -103,6 +103,22 @@ jobs:
         uv run bandit -r src -c pyproject.toml
 
   # ──────────────────────────────────────────
+  # 配置漂移检查：四平台生成目录必须与 .agents 真相源一致
+  # 作为 pre-commit 钩子的 CI 兜底（防止绕过钩子 push 时漂移悄悄进仓库）
+  # ──────────────────────────────────────────
+  config-drift:
+    name: Config Drift Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check AAIF config drift
+      run: |
+        sh scripts/check-config-drift.sh
+
+  # ──────────────────────────────────────────
   # E2E 测试（可选，需要时取消注释启用）
   # VocabCraft 首版不含 Web 层，E2E 主要验证 MCP 工具链路
   # 默认关闭，避免 PR 上耗时过长

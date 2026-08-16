@@ -4,51 +4,93 @@
 # 原则（见 .agents/AGENTS.md「流程规则 > 配置同步」）：
 #   .agents/ 是 AAIF 配置层唯一真相源；.trae/、.opencode/、.codebuddy/、.goose/
 #   由 scripts/sync-agent-configs(.ps1/.sh) 单向生成，禁止直接编辑。
-#   例外：.codebuddy/memory/** 由运行时自行写入，不经过同步。
 #
-# 本钩子拦截的违规：暂存区含 .trae/** / .opencode/** / .codebuddy/** / .goose/**
-# （非 memory）的改动，但 .agents/** 无任何对应改动
-# —— 即「直接改生成目录」。
+# 本钩子采用「内容一致性」校验，而非旧的『本次提交是否同时含 .agents 改动』：
+#   1. 四平台生成的 skills/** 与 AGENTS.md 必须与其 .agents/ 源逐字节一致。
+#      不一致即拒绝，从而同时拦截三种违规：
+#         a) 直接改生成目录（副本 ≠ 源）
+#         b) 只改 .agents 但忘跑同步（副本 = 旧源，与本次暂存的新源不一致）
+#         c) 合法补跑同步（副本 == 源，放行，不再误拦）
+#   2. 非纯复制产物（各平台 mcp.json / opencode.json / config.yaml /
+#      .ignore / skill-config.json / memory 等）不做强制比对予以豁免：
+#      它们含平台差异化或本机绝对路径（如 Goose config.yaml），
+#      逐字节比对会引入误拦。
 #
-# 正确做法：改 .agents/ → 跑 scripts/sync-agent-configs → 三目录一起提交。
 # 紧急绕过（不推荐，会破坏单一真相源）：git commit --no-verify
 
 set -eu
 
-# 承接暂存区改动清单（换行分隔；本项目路径不含空格，足够稳健）
-tmp=$(mktemp)
+# 用 git 目录下的固定临时文件（git 仓库必可写），避免依赖 mktemp 的 /tmp 权限
+tmp=".git/pre-commit.$$"
+trap 'rm -f "$tmp"' EXIT
 git diff --cached --name-only --diff-filter=AMD > "$tmp"
 
-has_source=0
-gen_list=$(mktemp)
-trap 'rm -f "$tmp" "$gen_list"' EXIT
+# 取暂存区内容；若未暂存则取磁盘当前内容
+staged_rel() { git show ":$1" 2>/dev/null || cat "$1"; }
 
-while IFS= read -r f; do
-    [ -z "$f" ] && continue
-    case "$f" in
-        .agents/*) has_source=1 ;;
+# 生成文件 → .agents 源（仅 skills/** 与 AGENTS.md 两类纯复制产物）
+gen_to_src() {
+    case "$1" in
+        .trae/skills/*)      printf '.agents/skills/%s\n' "${1#.trae/skills/}" ;;
+        .opencode/skills/*)  printf '.agents/skills/%s\n' "${1#.opencode/skills/}" ;;
+        .codebuddy/skills/*) printf '.agents/skills/%s\n' "${1#.codebuddy/skills/}" ;;
+        .goose/skills/*)     printf '.agents/skills/%s\n' "${1#.goose/skills/}" ;;
+        .trae/AGENTS.md|.opencode/AGENTS.md|.codebuddy/AGENTS.md|.goose/AGENTS.md)
+            printf '.agents/AGENTS.md\n' ;;
     esac
+}
+
+# 判断生成文件是否属于纯复制产物（需强校验）
+is_generated_copy() {
+    case "$1" in
+        .trae/skills/*|.opencode/skills/*|.codebuddy/skills/*|.goose/skills/*|.trae/AGENTS.md|.opencode/AGENTS.md|.codebuddy/AGENTS.md|.goose/AGENTS.md) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+violations=0
+
+# `|| [ -n "$f" ]` 规避 set -e 下 while-read 空输入的陷阱（空文件时 read 返回非0，
+# 若无此回退，set -e 会在循环处提前退出，误判为违规）
+while IFS= read -r f || [ -n "$f" ]; do
+    [ -z "$f" ] && continue
+
+    # ── 反向：.agents 纯复制源在暂存区 → 校验四平台副本一致 ──
+    case "$f" in
+        .agents/skills/*|.agents/AGENTS.md)
+            for p in .trae .opencode .codebuddy .goose; do
+                copy="${f/.agents/$p}"
+                [ -f "$copy" ] || continue    # 该平台无此文件则跳过（不强制全平台同步）
+                if [ "$(staged_rel "$f")" != "$(staged_rel "$copy")" ]; then
+                    echo "pre-commit: 检测到 $f 已修改但未同步到 $p" >&2
+                    echo "  请先运行 scripts/sync-agent-configs.ps1（或 .sh），再将 $copy 一并提交" >&2
+                    violations=$((violations + 1))
+                fi
+            done
+            ;;
+    esac
+
+    # ── 正向：生成目录的纯复制产物在暂存区 → 必须与源一致 ──
     case "$f" in
         .trae/*|.opencode/*|.codebuddy/*|.goose/*)
             case "$f" in
-                .codebuddy/memory/*) ;;   # 例外：运行时自有目录，不参与同步
-                *)
-                    printf '%s\n' "- $f" >> "$gen_list"
-                    ;;
+                .codebuddy/memory/*) continue ;;   # 运行时自有目录，豁免
             esac
+            if is_generated_copy "$f"; then
+                src=$(gen_to_src "$f")
+                if [ "$(staged_rel "$f")" != "$(staged_rel "$src")" ]; then
+                    echo "pre-commit: 拒绝提交 — $f 与真相源 $src 不一致" >&2
+                    echo "  生成目录由同步脚本单向覆盖，请勿直接编辑" >&2
+                    echo "  正确流程：改 $src → 跑 scripts/sync-agent-configs → 一起提交" >&2
+                    violations=$((violations + 1))
+                fi
+            fi
+            # 非纯复制产物（mcp.json 等）豁免，不做强制比对
             ;;
     esac
 done < "$tmp"
 
-if [ -s "$gen_list" ] && [ "$has_source" -ne 1 ]; then
-    echo "pre-commit: 拒绝提交 — 检测到直接修改生成的配置目录" >&2
-    echo "以下文件属于 .trae/、.opencode/、.codebuddy/ 或 .goose/（生成产物），但本次提交未包含 .agents/ 的对应改动：" >&2
-    cat "$gen_list" >&2
-    echo "" >&2
-    echo "正确流程（见 .agents/AGENTS.md「流程规则 > 配置同步」）：" >&2
-    echo "  1. 在 .agents/ 下进行修改" >&2
-    echo "  2. 运行 scripts/sync-agent-configs.ps1（或 .sh）" >&2
-    echo "  3. 将 .agents/ 与生成目录的改动一起提交" >&2
+if [ "$violations" -gt 0 ]; then
     echo "" >&2
     echo "紧急绕过（不推荐，会破坏单一真相源）：git commit --no-verify" >&2
     exit 1
