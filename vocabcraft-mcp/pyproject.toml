@@ -40,6 +40,7 @@ build-backend = "hatchling.build"
 # Pytest 配置
 # ──────────────────────────────────────────
 [tool.pytest.ini_options]
+addopts = "-m 'not e2e'"
 markers = [
     "e2e: End-to-end tests that require Playwright and a running web server. Run with `uv run pytest -m e2e`, CI splits them into a dedicated job.",
 ]
