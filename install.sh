@@ -34,7 +34,7 @@ done
 
 echo ""
 echo "========================================"
-echo "  VocabCraft v0.6.1 安装向导"
+echo "  VocabCraft v0.6.2 安装向导"
 echo "  (Trae IDE CN + Trae Work CN + CodeBuddy + opencode + Goose)"
 echo "========================================"
 echo ""

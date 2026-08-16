@@ -1,7 +1,7 @@
 {
   "$schema": "https://agents.aaif.io/schemas/tools.json",
   "name": "vocabcraft-mcp",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "词汇学习与制作一体 MCP Server",
   "tools": [
     {

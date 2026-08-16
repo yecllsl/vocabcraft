@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.2] - 2026-08-16
+
+### 安全加固
+- **修复释义类题空作答评分漏洞**：`grade_quiz` 在入口统一拦截空 `response`，防止释义题走默认 grade=3 推进 SM-2 复习周期；客观题额外拦截 answer 为空的占位题，避免 `""==""` 得 grade=4 污染记忆状态。
+- **修复文件路径越界读取**：`import_xlsx_vocab` 与 `parse_vocab` 对文件路径 `resolve()` 规范化并限定在项目 `data/` 目录内，拒绝 `..` 跨目录读取任意文件。
+
+### 质量与 CI 加固
+- **启用 E2E 测试**：`e2e-tests` job 在 push 时运行（11 个 Playwright 用例，覆盖页面加载、Tab 切换、图表渲染、复习出题、批量复习、词汇编辑、语种洞察）；修正 `test_batch_review_flow` 过时断言（"完成题数"→"完成词数"）。
+- **消除 Node 20 弃用警告**：升级全部 GitHub Actions 至 Node 24 兼容版本（checkout@v6、setup-python@v6、setup-uv@v7、cache@v5、codecov-action@v6、upload-artifact@v5、softprops/action-gh-release@v3）。
+- 修复 config-drift 脚本 bash 特有语法致 dash 下 CI 失败；pre-commit 钩子改为内容一致性校验，并在 CI 新增配置漂移检查兜底。
+
+### 不变
+- 数据模型、`(word, language)` 唯一约束、复习算法、历史数据（零迁移）。
+
 ## [0.6.1] - 2026-08-15
 
 ### 义项级通假出题
