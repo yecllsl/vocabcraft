@@ -30,15 +30,19 @@ check_pair() {  # $1=生成文件, $2=源
 # AGENTS.md（四平台）：.trae 平台不复制根 AGENTS.md（Trae 规则机制不同），
 # 故采用「平台有则必须与源一致」，而不要求平台必须有。
 for p in .trae .opencode .codebuddy .goose; do
-    [ -f "$p/AGENTS.md" ] && check_pair "$p/AGENTS.md" ".agents/AGENTS.md"
+    if [ -f "$p/AGENTS.md" ]; then
+        check_pair "$p/AGENTS.md" ".agents/AGENTS.md"
+    fi
 done
 
 # skills/**：以 .agents/skills 为权威，检查四平台副本存在且一致
 find .agents/skills -type f > "$tmp"
 while IFS= read -r f || [ -n "$f" ]; do
-    [ -z "$f" ] && continue
+    if [ -z "$f" ]; then
+        continue
+    fi
     for p in .trae .opencode .codebuddy .goose; do
-        copy="${f/.agents/$p}"
+        copy="$p${f#.agents}"    # .agents/skills/x → $p/skills/x（POSIX 前缀剔除，兼容 dash）
         if [ ! -f "$copy" ]; then
             echo "漂移: $p 缺少同步文件 $copy（源 $f 未同步到 $p）" >&2
             violations=$((violations + 1))

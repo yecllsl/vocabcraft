@@ -53,14 +53,18 @@ violations=0
 # `|| [ -n "$f" ]` 规避 set -e 下 while-read 空输入的陷阱（空文件时 read 返回非0，
 # 若无此回退，set -e 会在循环处提前退出，误判为违规）
 while IFS= read -r f || [ -n "$f" ]; do
-    [ -z "$f" ] && continue
+    if [ -z "$f" ]; then
+        continue
+    fi
 
     # ── 反向：.agents 纯复制源在暂存区 → 校验四平台副本一致 ──
     case "$f" in
         .agents/skills/*|.agents/AGENTS.md)
             for p in .trae .opencode .codebuddy .goose; do
-                copy="${f/.agents/$p}"
-                [ -f "$copy" ] || continue    # 该平台无此文件则跳过（不强制全平台同步）
+                copy="$p${f#.agents}"    # .agents/skills/x → $p/skills/x（POSIX 前缀剔除，兼容 dash）
+                if [ ! -f "$copy" ]; then
+                    continue    # 该平台无此文件则跳过（不强制全平台同步）
+                fi
                 if [ "$(staged_rel "$f")" != "$(staged_rel "$copy")" ]; then
                     echo "pre-commit: 检测到 $f 已修改但未同步到 $p" >&2
                     echo "  请先运行 scripts/sync-agent-configs.ps1（或 .sh），再将 $copy 一并提交" >&2
