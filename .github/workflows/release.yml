@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         # fetch-depth: 0 让 softprops/action-gh-release 能拿到完整提交历史以生成 release notes
         fetch-depth: 0
@@ -91,7 +91,7 @@ jobs:
         done
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         tag_name: v${{ steps.version.outputs.version }}
         name: "VocabCraft v${{ steps.version.outputs.version }}"
