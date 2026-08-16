@@ -33,9 +33,9 @@
                     <div class="vocab-card-header">
                         <span class="vocab-word">{{ v.word }}</span>
                         <span class="tag language-{{ v.language }}">{{ v.language }}</span>
-                        {% if v.word_type and v.word_type != "实词" %}
+                        {% if v.word_type %}
                         <span class="tag"
-                              style="{% if v.word_type == '通假字' %}background:#fde2e2;color:#b3261e;{% else %}background:#e6f4ea;color:#1e7e34;{% endif %}">{{ v.word_type }}</span>
+                              style="{% if v.word_type == '通假字' %}background:#fde2e2;color:#b3261e;{% elif v.word_type == '虚词' %}background:#e6f4ea;color:#1e7e34;{% else %}background:#e8f0fe;color:#1a73e8;{% endif %}">{{ v.word_type }}</span>
                         {% endif %}
                         {% if v.mastery_level == "掌握" %}
                         <span class="tag mastery-green">🟢 {{ v.mastery_level }}</span>

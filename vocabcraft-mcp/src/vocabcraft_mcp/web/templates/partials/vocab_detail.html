@@ -7,9 +7,9 @@
                 <div class="vocab-detail-phonetic">{{ vocab.phonetic or '暂无音标' }}</div>
             </div>
             <span class="tag language-{{ vocab.language }}">{{ vocab.language }}</span>
-            {% if vocab.word_type and vocab.word_type != "实词" %}
+            {% if vocab.word_type %}
             <span class="tag"
-                  style="{% if vocab.word_type == '通假字' %}background:#fde2e2;color:#b3261e;{% else %}background:#e6f4ea;color:#1e7e34;{% endif %}">{{ vocab.word_type }}</span>
+                  style="{% if vocab.word_type == '通假字' %}background:#fde2e2;color:#b3261e;{% elif vocab.word_type == '虚词' %}background:#e6f4ea;color:#1e7e34;{% else %}background:#e8f0fe;color:#1a73e8;{% endif %}">{{ vocab.word_type }}</span>
             {% endif %}
             {% if vocab.word_type == "通假字" and vocab.original_char %}
             <span class="tag" style="background:#fff3cd;color:#8a6d3b;">本字：{{ vocab.original_char }}</span>
