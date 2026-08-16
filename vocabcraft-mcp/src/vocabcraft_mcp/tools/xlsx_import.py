@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from vocabcraft_mcp.models import VALID_WORD_TYPES, normalize_language, normalize_pos
+from vocabcraft_mcp.tools import crud
 from vocabcraft_mcp.tools.crud import save_vocab
 
 
@@ -305,6 +306,18 @@ def import_xlsx_vocab(
     """
     lang = normalize_language(language)
     xlsx_path_obj = Path(xlsx_path)
+
+    # I-2 安全校验：路径必须 resolve 后位于项目 data/ 目录内，拒绝 `..` 跨目录
+    # 读取任意文件（AGENTS.md 安全规则「路径限定」）。不信任外部传入的路径。
+    resolved = xlsx_path_obj.resolve()
+    data_root = crud._DEFAULT_DATA_DIR.resolve()
+    if not resolved.is_relative_to(data_root):
+        return {
+            "success_count": 0,
+            "error_count": 0,
+            "errors": [f"路径越界: {xlsx_path}，仅允许读取项目 data/ 目录内的文件"],
+            "imported_vocabs": [],
+        }
 
     if not xlsx_path_obj.exists():
         return {

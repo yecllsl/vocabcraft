@@ -8,11 +8,14 @@
 
 骨架阶段：仅返回 prompt 与默认值模板，不对接具体 LLM 客户端。
 """
+from pathlib import Path
+
 from vocabcraft_mcp.models import normalize_language
 from vocabcraft_mcp.prompts.vocab_parse_prompt import (
     render_multimodal_parse_prompt,
     render_parse_prompt,
 )
+from vocabcraft_mcp.tools import crud
 
 
 def parse_vocab(image_path: str = "", text: str = "", language: str = "en") -> dict:
@@ -51,6 +54,16 @@ def parse_vocab(image_path: str = "", text: str = "", language: str = "en") -> d
 
     # 模式 2：本地路径多模态模式 — 用户提供了本地图片路径
     if image_path and image_path.strip():
+        # I-2 安全校验：路径必须 resolve 后位于项目 data/ 目录内，拒绝 `..`
+        # 跨目录读取外部图片（AGENTS.md 安全规则「路径限定」）。
+        resolved = Path(image_path).resolve()
+        if not resolved.is_relative_to(crud._DEFAULT_DATA_DIR.resolve()):
+            return {
+                "structured_vocab": None,
+                "language": lang,
+                "image_path": image_path,
+                "error": f"路径越界: {image_path}，仅允许读取项目 data/ 目录内的图片",
+            }
         prompt = render_multimodal_parse_prompt(lang)
         return {
             "structured_vocab": None,

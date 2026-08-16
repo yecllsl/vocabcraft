@@ -5,9 +5,21 @@
 1. 对话多模态模式（dialog）— 无参数，宿主 LLM 读取对话上下文中的图片
 2. 本地路径多模态模式（multimodal）— 传入 image_path
 3. 文本模式（text）— 传入 text
+
+image_path 路径校验遵循 AGENTS.md 安全规则：必须 resolve 后位于项目 data/ 目录内，
+拒绝 `..` 跨目录。测试用 isolated_storage 将 data/ 指向 tmp_path。
 """
 
+import pytest
+
 from vocabcraft_mcp.tools.parse_vocab import parse_vocab
+
+
+@pytest.fixture
+def isolated_storage(tmp_path, monkeypatch):
+    """隔离数据目录到 tmp_path（parse 校验依赖 crud._DEFAULT_DATA_DIR）"""
+    monkeypatch.setattr("vocabcraft_mcp.tools.crud._DEFAULT_DATA_DIR", tmp_path)
+    return tmp_path
 
 
 def test_parse_importable():
@@ -43,30 +55,45 @@ def test_parse_dialog_only_language():
 
 # ── 模式 2：本地路径多模态 ──
 
-def test_parse_multimodal_mode():
+def test_parse_multimodal_mode(isolated_storage):
     """有 image_path 时使用本地路径多模态模式"""
-    result = parse_vocab(image_path="/tmp/vocab.jpg", language="en")
+    img = isolated_storage / "vocab.jpg"
+    result = parse_vocab(image_path=str(img), language="en")
     assert result["mode"] == "multimodal"
     assert "parse_prompt" in result
     assert "图片" in result["parse_prompt"]
-    assert result["image_path"] == "/tmp/vocab.jpg"
+    assert result["image_path"] == str(img)
     assert result["structured_vocab"] is None
 
 
-def test_parse_multimodal_with_language():
+def test_parse_multimodal_with_language(isolated_storage):
     """本地路径多模态模式支持语言参数"""
-    result = parse_vocab(image_path="/tmp/vocab.jpg", language="文言文")
+    img = isolated_storage / "vocab.jpg"
+    result = parse_vocab(image_path=str(img), language="文言文")
     assert result["mode"] == "multimodal"
     assert result["language"] == "zh_classical"
 
 
-def test_parse_multimodal_priority_over_text():
+def test_parse_multimodal_priority_over_text(isolated_storage):
     """同时提供 image_path 和 text 时，image_path 优先"""
+    img = isolated_storage / "vocab.jpg"
     result = parse_vocab(
-        image_path="/tmp/vocab.jpg",
+        image_path=str(img),
         text="hello /həˈləʊ/ int. 你好",
     )
     assert result["mode"] == "multimodal"
+
+
+def test_parse_multimodal_image_path_outside_data_rejected(isolated_storage):
+    """I-2: 跨出 data/ 目录的 image_path 被拒绝
+
+    AGENTS.md 安全规则要求 image_path resolve 后必须位于项目 data/ 目录内，
+    拒绝 `..` 跨目录读取外部图片。此处传 data 目录外的路径，应返回错误。
+    """
+    outside = isolated_storage.parent / "vocab.jpg"
+    result = parse_vocab(image_path=str(outside), language="en")
+    assert "error" in result
+    assert "路径" in result["error"] or "目录" in result["error"] or "data" in result["error"]
 
 
 # ── 模式 3：文本模式（后备） ──

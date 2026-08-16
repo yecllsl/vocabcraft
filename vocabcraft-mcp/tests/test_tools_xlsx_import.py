@@ -40,8 +40,8 @@ def _create_xlsx(tmp_path, filename, headers, rows):
 # ──────────────────────────────────────────
 
 def test_import_xlsx_not_exists(isolated_storage):
-    """文件不存在返回错误"""
-    result = import_xlsx_vocab("/nonexistent/file.xlsx")
+    """文件不存在返回错误（data/ 目录内）"""
+    result = import_xlsx_vocab(str(isolated_storage / "nonexistent.xlsx"))
     assert result["success_count"] == 0
     assert result["error_count"] == 0
     assert "文件不存在" in result["errors"][0]
@@ -74,6 +74,20 @@ def test_import_xlsx_openpyxl_not_installed(isolated_storage):
             sys.modules["openpyxl"] = saved
         else:
             sys.modules.pop("openpyxl", None)
+
+
+def test_import_xlsx_path_outside_data_rejected(isolated_storage):
+    """I-2: 跨出 data/ 目录的路径被拒绝
+
+    AGENTS.md 安全规则要求 xlsx_path resolve 后必须位于项目 data/ 目录内，
+    拒绝 `..` 跨目录读取任意文件。此处构造 data 目录外的已存在文件，
+    导入应返回路径越界错误而非读取。
+    """
+    outside = isolated_storage.parent / "outside.xlsx"
+    outside.write_bytes(b"fake")
+    result = import_xlsx_vocab(str(outside))
+    assert result["success_count"] == 0
+    assert "data" in result["errors"][0] or "目录" in result["errors"][0] or "路径" in result["errors"][0]
 
 
 # ──────────────────────────────────────────

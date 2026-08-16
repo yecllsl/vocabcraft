@@ -117,6 +117,20 @@ def test_grade_quiz_subjective_returns_prompt(isolated_storage, make_vocab_data)
     assert result["grade"] == 3  # 骨架默认值
 
 
+def test_grade_quiz_relative_definition_empty_response_rejected(isolated_storage, make_vocab_data):
+    """C-1: 释义题空 response 拒绝评分，不得走 grade_prompt 默认 grade=3 污染 SM-2
+
+    空作答不是有效学习反馈，若放行会以默认 grade=3 推进复习周期，
+    需拦截并返回 error，避免记忆状态被无意义数据污染。
+    """
+    save_vocab(make_vocab_data("hello", "vocab_001"))
+    gen = generate_quiz("vocab_001", "释义")
+
+    result = grade_quiz(gen["quiz_id"], "   ")
+    assert "error" in result
+    assert "空" in result["error"]
+
+
 def test_grade_quiz_writes_review_record(isolated_storage, make_vocab_data):
     """评分后写入复习记录"""
     save_vocab(make_vocab_data("hello", "vocab_001"))

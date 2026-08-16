@@ -478,9 +478,17 @@ def grade_quiz(quiz_id: str, response: str) -> dict:
     if vocab is None:
         return {"error": f"关联词汇不存在: {quiz.vocab_id}"}
 
-    # 客观题（选择/填空/拼写）答案为空时拒绝评分：空作答会命中 ""=="" 得 grade=4，
-    # 污染 SM-2 记忆状态且无回滚。占位选择/填空题的 answer 恰为空串，故在此拦截。
-    # 释义类题不走精确匹配，空答案无此漏洞，不在此拦截（既有测试约定如此）。
+    # 空作答一律拒绝：空 response 不是有效学习反馈，若放行可能以默认 grade 推进
+    # SM-2 记忆状态（客观题命中 ""=="" 得 grade=4、释义题走 grade_prompt 默认 grade=3），
+    # 污染复习周期且无回滚。故所有题型统一在入口拦截空作答。
+    if not response.strip():
+        return {
+            "error": "作答为空，不允许评分",
+            "quiz_id": quiz_id,
+        }
+
+    # 客观题（选择/填空/拼写）答案为空时拒绝评分：占位选择/填空题的 answer 恰为空串，
+    # 若放行会命中 ""=="" 得 grade=4 污染 SM-2。此处拦截的是"考题本身答案为空（占位题）"。
     if quiz.quiz_type in _OBJECTIVE_TYPES and not quiz.answer.strip():
         return {
             "error": "该考题答案为空（考题为占位题，尚未回写答案），不允许评分",
