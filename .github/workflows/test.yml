@@ -127,7 +127,10 @@ jobs:
     name: E2E (${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: false  # 首版未启用 E2E，待 e2e 测试用例就绪后改为 github.event_name == 'push'
+    if: github.event_name == 'push'
+    # E2E 现已在 push 时运行（11 个用例本地验证通过）。
+    # PR 不跑以缩短反馈；如需在 PR 上启用，改为：
+    #   github.event_name == 'push' || github.event_name == 'pull_request'
     needs: unit-tests
     strategy:
       fail-fast: false

@@ -327,7 +327,7 @@ async def test_batch_review_flow(page: Page, server_url: str):
     await page.wait_for_selector(".batch-review .chart-title", timeout=10000)
     summary_text = await page.text_content(".batch-review")
     assert "复习完成" in summary_text
-    assert "完成题数" in summary_text
+    assert "完成词数" in summary_text
 
 
 @pytest.mark.asyncio
