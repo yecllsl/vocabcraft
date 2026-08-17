@@ -31,12 +31,12 @@ staged_rel() { git show ":$1" 2>/dev/null || cat "$1"; }
 # 生成文件 → vocabcraft.plugin 源（仅 skills/** 与 AGENTS.md 两类纯复制产物）
 gen_to_src() {
     case "$1" in
-        .trae/skills/*)      printf '.vocabcraft.plugin/skills/%s\n' "${1#.trae/skills/}" ;;
-        .opencode/skills/*)  printf '.vocabcraft.plugin/skills/%s\n' "${1#.opencode/skills/}" ;;
-        .codebuddy/skills/*) printf '.vocabcraft.plugin/skills/%s\n' "${1#.codebuddy/skills/}" ;;
-        .goose/skills/*)     printf '.vocabcraft.plugin/skills/%s\n' "${1#.goose/skills/}" ;;
+        .trae/skills/*)      printf 'vocabcraft.plugin/skills/%s\n' "${1#.trae/skills/}" ;;
+        .opencode/skills/*)  printf 'vocabcraft.plugin/skills/%s\n' "${1#.opencode/skills/}" ;;
+        .codebuddy/skills/*) printf 'vocabcraft.plugin/skills/%s\n' "${1#.codebuddy/skills/}" ;;
+        .goose/skills/*)     printf 'vocabcraft.plugin/skills/%s\n' "${1#.goose/skills/}" ;;
         .trae/AGENTS.md|.opencode/AGENTS.md|.codebuddy/AGENTS.md|.goose/AGENTS.md)
-            printf '.vocabcraft.plugin/AGENTS.md\n' ;;
+            printf 'vocabcraft.plugin/AGENTS.md\n' ;;
     esac
 }
 
@@ -59,9 +59,9 @@ while IFS= read -r f || [ -n "$f" ]; do
 
     # ── 反向：vocabcraft.plugin 纯复制源在暂存区 → 校验四平台副本一致 ──
     case "$f" in
-        .vocabcraft.plugin/skills/*|.vocabcraft.plugin/AGENTS.md)
+        vocabcraft.plugin/skills/*|vocabcraft.plugin/AGENTS.md)
             for p in .trae .opencode .codebuddy .goose; do
-                copy="$p${f#vocabcraft.plugin}"    # .vocabcraft.plugin/skills/x → $p/skills/x（POSIX 前缀剔除，兼容 dash）
+                copy="$p${f#vocabcraft.plugin}"    # vocabcraft.plugin/skills/x → $p/skills/x（POSIX 前缀剔除，兼容 dash）
                 if [ ! -f "$copy" ]; then
                     continue    # 该平台无此文件则跳过（不强制全平台同步）
                 fi
