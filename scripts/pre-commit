@@ -1,15 +1,15 @@
 #!/bin/sh
 # scripts/pre-commit — 配置同步强约束的机械防线
 #
-# 原则（见 .agents/AGENTS.md「流程规则 > 配置同步」）：
-#   .agents/ 是 AAIF 配置层唯一真相源；.trae/、.opencode/、.codebuddy/、.goose/
+# 原则（见 vocabcraft.plugin/AGENTS.md「流程规则 > 配置同步」）：
+#   vocabcraft.plugin/ 是 AAIF 配置层唯一真相源；.trae/、.opencode/、.codebuddy/、.goose/
 #   由 scripts/sync-agent-configs(.ps1/.sh) 单向生成，禁止直接编辑。
 #
-# 本钩子采用「内容一致性」校验，而非旧的『本次提交是否同时含 .agents 改动』：
-#   1. 四平台生成的 skills/** 与 AGENTS.md 必须与其 .agents/ 源逐字节一致。
+# 本钩子采用「内容一致性」校验，而非旧的『本次提交是否同时含 vocabcraft.plugin 改动』：
+#   1. 四平台生成的 skills/** 与 AGENTS.md 必须与其 vocabcraft.plugin/ 源逐字节一致。
 #      不一致即拒绝，从而同时拦截三种违规：
 #         a) 直接改生成目录（副本 ≠ 源）
-#         b) 只改 .agents 但忘跑同步（副本 = 旧源，与本次暂存的新源不一致）
+#         b) 只改 vocabcraft.plugin 但忘跑同步（副本 = 旧源，与本次暂存的新源不一致）
 #         c) 合法补跑同步（副本 == 源，放行，不再误拦）
 #   2. 非纯复制产物（各平台 mcp.json / opencode.json / config.yaml /
 #      .ignore / skill-config.json / memory 等）不做强制比对予以豁免：
@@ -28,15 +28,15 @@ git diff --cached --name-only --diff-filter=AMD > "$tmp"
 # 取暂存区内容；若未暂存则取磁盘当前内容
 staged_rel() { git show ":$1" 2>/dev/null || cat "$1"; }
 
-# 生成文件 → .agents 源（仅 skills/** 与 AGENTS.md 两类纯复制产物）
+# 生成文件 → vocabcraft.plugin 源（仅 skills/** 与 AGENTS.md 两类纯复制产物）
 gen_to_src() {
     case "$1" in
-        .trae/skills/*)      printf '.agents/skills/%s\n' "${1#.trae/skills/}" ;;
-        .opencode/skills/*)  printf '.agents/skills/%s\n' "${1#.opencode/skills/}" ;;
-        .codebuddy/skills/*) printf '.agents/skills/%s\n' "${1#.codebuddy/skills/}" ;;
-        .goose/skills/*)     printf '.agents/skills/%s\n' "${1#.goose/skills/}" ;;
+        .trae/skills/*)      printf '.vocabcraft.plugin/skills/%s\n' "${1#.trae/skills/}" ;;
+        .opencode/skills/*)  printf '.vocabcraft.plugin/skills/%s\n' "${1#.opencode/skills/}" ;;
+        .codebuddy/skills/*) printf '.vocabcraft.plugin/skills/%s\n' "${1#.codebuddy/skills/}" ;;
+        .goose/skills/*)     printf '.vocabcraft.plugin/skills/%s\n' "${1#.goose/skills/}" ;;
         .trae/AGENTS.md|.opencode/AGENTS.md|.codebuddy/AGENTS.md|.goose/AGENTS.md)
-            printf '.agents/AGENTS.md\n' ;;
+            printf '.vocabcraft.plugin/AGENTS.md\n' ;;
     esac
 }
 
@@ -57,11 +57,11 @@ while IFS= read -r f || [ -n "$f" ]; do
         continue
     fi
 
-    # ── 反向：.agents 纯复制源在暂存区 → 校验四平台副本一致 ──
+    # ── 反向：vocabcraft.plugin 纯复制源在暂存区 → 校验四平台副本一致 ──
     case "$f" in
-        .agents/skills/*|.agents/AGENTS.md)
+        .vocabcraft.plugin/skills/*|.vocabcraft.plugin/AGENTS.md)
             for p in .trae .opencode .codebuddy .goose; do
-                copy="$p${f#.agents}"    # .agents/skills/x → $p/skills/x（POSIX 前缀剔除，兼容 dash）
+                copy="$p${f#vocabcraft.plugin}"    # .vocabcraft.plugin/skills/x → $p/skills/x（POSIX 前缀剔除，兼容 dash）
                 if [ ! -f "$copy" ]; then
                     continue    # 该平台无此文件则跳过（不强制全平台同步）
                 fi

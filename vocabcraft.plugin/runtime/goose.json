@@ -9,7 +9,7 @@
         "run",
         "--no-sync",
         "--directory",
-        "vocabcraft-mcp",
+        "vocabcraft.plugin/vocabcraft-mcp",
         "vocabcraft-mcp"
       ],
       "timeout": 300,

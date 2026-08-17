@@ -8,10 +8,10 @@
         "--no-sync",
         "vocabcraft-mcp"
       ],
-      "cwd": "vocabcraft-mcp"
+      "cwd": "vocabcraft.plugin/vocabcraft-mcp"
     }
   },
   "instructions": [
-    ".agents/AGENTS.md"
+    "vocabcraft.plugin/AGENTS.md"
   ]
 }

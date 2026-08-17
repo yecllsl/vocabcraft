@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### 目录重构：单目录自包含 Agent Plugin
+- **`.agents/` 重命名为 `vocabcraft.plugin/`**：彻底采用 Agent Plugins 1.0 规范，目录名即插件标识，不再使用点前缀隐藏目录。
+- **MCP Server 内联**：`vocabcraft-mcp/` 整体移入 `vocabcraft.plugin/vocabcraft-mcp/`，插件成为完全自包含、可整体分发到任意位置的单目录。
+- **启动路径同步**：`mcp.json` 指向 `${PLUGIN_ROOT}/vocabcraft-mcp`；`runtime/trae.json` + `codebuddy.json` + `opencode.json` 指向 `${workspaceFolder}/vocabcraft.plugin/vocabcraft-mcp`；`goose.json` 的 `--directory` 指向 `vocabcraft.plugin/vocabcraft-mcp`。
+- **脚本与配置同步**：`scripts/`（sync / generate-* / build-release / install / pre-commit / check-config-drift）、`package.json`、`test.yml`、根 `.gitignore` 全部指向新布局；`package.json` 的 `generate-*` 脚本因 server 下移两级，相对脚本路径由 `../scripts/` 改为 `../../scripts/`。
+- **数据零迁移**：`Storage` 基于 server `__file__` 解析 `data/`，随 server 内联自动落在 `vocabcraft.plugin/vocabcraft-mcp/data/`，历史词汇数据无需迁移。
+- **服务器名不变**：MCP server 名（`vocabcraft-mcp`）与 Python 包名保持不变，仅目录位置变更，各 harness 个人级配置无需改键。
+
 ## [0.6.2] - 2026-08-16
 
 ### 安全加固
@@ -12,6 +22,10 @@ All notable changes to this project will be documented in this file.
 - **启用 E2E 测试**：`e2e-tests` job 在 push 时运行（11 个 Playwright 用例，覆盖页面加载、Tab 切换、图表渲染、复习出题、批量复习、词汇编辑、语种洞察）；修正 `test_batch_review_flow` 过时断言（"完成题数"→"完成词数"）。
 - **消除 Node 20 弃用警告**：升级全部 GitHub Actions 至 Node 24 兼容版本（checkout@v6、setup-python@v6、setup-uv@v7、cache@v5、codecov-action@v6、upload-artifact@v5、softprops/action-gh-release@v3）。
 - 修复 config-drift 脚本 bash 特有语法致 dash 下 CI 失败；pre-commit 钩子改为内容一致性校验，并在 CI 新增配置漂移检查兜底。
+
+### 打包规范（Agent Plugins 1.0）
+- 将 `.agents/` 对齐为 **Agent Plugins 1.0**（AAIF / Linux 基金会）规范：新增 `plugin.json`（manifest）与 `mcp.json`（标准 `mcpServers` stdio 配置），`skills/` 保持 5 个 Skill；插件可作为标准 Agent Plugin 分发，各 harness 原生目录仍由 `scripts/sync-agent-configs` 单向生成、互不冲突。
+- 版本号统一为 0.6.2（`plugin.json` 与 `package.json` / `tools.json` 一致）。
 
 ### 不变
 - 数据模型、`(word, language)` 唯一约束、复习算法、历史数据（零迁移）。

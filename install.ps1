@@ -6,7 +6,7 @@
 #   2. 或在 PowerShell 中执行: .\install.ps1
 #
 # 可选参数：
-#   -FixPath       将 .agents/runtime 中 ${workspaceFolder} 替换为绝对路径（并重新同步各平台目录）
+#   -FixPath       将 vocabcraft.plugin/runtime 中 ${workspaceFolder} 替换为绝对路径（并重新同步各平台目录）
 #   -AgentRuntime  配置 Agent 运行时 (trae/codebuddy/opencode/goose/all/workbuddy/hermes)
 #                  trae/codebuddy/opencode/goose 为项目级运行时；workbuddy/hermes 为个人级 harness
 #
@@ -34,7 +34,7 @@ Write-Host ""
 $projectRoot = $PSScriptRoot
 
 # ──────────────────────────────────────────
-# 个人级 harness 安装辅助函数（WorkBuddy / Hermes 仅支持个人级配置，不走 .agents/ 同步）
+# 个人级 harness 安装辅助函数（WorkBuddy / Hermes 仅支持个人级配置，不走 vocabcraft.plugin/ 同步）
 # ──────────────────────────────────────────
 function Install-PersonalHarness {
     param(
@@ -76,7 +76,7 @@ function Install-PersonalHarness {
         mcpServers = [ordered]@{
             "vocabcraft-mcp" = [ordered]@{
                 command = "uv"
-                args    = @("run", "--no-sync", "--directory", (Join-Path $projectRoot "vocabcraft-mcp"), "vocabcraft-mcp")
+                args    = @("run", "--no-sync", "--directory", (Join-Path $projectRoot "vocabcraft.plugin\vocabcraft-mcp"), "vocabcraft-mcp")
             }
         }
     }
@@ -86,8 +86,8 @@ function Install-PersonalHarness {
     Write-Host "  [ok] 已写入 MCP 注册: $mcpPath" -ForegroundColor Green
 
     # 5. 符号链接 AGENTS.md 与 skills/（失败降级复制）
-    Link-PersonalConfig -Name "AGENTS.md" -Src (Join-Path $projectRoot ".agents\AGENTS.md") -Dst (Join-Path $cfgDir "AGENTS.md")
-    Link-PersonalConfig -Name "skills/"   -Src (Join-Path $projectRoot ".agents\skills")      -Dst (Join-Path $cfgDir "skills")
+    Link-PersonalConfig -Name "AGENTS.md" -Src (Join-Path $projectRoot "vocabcraft.plugin\AGENTS.md") -Dst (Join-Path $cfgDir "AGENTS.md")
+    Link-PersonalConfig -Name "skills/"   -Src (Join-Path $projectRoot "vocabcraft.plugin\skills")      -Dst (Join-Path $cfgDir "skills")
 }
 
 function Link-PersonalConfig {
@@ -171,7 +171,7 @@ Write-Host "  ✓ $pythonVersion" -ForegroundColor Green
 Write-Host "[3/5] 安装基础依赖..." -ForegroundColor Yellow
 Write-Host "  图片采集由宿主 LLM 多模态直接解析，无需安装 OCR 引擎。" -ForegroundColor Cyan
 
-$mcpDir = Join-Path $projectRoot "vocabcraft-mcp"
+$mcpDir = Join-Path $projectRoot "vocabcraft.plugin\vocabcraft-mcp"
 
 Push-Location $mcpDir
 try {
@@ -182,7 +182,7 @@ try {
         Write-Host "  ✗ 依赖安装失败" -ForegroundColor Red
         Write-Host ""
         Write-Host "  请尝试手动安装：" -ForegroundColor Yellow
-        Write-Host "  cd vocabcraft-mcp" -ForegroundColor White
+        Write-Host "  cd vocabcraft.plugin/vocabcraft-mcp" -ForegroundColor White
         Write-Host "  uv sync" -ForegroundColor White
         exit 1
     }
@@ -282,19 +282,19 @@ try {
         Write-Host "  ✓ MCP Server 入口点可用" -ForegroundColor Green
     } else {
         Write-Host "  ⚠ 自动验证失败，但不影响使用" -ForegroundColor Yellow
-        Write-Host "  如遇问题请手动验证: cd vocabcraft-mcp && uv run vocabcraft-mcp" -ForegroundColor Yellow
+        Write-Host "  如遇问题请手动验证: cd vocabcraft.plugin/vocabcraft-mcp && uv run vocabcraft-mcp" -ForegroundColor Yellow
     }
 } catch {
     Write-Host "  ⚠ 自动验证失败，但不影响使用" -ForegroundColor Yellow
-    Write-Host "  如遇问题请手动验证: cd vocabcraft-mcp && uv run vocabcraft-mcp" -ForegroundColor Yellow
+    Write-Host "  如遇问题请手动验证: cd vocabcraft.plugin/vocabcraft-mcp && uv run vocabcraft-mcp" -ForegroundColor Yellow
 } finally {
     Pop-Location
 }
 
 # ──────────────────────────────────────────
-# mcp.json 路径回退方案（多运行时共用，AAIF 真相源 .agents/runtime）
+# mcp.json 路径回退方案（多运行时共用，AAIF 真相源 vocabcraft.plugin/runtime）
 # ──────────────────────────────────────────
-$runtimeDir = Join-Path $projectRoot ".agents\runtime"
+$runtimeDir = Join-Path $projectRoot "vocabcraft.plugin\runtime"
 $traeJson = Join-Path $runtimeDir "trae.json"
 if (Test-Path $traeJson) {
     $mcpContent = Get-Content $traeJson -Raw
@@ -309,7 +309,7 @@ if (Test-Path $traeJson) {
 
 if ($FixPath) {
     Write-Host ""
-    Write-Host "  正在修复 runtime 配置路径（.agents/runtime）..." -ForegroundColor Yellow
+    Write-Host "  正在修复 runtime 配置路径（vocabcraft.plugin/runtime）..." -ForegroundColor Yellow
     $fixedAny = $false
     $fixTargets = @(
         (Join-Path $runtimeDir "trae.json"),

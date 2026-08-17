@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-AGENTS_DIR="$PROJECT_ROOT/.agents"
+AGENTS_DIR="$PROJECT_ROOT/vocabcraft.plugin"
 AGENTS_RUNTIME="$AGENTS_DIR/runtime"
 AGENTS_SKILLS="$AGENTS_DIR/skills"
 AGENTS_MD="$AGENTS_DIR/AGENTS.md"
@@ -27,7 +27,7 @@ fi
 
 echo -e "${CYAN}=== VocabCraft AAIF Config Sync ===${NC}"
 echo "项目根目录: $PROJECT_ROOT"
-echo "配置源: .agents/ (AAIF 标准)"
+echo "配置源: vocabcraft.plugin/ (AAIF 标准)"
 
 SKIP_TRAE=false
 SKIP_OPENCODE=false
@@ -102,7 +102,13 @@ generate_goose_config() {
     local source_config="$AGENTS_RUNTIME/goose.json"
     if [ -f "$source_config" ]; then
         echo -e "${YELLOW}生成 Goose 配置 → $goose_dir/config.yaml${NC}"
-        "$PYTHON_BIN" "$SCRIPT_DIR/generate-goose-config.py"
+        local gen_script="$SCRIPT_DIR/generate-goose-config.py"
+        # 同 generate_aaif_declarations：Windows 上 $SCRIPT_DIR 是 MSYS 路径，
+        # 原生 python3.exe 无法解析，需转为原生 Windows 路径。
+        if command -v cygpath >/dev/null 2>&1; then
+            gen_script="$(cygpath -w "$gen_script")"
+        fi
+        "$PYTHON_BIN" "$gen_script"
         echo -e "${GREEN}  已生成 Goose 配置${NC}"
     fi
 }
@@ -112,10 +118,14 @@ generate_aaif_declarations() {
         echo -e "${RED}未找到 uv，无法生成 AAIF 声明文件（tools.json/triggers.json/workflows.json）${NC}" >&2
         exit 1
     fi
-    local decl_script="$SCRIPT_DIR/generate-aaif-declarations.py"
-    local mcp_dir="$PROJECT_ROOT/vocabcraft-mcp"
-    echo -e "${YELLOW}生成 AAIF 声明文件 → .agents/${NC}"
-    uv run --no-sync --directory "$mcp_dir" python "$decl_script"
+    local mcp_dir="$PROJECT_ROOT/vocabcraft.plugin/vocabcraft-mcp"
+    # uv（Rust）在 Windows 上无法解析 MSYS 风格绝对路径（/d/...），需转为原生 Windows 路径；
+    # 非 Windows（无 cygpath）时保留原样。
+    if command -v cygpath >/dev/null 2>&1; then
+        mcp_dir="$(cygpath -w "$mcp_dir")"
+    fi
+    echo -e "${YELLOW}生成 AAIF 声明文件 → vocabcraft.plugin/${NC}"
+    uv run --no-sync --directory "$mcp_dir" python "../../scripts/generate-aaif-declarations.py"
     if [ $? -ne 0 ]; then
         echo -e "${RED}AAIF 声明文件生成失败${NC}" >&2
         exit 1

@@ -1,6 +1,8 @@
-# VocabCraft - 词汇学习与制作一体 MCP 工具
+# VocabCraft - 词汇学习与制作一体 Agent Plugin（skills + MCP 一体）
 
 词汇学习与制作一体化解决方案，同时支持 **Trae IDE CN / Trae Work CN**、**CodeBuddy**、**OpenCode** 和 **Goose** 五个项目级 Agent Runtime，以及 **WorkBuddy** / **Hermes** 两个个人级 harness。核心流程：拍照 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。
+
+项目以 **Agent Plugins 1.0**（AAIF / Linux 基金会）规范打包：`vocabcraft.plugin/` 即为插件根，含 `plugin.json`（manifest）、`mcp.json`（MCP 启动配置）与 `skills/`（5 个 Skill），可作为标准 Agent Plugin 分发到任意兼容客户端；各 harness 原生目录（`.trae/` 等）仍由 `scripts/sync-agent-configs` 单向生成，互不冲突。
 
 ## 核心功能
 
@@ -17,15 +19,15 @@
 ```
 用户交互层
 ├── 对话式交互 (命令 / 自然语言)
-├── 五运行时: Trae + CodeBuddy + OpenCode + Goose (共用 .agents/AGENTS.md，项目级配置)
-├── 个人级 harness: WorkBuddy + Hermes (仅支持个人级配置，通过个人目录 ~/.workbuddy / ~/.hermes 加载同一份 .agents/AGENTS.md 与 skills/，详见 .workbuddy/README.md 与 .hermes/README.md)
+├── 五运行时: Trae + CodeBuddy + OpenCode + Goose (共用 vocabcraft.plugin/AGENTS.md，项目级配置)
+├── 个人级 harness: WorkBuddy + Hermes (仅支持个人级配置，通过个人目录 ~/.workbuddy / ~/.hermes 加载同一份 vocabcraft.plugin/AGENTS.md 与 skills/，详见 .workbuddy/README.md 与 .hermes/README.md)
     ↓
-Skills 编排层 (.agents/skills/vocabcraft-*: capture / review / quiz / stats / export)
+Skills 编排层 (vocabcraft.plugin/skills/vocabcraft-*: capture / review / quiz / stats / export)
     ↓
-MCP Tools 层 (vocabcraft-mcp)
+MCP Tools 层 (vocabcraft.plugin/vocabcraft-mcp)
 ├── 结构化解析 → 存储 → SM-2 排程 → 考题生成 → 评分 → 统计 → 导出
     ↓
-Rules 约束层 (.agents/AGENTS.md — 统一规则源，五个运行时共用)
+Rules 约束层 (vocabcraft.plugin/AGENTS.md — 统一规则源，五个运行时共用)
     ↓
 数据存储层 (本地 JSON 文件，原子写入)
 ```
@@ -79,7 +81,7 @@ chmod +x install.sh
 3. 进入 **设置 → 规则**，开启 **"将 AGENTS.md 包含在上下文中"**
 4. 重启 Trae
 
-> 💡 项目级 MCP 配置已内置于 `.trae/mcp.json`（由 `.agents/runtime/trae.json` 经 `scripts/sync-agent-configs` 同步生成），使用 `${workspaceFolder}` 变量自动适配路径。
+> 💡 项目级 MCP 配置已内置于 `.trae/mcp.json`（由 `vocabcraft.plugin/runtime/trae.json` 经 `scripts/sync-agent-configs` 同步生成），使用 `${workspaceFolder}` 变量自动适配路径。
 
 ##### CodeBuddy
 
@@ -97,11 +99,11 @@ chmod +x install.sh
 1. 运行安装脚本：`.\install.ps1 -AgentRuntime goose`（或 `bash install.sh --agent-runtime goose`）
 2. 用 Goose 打开项目文件夹，会自动读取 `.goose/config.yaml` 加载 vocabcraft-mcp
 
-> 💡 Goose 配置已内置于 `.goose/config.yaml`（由 `.agents/runtime/goose.json` 经 `scripts/sync-agent-configs` 同步生成），使用绝对路径适配，无需手动配置。
+> 💡 Goose 配置已内置于 `.goose/config.yaml`（由 `vocabcraft.plugin/runtime/goose.json` 经 `scripts/sync-agent-configs` 同步生成），使用绝对路径适配，无需手动配置。
 
 ##### WorkBuddy / Hermes（个人级配置）
 
-WorkBuddy 与 Hermes **仅支持个人级配置**，无法读取项目目录中的 MCP 配置，因此不纳入 `.agents/` 同步体系。改用个人目录加载同一套配置：
+WorkBuddy 与 Hermes **仅支持个人级配置**，无法读取项目目录中的 MCP 配置，因此不纳入 `vocabcraft.plugin/` 同步体系。改用个人目录加载同一套配置：
 
 1. 运行安装脚本：`.\install.ps1 -AgentRuntime workbuddy`（或 `bash install.sh --agent-runtime workbuddy`）、`...\hermes` 同理
 2. 安装脚本写入个人目录 `~/.workbuddy/mcp.json`（Windows 为 `%USERPROFILE%\.workbuddy`）/ `~/.hermes`（Windows 为 `%USERPROFILE%\.hermes`），并将 `AGENTS.md` 与 `skills/` 以符号链接形式接入项目（失败降级复制）
@@ -195,67 +197,29 @@ WorkBuddy 与 Hermes **仅支持个人级配置**，无法读取项目目录中�
 
 ```
 vocabcraft/
-├── .agents/                                  # 配置层（AAIF 唯一真相源：runtime/、skills/、AGENTS.md）
-├── vocabcraft-mcp/                           # MCP Server 服务层（Python）
-│   ├── src/vocabcraft_mcp/
-│   │   ├── server.py                         # FastMCP 服务入口（main 函数）
-│   │   ├── models.py                         # Pydantic v2 数据模型（词汇/考题/记忆状态）
-│   │   ├── storage.py                        # JSON 存储引擎（原子写、部分更新）
-│   │   ├── algorithms.py                     # SM-2 遗忘曲线算法
-│   │   ├── tools/                            # MCP Tools（解析 / CRUD / 排程 / 考题 / 评分 / 统计 / 导出）
-│   │   ├── prompts/                          # AI Prompt 模板（词汇解析 / 考题生成 / 评分）
-│   │   └── resources/                        # MCP Resources（遗忘曲线 / 语言包 / 考题模板）
-│   ├── tests/                                # 测试套件（单元 + 集成）
-│   ├── data/                                 # 运行时数据（被 .gitignore，保留 .gitkeep）
-│   │   ├── vocabs/                           # 词汇记录 JSON
-│   │   ├── reviews/                          # 复习排程 JSON
-│   │   ├── quizzes/                          # 考题与作答 JSON
-│   │   ├── images/                           # 图片文件
-│   │   └── exports/                          # 导出文件
-│   ├── pyproject.toml                        # Python 项目配置（入口 vocabcraft-mcp）
-│   └── uv.lock                               # 依赖锁定文件
-│
-├── .agents/                                  # 配置层（AAIF 唯一真相源，只改这里）
+├── vocabcraft.plugin/                         # Agent Plugin 根目录（AAIF 唯一真相源，单一目录、可整体分发）
+│   ├── plugin.json                            # Agent Plugins 1.0 manifest
+│   ├── mcp.json                              # MCP 启动配置（标准 mcpServers stdio）
+│   ├── AGENTS.md                             # 统一规则源（五个运行时共用，只改这里）
+│   ├── tools.json / triggers.json / workflows.json  # AAIF 声明（脚本生成，勿手改）
 │   ├── runtime/                              # 各平台 MCP 运行时配置源
-│   │   ├── trae.json                         # Trae 项目级 MCP 配置源
-│   │   ├── opencode.json                     # opencode 配置源
-│   │   ├── goose.json                        # Goose 配置源
-│   │   └── codebuddy.json                    # CodeBuddy 配置源
+│   │   ├── trae.json / opencode.json / goose.json / codebuddy.json
 │   ├── skills/                               # Skills 源文件（同步到五平台）
-│   │   ├── vocabcraft-capture/               # /capture 拍照录入
-│   │   ├── vocabcraft-review/                # /review 复习排程
-│   │   ├── vocabcraft-quiz/                  # /quiz 考题与评分
-│   │   ├── vocabcraft-stats/                 # /stats 统计
-│   │   └── vocabcraft-export/                # /export 导出
-│   ├── AGENTS.md                             # 统一规则源（五个运行时共用）
-│   ├── tools.json                            # AAIF 工具声明（脚本从 MCP server 自省生成，勿手改）
-│   ├── triggers.json                         # AAIF 触发器声明（脚本从 Skills 生成，勿手改）
-│   └── workflows.json                        # AAIF 工作流声明（脚本从 Skills 生成，勿手改）
+│   │   ├── vocabcraft-capture/ ... vocabcraft-export/
+│   └── vocabcraft-mcp/                       # MCP Server 服务层（Python，内联自包含）
+│       ├── src/vocabcraft_mcp/               # server.py / models.py / storage.py / algorithms.py / tools/ / prompts/ / resources/
+│       ├── tests/                            # 测试套件（单元 + 集成）
+│       ├── data/                             # 运行时数据（被 .gitignore，保留 .gitkeep）
+│       │   ├── vocabs/ reviews/ quizzes/ images/ exports/
+│       ├── pyproject.toml                    # 入口 vocabcraft-mcp
+│       └── uv.lock                           # 依赖锁定文件
 │
-├── .trae/                                    # Trae 配置（scripts/sync-agent-configs 生成）
-├── .opencode/                                # OpenCode 配置（scripts/sync-agent-configs 生成）
-├── .codebuddy/                               # CodeBuddy 配置（scripts/sync-agent-configs 生成）
-├── .goose/                                   # Goose 配置（scripts/sync-agent-configs 生成）
-├── .workbuddy/                               # WorkBuddy 个人级 harness（仅含 README.md，配置由安装脚本写入个人目录）
-├── .hermes/                                  # Hermes 个人级 harness（仅含 README.md，配置由安装脚本写入个人目录）
-│
-├── .github/
-│   └── workflows/
-│       ├── test.yml                          # CI：单元 + 集成测试（3.12/3.13）
-│       └── release.yml                       # Release：push tag → 自动打包 + 上传
-│
-├── scripts/                                  # 开发者工具
-│   ├── build-release.ps1                     # Windows 发布包构建（PowerShell）
-│   ├── build-release.sh                      # Linux/macOS 发布包构建（bash，与 .ps1 逻辑对齐）
-│   ├── generate-goose-config.py              # Goose 配置生成器（goose.json → .goose/config.yaml）
-│   ├── sync-agent-configs.ps1               # 将 .agents/ 同步到 .trae/opencode/codebuddy/goose（PowerShell）
-│   └── sync-agent-configs.sh                # 将 .agents/ 同步到 .trae/opencode/codebuddy/goose（bash）
-├── install.ps1                               # Windows 安装脚本
-├── install.sh                                # Linux/macOS 安装脚本
-├── QUICKSTART.md                             # 5 分钟快速上手
-├── DEPLOY.md                                 # 详细部署指南
-├── README.md                                 # 本文件
-└── LICENSE                                   # MIT
+├── .trae/ .opencode/ .codebuddy/ .goose/      # 各平台配置（scripts/sync-agent-configs 生成）
+├── .workbuddy/ .hermes/                       # 个人级 harness（仅 README.md，配置由安装脚本写入个人目录）
+├── .github/workflows/                         # test.yml / release.yml
+├── scripts/                                  # 开发者工具（sync / generate / build-release / install）
+├── install.ps1 / install.sh
+└── QUICKSTART.md / DEPLOY.md / CHANGELOG.md / README.md / LICENSE
 ```
 
 ## 架构设计说明
@@ -266,34 +230,34 @@ vocabcraft/
 
 | 层级 | 位置 | 用途 |
 |------|------|------|
-| **服务层** | `vocabcraft-mcp/` | 纯 Python MCP Server，通用，不绑定任何客户端，可独立发布 |
-| **配置层** | `.agents/` | AAIF 唯一真相源，定义 Skills 流程与约束（单一真相源），同步生成 `.trae/` 等各平台目录 |
+| **服务层** | `vocabcraft.plugin/vocabcraft-mcp/` | 纯 Python MCP Server，通用，不绑定任何客户端，可独立发布；内联于插件目录，使插件完全自包含 |
+| **配置层** | `vocabcraft.plugin/` | AAIF 唯一真相源，定义 Skills 流程与约束（单一真相源），同步生成 `.trae/` 等各平台目录 |
 
 ### AGENTS.md 统一规则源
 
-`.agents/AGENTS.md` 是五个运行时共用的统一规则源，包含：
+`vocabcraft.plugin/AGENTS.md` 是五个运行时共用的统一规则源，包含：
 
 - **业务规则** — 采集规则、复习规则、交互规则、数据安全规则
 - **开发规范** — 代码规范、安全规则、合规规则、质量规则、流程规则
 - **架构定义** — 系统架构、MCP Tools 参考
 - **命令参考** — /capture、/review、/quiz、/stats、/export 的触发条件与约束
 
-五个运行时（Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）都读取 `.agents/AGENTS.md`，保证行为一致；WorkBuddy 与 Hermes 两个个人级 harness 通过安装脚本建立的符号链接同样读取同一份 `.agents/AGENTS.md` 与 `.agents/skills/`，行为无任何差异。
+五个运行时（Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）都读取 `vocabcraft.plugin/AGENTS.md`，保证行为一致；WorkBuddy 与 Hermes 两个个人级 harness 通过安装脚本建立的符号链接同样读取同一份 `vocabcraft.plugin/AGENTS.md` 与 `vocabcraft.plugin/skills/`，行为无任何差异。
 
 ### 多运行时适配
 
 项目同时支持 **Trae IDE CN / Trae Work CN**、**CodeBuddy**、**OpenCode** 和 **Goose** 五个 Agent Runtime，核心机制：
 
-1. **统一规则源** — `.agents/AGENTS.md` 是唯一的规则与行为定义文件，五个运行时共用
-2. **开发时源文件** — `.agents/` 是 Skills 和 MCP 配置的开发时源文件（编辑在这里进行）
-3. **同步生成** — 运行 `.\scripts\sync-agent-configs.ps1`（或 `.\scripts\sync-agent-configs.sh`）将 `.agents/skills/` 与 `.agents/runtime/` 同步到 `.trae/`、`.opencode/`、`.codebuddy/` 和 `.goose/` 对应目录
+1. **统一规则源** — `vocabcraft.plugin/AGENTS.md` 是唯一的规则与行为定义文件，五个运行时共用
+2. **开发时源文件** — `vocabcraft.plugin/` 是 Skills 和 MCP 配置的开发时源文件（编辑在这里进行）
+3. **同步生成** — 运行 `.\scripts\sync-agent-configs.ps1`（或 `.\scripts\sync-agent-configs.sh`）将 `vocabcraft.plugin/skills/` 与 `vocabcraft.plugin/runtime/` 同步到 `.trae/`、`.opencode/`、`.codebuddy/` 和 `.goose/` 对应目录
 4. **各运行时独立配置目录** — `.trae/`（Trae）、`.opencode/`（OpenCode）、`.codebuddy/`（CodeBuddy）、`.goose/`（Goose）各自独立，互不干扰
 
 ### 为什么要分离？
 
 1. **职责清晰**: 代码归代码，配置归配置
-2. **可复用**: `vocabcraft-mcp/` 可单独在任何 MCP 客户端中使用
-3. **单一真相源**: `.agents/AGENTS.md` 是唯一的规则与行为定义，Skills 配置在 `.agents/` 下编辑，同步到其他运行时
+2. **可复用**: `vocabcraft.plugin/vocabcraft-mcp/` 可单独在任何 MCP 客户端中使用
+3. **单一真相源**: `vocabcraft.plugin/AGENTS.md` 是唯一的规则与行为定义，Skills 配置在 `vocabcraft.plugin/` 下编辑，同步到其他运行时
 4. **Git 友好**: 项目结构一目了然，`.trae/` 即 Trae 配置根目录
 5. **多运行时友好**: 一份 AGENTS.md，五个运行时共用，同步脚本自动生成各运行时配置
 
@@ -324,7 +288,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ### Q: 多个 Agent Runtime 能否同时使用？
 
-可以。五个运行时（Trae IDE CN / Trae Work CN、CodeBuddy、OpenCode、Goose）共用同一份 `.agents/AGENTS.md` 规则源，各自有独立的配置目录。首次运行或修改 Skills 后，执行同步脚本确保各运行时配置一致：
+可以。五个运行时（Trae IDE CN / Trae Work CN、CodeBuddy、OpenCode、Goose）共用同一份 `vocabcraft.plugin/AGENTS.md` 规则源，各自有独立的配置目录。首次运行或修改 Skills 后，执行同步脚本确保各运行时配置一致：
 
 ```powershell
 .\scripts\sync-agent-configs.ps1          # Windows
@@ -344,7 +308,7 @@ MIT License
 ### 本地运行测试
 
 ```bash
-cd vocabcraft-mcp
+cd vocabcraft.plugin/vocabcraft-mcp
 
 # 单元 + 集成测试
 uv sync --extra dev

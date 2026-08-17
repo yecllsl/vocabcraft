@@ -6,7 +6,7 @@
         "run",
         "--no-sync",
         "--directory",
-        "${workspaceFolder}/vocabcraft-mcp",
+        "${workspaceFolder}/vocabcraft.plugin/vocabcraft-mcp",
         "vocabcraft-mcp"
       ]
     }

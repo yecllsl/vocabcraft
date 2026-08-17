@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-    同步 .agents/ 配置到各平台目录。
+    同步 vocabcraft.plugin/ 配置到各平台目录。
 .DESCRIPTION
-    从 .agents/runtime/ 目录读取配置，生成 .trae/、.opencode/、.codebuddy/、.goose/ 配置。
-    .agents/ 是 AAIF 标准的唯一配置源。
+    从 vocabcraft.plugin/runtime/ 目录读取配置，生成 .trae/、.opencode/、.codebuddy/、.goose/ 配置。
+    vocabcraft.plugin/ 是 AAIF 标准的唯一配置源。
 .PARAMETER SkipTrae
     跳过 Trae 配置生成。
 .PARAMETER SkipOpencode
@@ -23,7 +23,7 @@ param(
 $ErrorActionPreference = "Stop"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 
-$AgentsDir = Join-Path $ProjectRoot ".agents"
+$AgentsDir = Join-Path $ProjectRoot "vocabcraft.plugin"
 $AgentsRuntime = Join-Path $AgentsDir "runtime"
 $AgentsSkills = Join-Path $AgentsDir "skills"
 $AgentsMd = Join-Path $AgentsDir "AGENTS.md"
@@ -34,7 +34,7 @@ if (-not (Test-Path $AgentsMd)) { Write-Error "AGENTS.md 不存在: $AgentsMd"; 
 
 Write-Host "=== VocabCraft AAIF Config Sync ===" -ForegroundColor Cyan
 Write-Host "项目根目录: $ProjectRoot"
-Write-Host "配置源: .agents/ (AAIF 标准)"
+Write-Host "配置源: vocabcraft.plugin/ (AAIF 标准)"
 
 function Sync-Skills {
     param([string]$TargetDir)
@@ -103,8 +103,8 @@ function New-AaifDeclarations {
     $Uv = Get-Command uv -ErrorAction SilentlyContinue
     if (-not $Uv) { Write-Error "未找到 uv，无法生成 AAIF 声明文件（tools.json/triggers.json/workflows.json）"; exit 1 }
     $DeclScript = Join-Path $PSScriptRoot "generate-aaif-declarations.py"
-    $McpDir = Join-Path $ProjectRoot "vocabcraft-mcp"
-    Write-Host "生成 AAIF 声明文件 → .agents/" -ForegroundColor Yellow
+    $McpDir = Join-Path $ProjectRoot "vocabcraft.plugin" "vocabcraft-mcp"
+    Write-Host "生成 AAIF 声明文件 → vocabcraft.plugin/" -ForegroundColor Yellow
     uv run --no-sync --directory $McpDir python $DeclScript
     if ($LASTEXITCODE -ne 0) { Write-Error "AAIF 声明文件生成失败"; exit 1 }
     Write-Host "  已生成 tools.json / triggers.json / workflows.json" -ForegroundColor Green

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate AAIF platform runtime configs into .agents/runtime/.
+"""Generate AAIF platform runtime configs into vocabcraft.plugin/runtime/.
 
 Mirrors the previous Node script (scripts/generate-platform-configs.js) but uses
 the project's Python stack. The generated files are consumed by
@@ -15,7 +15,7 @@ import json
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-RUNTIME_DIR = PROJECT_ROOT / ".agents" / "runtime"
+RUNTIME_DIR = PROJECT_ROOT / "vocabcraft.plugin" / "runtime"
 RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -28,7 +28,7 @@ def generate_trae() -> dict:
                     "run",
                     "--no-sync",
                     "--directory",
-                    "${workspaceFolder}/vocabcraft-mcp",
+                    "${workspaceFolder}/vocabcraft.plugin/vocabcraft-mcp",
                     "vocabcraft-mcp",
                 ],
             }
@@ -42,10 +42,10 @@ def generate_opencode() -> dict:
             "vocabcraft-mcp": {
                 "type": "local",
                 "command": ["uv", "run", "--no-sync", "vocabcraft-mcp"],
-                "cwd": "vocabcraft-mcp",
+                "cwd": "vocabcraft.plugin/vocabcraft-mcp",
             }
         },
-        "instructions": [".agents/AGENTS.md"],
+        "instructions": ["vocabcraft.plugin/AGENTS.md"],
     }
 
 
@@ -58,7 +58,7 @@ def generate_codebuddy() -> dict:
                     "run",
                     "--no-sync",
                     "--directory",
-                    "${workspaceFolder}/vocabcraft-mcp",
+                    "${workspaceFolder}/vocabcraft.plugin/vocabcraft-mcp",
                     "vocabcraft-mcp",
                 ],
             }
@@ -81,7 +81,7 @@ def generate_goose() -> dict:
                     "run",
                     "--no-sync",
                     "--directory",
-                    "vocabcraft-mcp",
+                    "vocabcraft.plugin/vocabcraft-mcp",
                     "vocabcraft-mcp",
                 ],
                 "timeout": 300,
@@ -104,7 +104,7 @@ def main() -> None:
     (RUNTIME_DIR / "goose.json").write_text(
         json.dumps(generate_goose(), indent=2) + "\n", encoding="utf-8"
     )
-    print("已生成所有平台配置 (.agents/runtime/)")
+    print("已生成所有平台配置 (vocabcraft.plugin/runtime/)")
 
 
 if __name__ == "__main__":

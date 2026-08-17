@@ -35,7 +35,7 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ~/.cache/uv
-        key: ${{ runner.os }}-uv-${{ hashFiles('vocabcraft-mcp/uv.lock') }}
+        key: ${{ runner.os }}-uv-${{ hashFiles('vocabcraft.plugin/vocabcraft-mcp/uv.lock') }}
         restore-keys: |
           ${{ runner.os }}-uv-
 
@@ -43,19 +43,19 @@ jobs:
       # 仅安装 dev 依赖；paddleocr/paddlepaddle 已在 pyproject.toml 拆到 optional[ocr]
       # 单元测试 OCR 用例通过 mock 验证，不会真正调用 paddle
       run: |
-        cd vocabcraft-mcp
+        cd vocabcraft.plugin/vocabcraft-mcp
         uv sync --extra dev
 
     - name: Run unit & integration tests
       run: |
-        cd vocabcraft-mcp
+        cd vocabcraft.plugin/vocabcraft-mcp
         uv run pytest tests/ -v --cov=src --cov-report=xml --cov-fail-under=80 -m "not e2e"
 
     - name: Upload coverage
       if: matrix.python-version == '3.12' && always()
       uses: codecov/codecov-action@v6
       with:
-        files: ./vocabcraft-mcp/coverage.xml
+        files: ./vocabcraft.plugin/vocabcraft-mcp/coverage.xml
         fail_ci_if_error: false
 
   # ──────────────────────────────────────────
@@ -78,32 +78,32 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ~/.cache/uv
-        key: ${{ runner.os }}-uv-${{ hashFiles('vocabcraft-mcp/uv.lock') }}
+        key: ${{ runner.os }}-uv-${{ hashFiles('vocabcraft.plugin/vocabcraft-mcp/uv.lock') }}
         restore-keys: |
           ${{ runner.os }}-uv-
 
     - name: Install dependencies (incl. QC tools)
       run: |
-        cd vocabcraft-mcp
+        cd vocabcraft.plugin/vocabcraft-mcp
         uv sync --extra dev
 
     - name: ruff
       run: |
-        cd vocabcraft-mcp
+        cd vocabcraft.plugin/vocabcraft-mcp
         uv run ruff check .
 
     - name: mypy
       run: |
-        cd vocabcraft-mcp
+        cd vocabcraft.plugin/vocabcraft-mcp
         uv run mypy src
 
     - name: bandit
       run: |
-        cd vocabcraft-mcp
+        cd vocabcraft.plugin/vocabcraft-mcp
         uv run bandit -r src -c pyproject.toml
 
   # ──────────────────────────────────────────
-  # 配置漂移检查：四平台生成目录必须与 .agents 真相源一致
+  # 配置漂移检查：四平台生成目录必须与 vocabcraft.plugin 真相源一致
   # 作为 pre-commit 钩子的 CI 兜底（防止绕过钩子 push 时漂移悄悄进仓库）
   # ──────────────────────────────────────────
   config-drift:
@@ -152,13 +152,13 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ~/.cache/uv
-        key: ${{ runner.os }}-uv-e2e-${{ hashFiles('vocabcraft-mcp/uv.lock') }}
+        key: ${{ runner.os }}-uv-e2e-${{ hashFiles('vocabcraft.plugin/vocabcraft-mcp/uv.lock') }}
         restore-keys: |
           ${{ runner.os }}-uv-e2e-
 
     - name: Install dependencies
       run: |
-        cd vocabcraft-mcp
+        cd vocabcraft.plugin/vocabcraft-mcp
         uv sync --extra dev
 
     - name: Install Playwright system deps
@@ -179,12 +179,12 @@ jobs:
 
     - name: Install Playwright Chromium
       run: |
-        cd vocabcraft-mcp
+        cd vocabcraft.plugin/vocabcraft-mcp
         uv run playwright install chromium
 
     - name: Run E2E tests
       run: |
-        cd vocabcraft-mcp
+        cd vocabcraft.plugin/vocabcraft-mcp
         uv run pytest tests/ -v -m e2e
 
     - name: Upload Playwright traces on failure
@@ -192,5 +192,5 @@ jobs:
       uses: actions/upload-artifact@v5
       with:
         name: playwright-traces-${{ matrix.python-version }}
-        path: vocabcraft-mcp/test-results/
+        path: vocabcraft.plugin/vocabcraft-mcp/test-results/
         if-no-files-found: ignore

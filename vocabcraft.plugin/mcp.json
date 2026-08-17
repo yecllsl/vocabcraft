@@ -8,7 +8,7 @@
         "run",
         "--no-sync",
         "--directory",
-        "${PLUGIN_ROOT}/../vocabcraft-mcp",
+        "${PLUGIN_ROOT}/vocabcraft-mcp",
         "vocabcraft-mcp"
       ],
       "cwd": "${PLUGIN_ROOT}"

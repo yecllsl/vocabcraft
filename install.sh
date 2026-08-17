@@ -7,7 +7,7 @@
 #   ./install.sh
 #
 # 可选参数：
-#   --fix-path       将 .agents/runtime 中 ${workspaceFolder} 替换为绝对路径（并重新同步各平台目录）
+#   --fix-path       将 vocabcraft.plugin/runtime 中 ${workspaceFolder} 替换为绝对路径（并重新同步各平台目录）
 #   --agent-runtime  配置 Agent 运行时 (trae/codebuddy/opencode/goose/all/workbuddy/hermes)
 #                  trae/codebuddy/opencode/goose 为项目级运行时；workbuddy/hermes 为个人级 harness
 #
@@ -43,7 +43,7 @@ echo ""
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ──────────────────────────────────────────
-# 个人级 harness 安装辅助函数（WorkBuddy / Hermes 仅支持个人级配置，不走 .agents/ 同步）
+# 个人级 harness 安装辅助函数（WorkBuddy / Hermes 仅支持个人级配置，不走 vocabcraft.plugin/ 同步）
 # ──────────────────────────────────────────
 install_personal_harness() {
     local harness_name="$1"
@@ -80,7 +80,7 @@ install_personal_harness() {
         printf '        "run",\n'
         printf '        "--no-sync",\n'
         printf '        "--directory",\n'
-        printf '        "%s/vocabcraft-mcp",\n' "$PROJECT_ROOT"
+        printf '        "%s/vocabcraft.plugin/vocabcraft-mcp",\n' "$PROJECT_ROOT"
         printf '        "vocabcraft-mcp"\n'
         printf '      ]\n'
         printf '    }\n'
@@ -90,8 +90,8 @@ install_personal_harness() {
     echo "  [ok] 已写入 MCP 注册: $mcp_path"
 
     # 5. 符号链接 AGENTS.md 与 skills/（失败降级复制）
-    link_or_copy ".agents/AGENTS.md" "$cfg_dir/AGENTS.md" "AGENTS.md"
-    link_or_copy ".agents/skills" "$cfg_dir/skills" "skills/"
+    link_or_copy "vocabcraft.plugin/AGENTS.md" "$cfg_dir/AGENTS.md" "AGENTS.md"
+    link_or_copy "vocabcraft.plugin/skills" "$cfg_dir/skills" "skills/"
 }
 
 link_or_copy() {
@@ -162,7 +162,7 @@ echo "  ✓ Python $PYTHON_VERSION"
 echo "[3/5] 安装基础依赖..."
 echo "  图片采集由宿主 LLM 多模态直接解析，无需安装 OCR 引擎。"
 
-cd "$PROJECT_ROOT/vocabcraft-mcp"
+cd "$PROJECT_ROOT/vocabcraft.plugin/vocabcraft-mcp"
 
 echo "  正在安装依赖包..."
 if ! uv sync 2>&1; then
@@ -271,9 +271,9 @@ else
 fi
 
 # ──────────────────────────────────────────
-# mcp.json 路径回退方案（多运行时共用，AAIF 真相源 .agents/runtime）
+# mcp.json 路径回退方案（多运行时共用，AAIF 真相源 vocabcraft.plugin/runtime）
 # ──────────────────────────────────────────
-RUNTIME_DIR="$PROJECT_ROOT/.agents/runtime"
+RUNTIME_DIR="$PROJECT_ROOT/vocabcraft.plugin/runtime"
 TRAE_JSON="$RUNTIME_DIR/trae.json"
 if [ -f "$TRAE_JSON" ]; then
     if grep -q '${workspaceFolder}' "$TRAE_JSON" 2>/dev/null; then
@@ -287,7 +287,7 @@ fi
 
 if [ "$FIX_PATH" -eq 1 ]; then
     echo ""
-    echo "  正在修复 runtime 配置路径（.agents/runtime）..."
+    echo "  正在修复 runtime 配置路径（vocabcraft.plugin/runtime）..."
     FIXED_ANY=0
     for t in "$RUNTIME_DIR/trae.json" "$RUNTIME_DIR/codebuddy.json"; do
         if [ -f "$t" ]; then

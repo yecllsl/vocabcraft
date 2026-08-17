@@ -38,18 +38,18 @@ env/
 Thumbs.db
 
 # MCP Server 运行时数据（保留 .gitkeep 占位）
-vocabcraft-mcp/data/vocabs/*.json
-vocabcraft-mcp/data/reviews/*.json
-vocabcraft-mcp/data/quizzes/*.json
-vocabcraft-mcp/data/exports/*.json
-vocabcraft-mcp/data/exports/*.md
-vocabcraft-mcp/data/images/*
-vocabcraft-mcp/data/backups/
-!vocabcraft-mcp/data/vocabs/.gitkeep
-!vocabcraft-mcp/data/reviews/.gitkeep
-!vocabcraft-mcp/data/quizzes/.gitkeep
-!vocabcraft-mcp/data/exports/.gitkeep
-!vocabcraft-mcp/data/images/.gitkeep
+vocabcraft.plugin/vocabcraft-mcp/data/vocabs/*.json
+vocabcraft.plugin/vocabcraft-mcp/data/reviews/*.json
+vocabcraft.plugin/vocabcraft-mcp/data/quizzes/*.json
+vocabcraft.plugin/vocabcraft-mcp/data/exports/*.json
+vocabcraft.plugin/vocabcraft-mcp/data/exports/*.md
+vocabcraft.plugin/vocabcraft-mcp/data/images/*
+vocabcraft.plugin/vocabcraft-mcp/data/backups/
+!vocabcraft.plugin/vocabcraft-mcp/data/vocabs/.gitkeep
+!vocabcraft.plugin/vocabcraft-mcp/data/reviews/.gitkeep
+!vocabcraft.plugin/vocabcraft-mcp/data/quizzes/.gitkeep
+!vocabcraft.plugin/vocabcraft-mcp/data/exports/.gitkeep
+!vocabcraft.plugin/vocabcraft-mcp/data/images/.gitkeep
 
 # Logs
 *.log

@@ -24,8 +24,8 @@ $zipPath = Join-Path $distDir "$packageName.zip"
 $gzPath = Join-Path $distDir "$packageName.tar.gz"
 
 # 基线运行时平台（AAIF 4 运行时：Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）
-# .agents/ 为 AAIF 真相源：Skills 与 AGENTS.md 同步自 .agents/，平台配置生成自 .agents/runtime/*.json
-$agentsDir = Join-Path $projectRoot ".agents"
+# vocabcraft.plugin/ 为 AAIF 真相源：Skills 与 AGENTS.md 同步自 vocabcraft.plugin/，平台配置生成自 vocabcraft.plugin/runtime/*.json
+$agentsDir = Join-Path $projectRoot "vocabcraft.plugin"
 $agentsRuntime = Join-Path $agentsDir "runtime"
 $agentsSkills = Join-Path $agentsDir "skills"
 $agentsMd = Join-Path $agentsDir "AGENTS.md"
@@ -79,20 +79,20 @@ Write-Ok "cleaned"
 Write-Step "[2/6] Create directory structure..."
 # 顶层目录
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
-# AAIF 真相源子目录（opencode 的 instructions 引用 .agents/AGENTS.md）
-New-Item -ItemType Directory -Path (Join-Path $tempDir ".agents") -Force | Out-Null
+# AAIF 真相源子目录（opencode 的 instructions 引用 vocabcraft.plugin/AGENTS.md）
+New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin") -Force | Out-Null
 # 四个运行时平台目录（Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）
 # 基线约定：每个平台目录都有 skills/ 与 AGENTS.md（Trae 例外：AGENTS.md 放根目录）
 foreach ($p in $platforms) {
     New-Item -ItemType Directory -Path (Join-Path $tempDir $p.Dir "skills") -Force | Out-Null
 }
-# vocabcraft-mcp 子目录
-New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft-mcp\src") -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft-mcp\data\vocabs") -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft-mcp\data\reviews") -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft-mcp\data\quizzes") -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft-mcp\data\exports") -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft-mcp\data\images") -Force | Out-Null
+# vocabcraft.plugin/vocabcraft-mcp 子目录
+New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin/vocabcraft-mcp\src") -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin/vocabcraft-mcp\data\vocabs") -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin/vocabcraft-mcp\data\reviews") -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin/vocabcraft-mcp\data\quizzes") -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin/vocabcraft-mcp\data\exports") -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin/vocabcraft-mcp\data\images") -Force | Out-Null
 Write-Ok "directories created"
 
 # ──────────────────────────────────────────
@@ -100,8 +100,8 @@ Write-Ok "directories created"
 # ──────────────────────────────────────────
 Write-Step "[3/6] Copy AAIF platform configs (.trae/.opencode/.codebuddy/.goose)..."
 
-# opencode 的 instructions 引用 .agents/AGENTS.md，发布包需包含该文件
-Copy-Item -Force $agentsMd (Join-Path $tempDir ".agents\AGENTS.md")
+# opencode 的 instructions 引用 vocabcraft.plugin/AGENTS.md，发布包需包含该文件
+Copy-Item -Force $agentsMd (Join-Path $tempDir "vocabcraft.plugin\AGENTS.md")
 
 function New-GooseReleaseConfig {
     param(
@@ -131,7 +131,7 @@ foreach ($p in $platforms) {
         Copy-Item -Force $agentsMd (Join-Path $platDir "AGENTS.md")
     }
 
-    # 平台配置：来自 AAIF 运行时真相源 .agents/runtime/<ConfigSrc>
+    # 平台配置：来自 AAIF 运行时真相源 vocabcraft.plugin/runtime/<ConfigSrc>
     $cfgSrc = Join-Path $agentsRuntime $p.ConfigSrc
     $cfgDst = Join-Path $platDir $p.ConfigDst
     if ($p.ConfigDst -eq "config.yaml") {
@@ -144,12 +144,12 @@ foreach ($p in $platforms) {
 Write-Ok "AAIF platform configs copied (.trae/.opencode/.codebuddy/.goose)"
 
 # ──────────────────────────────────────────
-# [4/6] 复制 vocabcraft-mcp 源码（白名单）
+# [4/6] 复制 vocabcraft.plugin/vocabcraft-mcp 源码（白名单）
 # ──────────────────────────────────────────
-Write-Step "[4/6] Copy vocabcraft-mcp source..."
+Write-Step "[4/6] Copy vocabcraft.plugin/vocabcraft-mcp source..."
 
-$mcpSrc = Join-Path $projectRoot "vocabcraft-mcp"
-$mcpDst = Join-Path $tempDir "vocabcraft-mcp"
+$mcpSrc = Join-Path $projectRoot "vocabcraft.plugin/vocabcraft-mcp"
+$mcpDst = Join-Path $tempDir "vocabcraft.plugin/vocabcraft-mcp"
 
 # 4a. 顶层配置文件
 $mcpTopFiles = @("pyproject.toml", "uv.lock", ".python-version")
@@ -209,9 +209,9 @@ Write-Ok "source copied"
 # ──────────────────────────────────────────
 Write-Step "[5/6] Copy docs and install scripts..."
 $topFiles = @("install.ps1", "install.sh", "README.md", "DEPLOY.md", "QUICKSTART.md", "LICENSE", "AGENTS.md", ".workbuddy/README.md", ".hermes/README.md")
-# AGENTS.md 的真相源是 .agents/AGENTS.md（同步生成根目录 AGENTS.md，供 Trae 使用）
+# AGENTS.md 的真相源是 vocabcraft.plugin/AGENTS.md（同步生成根目录 AGENTS.md，供 Trae 使用）
 foreach ($f in $topFiles) {
-    $srcName = if ($f -eq "AGENTS.md") { ".agents\AGENTS.md" } else { $f }
+    $srcName = if ($f -eq "AGENTS.md") { "vocabcraft.plugin\AGENTS.md" } else { $f }
     $src = Join-Path $projectRoot $srcName
     if (Test-Path $src) {
         $dst = Join-Path $tempDir $f
@@ -230,7 +230,7 @@ Write-Step "[6/6] Verify and pack..."
 # 验证关键文件存在（四个平台配置均来自 AAIF 真相源，需全部齐备）
 $requiredFiles = @(
     "AGENTS.md",
-    ".agents\AGENTS.md",
+    "vocabcraft.plugin\AGENTS.md",
     ".trae\mcp.json",
     ".opencode\opencode.json",
     ".codebuddy\mcp.json",
@@ -239,8 +239,8 @@ $requiredFiles = @(
     ".opencode\skills",
     ".codebuddy\skills",
     ".goose\skills",
-    "vocabcraft-mcp\pyproject.toml",
-    "vocabcraft-mcp\src\vocabcraft_mcp\server.py",
+    "vocabcraft.plugin/vocabcraft-mcp\pyproject.toml",
+    "vocabcraft.plugin/vocabcraft-mcp\src\vocabcraft_mcp\server.py",
     "install.ps1",
     "install.sh",
     "README.md"
@@ -261,7 +261,7 @@ if ($missing.Count -gt 0) {
 }
 
 # 验证没有误包含 .venv
-$venvCheck = Join-Path $tempDir "vocabcraft-mcp\.venv"
+$venvCheck = Join-Path $tempDir "vocabcraft.plugin/vocabcraft-mcp\.venv"
 if (Test-Path $venvCheck) {
     Write-Err ".venv was accidentally included! Aborting."
     exit 1

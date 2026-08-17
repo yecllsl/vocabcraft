@@ -47,7 +47,7 @@ chmod +x install.sh
 
 ## 多运行时共用配置（核心）
 
-VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。Trae / OpenCode / CodeBuddy 共用 `.agents/runtime/trae.json`（同步生成 `.trae/mcp.json`）与 `.agents/AGENTS.md`（同步到根目录与各平台）；Goose 单独走 `.agents/runtime/goose.json`（同步生成 `.goose/config.yaml`，使用绝对路径，无需 `${workspaceFolder}`）。无需单独配置。
+VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。Trae / OpenCode / CodeBuddy 共用 `vocabcraft.plugin/runtime/trae.json`（同步生成 `.trae/mcp.json`）与 `vocabcraft.plugin/AGENTS.md`（同步到根目录与各平台）；Goose 单独走 `vocabcraft.plugin/runtime/goose.json`（同步生成 `.goose/config.yaml`，使用绝对路径，无需 `${workspaceFolder}`）。无需单独配置。
 
 ```
 ┌─────────────────────────┐  ┌─────────────────────────┐  ┌──────────────────┐  ┌──────────────┐
@@ -58,13 +58,13 @@ VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。T
              └────────────────────┬─────────────────────────────────┘                │
                                   ↓                                                  ↓
               ┌───────────────────────┐                                              │
-              │  .agents/runtime/trae.json │  ← 同步生成 .trae/mcp.json，各运行时各自替换路径          │
+              │  vocabcraft.plugin/runtime/trae.json │  ← 同步生成 .trae/mcp.json，各运行时各自替换路径          │
               │  ${workspaceFolder}   │                                              │
-              │  /vocabcraft-mcp      │                                              │
+              │  /vocabcraft.plugin/vocabcraft-mcp      │                                              │
               └───────────────────────┘                                              │
                                   ↓                                                  │
               ┌───────────────────────┐                                              │
-              │  vocabcraft-mcp/      │  ← 同一份 MCP Server 代码                      │
+              │  vocabcraft.plugin/vocabcraft-mcp/      │  ← 同一份 MCP Server 代码                      │
               │  (uv run 入口)         │                                              │
               └───────────────────────┘                                              │
 ```
@@ -93,18 +93,18 @@ VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。T
 2. 用 Goose 打开项目文件夹，会自动读取 `.goose/config.yaml` 加载 vocabcraft-mcp（绝对路径，无需 `${workspaceFolder}`）
 
 **WorkBuddy / Hermes（个人级配置）**
-WorkBuddy 与 Hermes **仅支持个人级配置**，无法读取项目目录中的 MCP 配置，因此不纳入 `.agents/` 同步体系。改用个人目录加载同一套配置：
+WorkBuddy 与 Hermes **仅支持个人级配置**，无法读取项目目录中的 MCP 配置，因此不纳入 `vocabcraft.plugin/` 同步体系。改用个人目录加载同一套配置：
 1. 运行 `.\install.ps1 -AgentRuntime workbuddy`（或 `bash install.sh --agent-runtime workbuddy`）、`...\hermes` 同理
 2. 安装脚本写入个人目录 `~/.workbuddy/mcp.json`（Windows 为 `%USERPROFILE%\.workbuddy`）/ `~/.hermes`，并将 `AGENTS.md` 与 `skills/` 以符号链接接入项目（失败降级复制）
 3. 启动对应客户端即可加载 vocabcraft-mcp
 
 > 💡 配置文件路径、MCP stdio 格式、符号链接加载机制与兼容性详见 `.workbuddy/README.md` 与 `.hermes/README.md`。
 
-> ✅ 五个项目级运行时 + WorkBuddy/Hermes 个人级 harness 共用同一份 `.agents/AGENTS.md` 规则与 `.agents/skills/` 技能，行为一致，可同时启用。在哪个环境中使用 `/capture` 等命令，就由哪个环境的 MCP Server 实例响应。
+> ✅ 五个项目级运行时 + WorkBuddy/Hermes 个人级 harness 共用同一份 `vocabcraft.plugin/AGENTS.md` 规则与 `vocabcraft.plugin/skills/` 技能，行为一致，可同时启用。在哪个环境中使用 `/capture` 等命令，就由哪个环境的 MCP Server 实例响应。
 
 ### mcp.json 配置内容
 
-项目级 MCP 配置源在 `.agents/runtime/trae.json`，经 `scripts/sync-agent-configs` 同步生成 `.trae/mcp.json`：
+项目级 MCP 配置源在 `vocabcraft.plugin/runtime/trae.json`，经 `scripts/sync-agent-configs` 同步生成 `.trae/mcp.json`：
 
 ```json
 {
@@ -114,7 +114,7 @@ WorkBuddy 与 Hermes **仅支持个人级配置**，无法读取项目目录中�
       "args": [
         "run",
         "--directory",
-        "${workspaceFolder}/vocabcraft-mcp",
+        "${workspaceFolder}/vocabcraft.plugin/vocabcraft-mcp",
         "vocabcraft-mcp"
       ]
     }
@@ -138,7 +138,7 @@ WorkBuddy 与 Hermes **仅支持个人级配置**，无法读取项目目录中�
 ./install.sh --fix-path
 ```
 
-这会自动将 `.agents/runtime` 配置中的 `${workspaceFolder}` 替换为实际绝对路径（移动项目后需重新运行修复）。
+这会自动将 `vocabcraft.plugin/runtime` 配置中的 `${workspaceFolder}` 替换为实际绝对路径（移动项目后需重新运行修复）。
 
 也可手动在运行时中添加 MCP 服务器：
 
@@ -146,12 +146,12 @@ WorkBuddy 与 Hermes **仅支持个人级配置**，无法读取项目目录中�
 |------|-----|
 | 服务器名称 | `vocabcraft-mcp` |
 | 命令 | `uv` |
-| 参数 | `run --directory 你的项目路径/vocabcraft-mcp vocabcraft-mcp` |
+| 参数 | `run --directory 你的项目路径/vocabcraft.plugin/vocabcraft-mcp vocabcraft-mcp` |
 
 ### 验证配置
 
 ```powershell
-cd vocabcraft-mcp
+cd vocabcraft.plugin/vocabcraft-mcp
 uv run vocabcraft-mcp
 ```
 
@@ -159,7 +159,7 @@ uv run vocabcraft-mcp
 
 ## Skills 与规则配置
 
-Skills 位于 `.agents/skills/`（AAIF 真相源），经 `scripts/sync-agent-configs` 同步到 `.trae/` / `.opencode/` / `.codebuddy/` / `.goose/`。修改后重启运行时即可生效。
+Skills 位于 `vocabcraft.plugin/skills/`（AAIF 真相源），经 `scripts/sync-agent-configs` 同步到 `.trae/` / `.opencode/` / `.codebuddy/` / `.goose/`。修改后重启运行时即可生效。
 
 ### Skills 说明（vocabcraft-* 业务编排）
 
@@ -173,7 +173,7 @@ Skills 位于 `.agents/skills/`（AAIF 真相源），经 `scripts/sync-agent-co
 
 ### 规则来源
 
-业务规则与开发规范统一存放于 **`.agents/AGENTS.md`**（五个项目级运行时共用，单一真相源，同步到根目录与各平台；WorkBuddy / Hermes 个人级 harness 通过安装脚本符号链接同样读取该文件），不再拆分到 `.trae/rules/`。各 skill 的「约束规则」内联在其 `SKILL.md` 中。
+业务规则与开发规范统一存放于 **`vocabcraft.plugin/AGENTS.md`**（五个项目级运行时共用，单一真相源，同步到根目录与各平台；WorkBuddy / Hermes 个人级 harness 通过安装脚本符号链接同样读取该文件），不再拆分到 `.trae/rules/`。各 skill 的「约束规则」内联在其 `SKILL.md` 中。
 
 ## 常见问题
 
@@ -189,43 +189,43 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ### Q2: MCP Server 启动失败
 
 1. Python 版本是否 >= 3.12
-2. 依赖是否安装成功（`cd vocabcraft-mcp && uv sync`）
+2. 依赖是否安装成功（`cd vocabcraft.plugin/vocabcraft-mcp && uv sync`）
 3. mcp.json 中的路径是否正确
 
 ```powershell
-cd vocabcraft-mcp
+cd vocabcraft.plugin/vocabcraft-mcp
 uv sync
 ```
 
 ### Q3: 运行时无法识别 MCP Server
 
 1. 是否已启用项目级 MCP / 已信任 vocabcraft-mcp
-2. `.trae/mcp.json` 文件是否存在（由 `.agents/runtime/trae.json` 同步生成）
+2. `.trae/mcp.json` 文件是否存在（由 `vocabcraft.plugin/runtime/trae.json` 同步生成）
 3. 是否已重启运行时
 
 → 运行 `.\install.ps1 -FixPath` 修复路径，或手动添加（见上文）。
 
 ### Q4: 五个运行时能否同时使用？
 
-可以，且推荐。各运行时共用同一份 `.agents/` 配置（`trae.json` 同步生成 `.trae/mcp.json`；`goose.json` 同步生成 `.goose/config.yaml`；`.agents/AGENTS.md` 同步到根目录与各平台）：
+可以，且推荐。各运行时共用同一份 `vocabcraft.plugin/` 配置（`trae.json` 同步生成 `.trae/mcp.json`；`goose.json` 同步生成 `.goose/config.yaml`；`vocabcraft.plugin/AGENTS.md` 同步到根目录与各平台）：
 
 - **同一台机器**：各运行时打开同一个项目文件夹，各自启用 MCP 即可，`${workspaceFolder}` 会各自替换为当前路径。
-- **数据共享**：各运行时 MCP Server 实例读写同一个 `vocabcraft-mcp/data/` 目录，词汇数据互通。
+- **数据共享**：各运行时 MCP Server 实例读写同一个 `vocabcraft.plugin/vocabcraft-mcp/data/` 目录，词汇数据互通。
 - **配置隔离**：若希望各运行时使用独立数据，可复制整个项目文件夹到不同目录，各自运行 `-FixPath` 修复为独立绝对路径。
 
 ### Q5: Skills / Commands 不生效
 
-1. `.agents/skills/vocabcraft-*` 目录和 SKILL.md 是否存在
+1. `vocabcraft.plugin/skills/vocabcraft-*` 目录和 SKILL.md 是否存在
 2. 文件名和格式是否正确
 3. 运行时是否重启
 
-→ 重启对应运行时，检查 `.agents` 目录结构是否完整（应有 `skills/` 子目录）。
+→ 重启对应运行时，检查 `vocabcraft.plugin` 目录结构是否完整（应有 `skills/` 子目录）。
 
 ### Q6: 如何升级到新版本
 
-1. 备份 `vocabcraft-mcp/data/` 目录（含词汇记录与复习状态）
+1. 备份 `vocabcraft.plugin/vocabcraft-mcp/data/` 目录（含词汇记录与复习状态）
 2. 从 GitHub Releases 下载新版并解压到新目录
-3. 把旧版 `data/` 复制到新版的 `vocabcraft-mcp/data/` 对应位置
+3. 把旧版 `data/` 复制到新版的 `vocabcraft.plugin/vocabcraft-mcp/data/` 对应位置
 4. 在新目录运行 `install.ps1` / `install.sh`（自动 `uv sync`）
 5. 在运行时中重新启用项目级 MCP
 
@@ -233,7 +233,7 @@ uv sync
 
 ```
 vocabcraft/
-├── vocabcraft-mcp/                       # MCP Server 服务层（Python）
+├── vocabcraft.plugin/vocabcraft-mcp/             # MCP Server 服务层（Python，内联自包含）
 │   ├── src/vocabcraft_mcp/
 │   │   ├── server.py                      # FastMCP 服务入口
 │   │   ├── models.py                      # Pydantic v2 数据模型
@@ -250,7 +250,7 @@ vocabcraft/
 │   ├── pyproject.toml                     # Python 项目配置
 │   └── uv.lock                            # 依赖锁定
 │
-├── .agents/                                # 配置层（AAIF 唯一真相源，只改这里）
+├── vocabcraft.plugin/                                # 配置层（AAIF 唯一真相源，只改这里）
 │   ├── runtime/{trae,opencode,codebuddy,goose}.json    # 各平台 MCP 配置源
 │   ├── skills/vocabcraft-*                # capture/review/quiz/stats/export（源文件）
 │   ├── AGENTS.md                          # 统一规则源
@@ -283,9 +283,9 @@ bash scripts/build-release.sh 0.6.2
 
 构建脚本采用**白名单复制策略**，只打包必要文件：
 
-- `vocabcraft-mcp/src/`、`vocabcraft-mcp/tests/`、`pyproject.toml`、`uv.lock`
-- `.agents/skills/vocabcraft-*`
-- `.agents/runtime/trae.json`（注入 `${workspaceFolder}` 变量版本，同步到 `.trae/mcp.json`）
+- `vocabcraft.plugin/vocabcraft-mcp/src/`、`vocabcraft.plugin/vocabcraft-mcp/tests/`、`pyproject.toml`、`uv.lock`
+- `vocabcraft.plugin/skills/vocabcraft-*`
+- `vocabcraft.plugin/runtime/trae.json`（注入 `${workspaceFolder}` 变量版本，同步到 `.trae/mcp.json`）
 - 顶层文档（README / QUICKSTART / DEPLOY / CHANGELOG / LICENSE）与安装脚本
 
 自动排除：`__pycache__/`、`.pytest_cache/`、`*.pyc`、`.venv/`、`.git/`、`.vscode/`、`data/*.json`（用户数据只放 `.gitkeep`）、`dist/`。
@@ -293,7 +293,7 @@ bash scripts/build-release.sh 0.6.2
 ### 本地运行测试
 
 ```bash
-cd vocabcraft-mcp
+cd vocabcraft.plugin/vocabcraft-mcp
 uv sync --extra dev
 uv run pytest tests/ -m "not e2e"
 ```

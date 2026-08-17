@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """从真实源生成 AAIF 包声明文件。
 
-产出 `.agents/` 下三个 AAIF 标准声明文件：
+产出 `vocabcraft.plugin/` 下三个 AAIF 标准声明文件：
   - tools.json      ← 自省实时 MCP 服务（vocabcraft_mcp.server）得到工具与参数 schema
   - triggers.json   ← 聚合各 Skill 的「When to Use」自然语言触发词 + 命令别名
   - workflows.json  ← 聚合各 Skill 实际引用的 MCP 工具（按文中出现顺序）
 
-这些文件是 AAIF 工具链（`agents publish .agents`）消费的声明产物，属**生成文件**，
+这些文件是 AAIF 工具链（`agents publish vocabcraft.plugin`）消费的声明产物，属**生成文件**，
 请勿手工编辑；运行本脚本或 `scripts/sync-agent-configs` 即可重新生成。
 
 工具自省依赖 vocabcraft-mcp 的运行环境，因此须通过 uv 运行（脚本位于项目级
-根目录 scripts/，故 --directory 后需用 ../scripts/ 相对路径指向它）：
+根目录 scripts/，故 --directory 后需用 ../../scripts/ 相对路径指向它，因为 uv 会把
+工作目录切到 vocabcraft.plugin/vocabcraft-mcp 下）：
 
-    uv run --no-sync --directory vocabcraft-mcp python ../scripts/generate-aaif-declarations.py
+    uv run --no-sync --directory vocabcraft.plugin/vocabcraft-mcp python ../../scripts/generate-aaif-declarations.py
 """
 from __future__ import annotations
 
@@ -24,9 +25,9 @@ from pathlib import Path
 import tomllib
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-AGENTS_DIR = PROJECT_ROOT / ".agents"
+AGENTS_DIR = PROJECT_ROOT / "vocabcraft.plugin"
 SKILLS_DIR = AGENTS_DIR / "skills"
-MCP_PYPROJECT = PROJECT_ROOT / "vocabcraft-mcp" / "pyproject.toml"
+MCP_PYPROJECT = PROJECT_ROOT / "vocabcraft.plugin" / "vocabcraft-mcp" / "pyproject.toml"
 
 TOOLS_SCHEMA = "https://agents.aaif.io/schemas/tools.json"
 TRIGGERS_SCHEMA = "https://agents.aaif.io/schemas/triggers.json"
@@ -50,7 +51,7 @@ def introspect_tools() -> list[dict]:
     except ImportError as exc:  # 环境守卫：必须在 uv 环境运行
         raise SystemExit(
             "无法导入 vocabcraft_mcp。请通过 uv 运行本脚本：\n"
-            "  uv run --no-sync --directory vocabcraft-mcp "
+            "  uv run --no-sync --directory vocabcraft.plugin/vocabcraft-mcp "
             "python ../scripts/generate-aaif-declarations.py"
         ) from exc
     tools = asyncio.run(server.mcp.list_tools())

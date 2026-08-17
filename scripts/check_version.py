@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """版本一致性校验 —— AGENTS.md「质量与合规规则 > 文档」的机械防线
 
-真相源：`vocabcraft-mcp/pyproject.toml` 的 `[project].version`。
+真相源：`vocabcraft.plugin/vocabcraft-mcp/pyproject.toml` 的 `[project].version`。
 
 校验项：
     1. CHANGELOG.md 最新条目版本
@@ -28,7 +28,7 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PYPROJECT = ROOT / "vocabcraft-mcp" / "pyproject.toml"
+PYPROJECT = ROOT / "vocabcraft.plugin" / "vocabcraft-mcp" / "pyproject.toml"
 
 # 只匹配确定指向本项目版本的位置，避免把依赖约束（如 fastmcp>=3.0.0）当成误报
 PATTERNS: list[tuple[str, str]] = [
