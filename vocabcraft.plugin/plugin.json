@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "vocabcraft",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "VocabCraft 词汇学习与制作一体 Agent Plugin：本地优先、基于 SM-2 遗忘曲线的词汇学习系统（拍照/文本采集 → 结构化 → 复习排程 → 出题评分）。",
   "author": "yecll",
   "license": "MIT",

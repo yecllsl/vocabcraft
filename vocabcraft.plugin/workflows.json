@@ -43,7 +43,7 @@
       "steps": [
         {
           "action": "generate_quiz",
-          "description": "调用 generate_quiz：为指定词汇生成考题（选择/填空/拼写/释义）"
+          "description": "调用 generate_quiz：为指定词汇生成考题（选择/填空/拼写/释义/文言文释义）"
         },
         {
           "action": "grade_quiz",
@@ -61,7 +61,7 @@
         },
         {
           "action": "generate_quiz",
-          "description": "调用 generate_quiz：为指定词汇生成考题（选择/填空/拼写/释义）"
+          "description": "调用 generate_quiz：为指定词汇生成考题（选择/填空/拼写/释义/文言文释义）"
         },
         {
           "action": "grade_quiz",

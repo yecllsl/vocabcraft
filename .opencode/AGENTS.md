@@ -172,6 +172,9 @@ Excel 批量导入：自然语言"导入Excel文件/从表格添加词汇"，调
 |------|------|----------|
 | `parse_vocab` | 结构化解析词汇（词形/音标/词性/释义/例句），三模式：对话多模态 > 本地路径 > 文本 | 无参(对话)/`image_path`/`text`/`language` |
 | `save_vocab` | 保存词汇并初始化 SM-2 记忆状态 | 解析后的结构化数据 |
+| `query_vocab` | 按条件查询词汇记录 | `filters` |
+| `update_vocab` | 更新已有词汇记录 | `vocab_data` |
+| `delete_vocab` | 删除词汇记录 | `vocab_id` |
 | `schedule_review` | 查询到期需复习的词汇列表 | `vocab_id`(可选) |
 | `generate_quiz` | 为单个词汇生成指定题型考题 | `vocab_id`、`quiz_type` |
 | `grade_quiz` | 评分并更新记忆状态 | `quiz_id`、用户作答 |

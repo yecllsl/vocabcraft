@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.7.0] - 2026-08-17
 
 ### 目录重构：单目录自包含 Agent Plugin
 - **`.agents/` 重命名为 `vocabcraft.plugin/`**：彻底采用 Agent Plugins 1.0 规范，目录名即插件标识，不再使用点前缀隐藏目录。
@@ -11,6 +11,13 @@ All notable changes to this project will be documented in this file.
 - **脚本与配置同步**：`scripts/`（sync / generate-* / build-release / install / pre-commit / check-config-drift）、`package.json`、`test.yml`、根 `.gitignore` 全部指向新布局；`package.json` 的 `generate-*` 脚本因 server 下移两级，相对脚本路径由 `../scripts/` 改为 `../../scripts/`。
 - **数据零迁移**：`Storage` 基于 server `__file__` 解析 `data/`，随 server 内联自动落在 `vocabcraft.plugin/vocabcraft-mcp/data/`，历史词汇数据无需迁移。
 - **服务器名不变**：MCP server 名（`vocabcraft-mcp`）与 Python 包名保持不变，仅目录位置变更，各 harness 个人级配置无需改键。
+
+### 文档与脚本一致性修正
+- **A**：`AGENTS.md`（真相源与根镜像）的「MCP Tools 参考」表补全 `query_vocab` / `update_vocab` / `delete_vocab`，现完整列出 11 个工具，与 `server.py` 注册、`tools.json` 一致。
+- **B**：修正 `CHANGELOG.md` 中「`.workbuddy/` → `.codebuddy/`」表述，明确为**项目级配置目录重命名**；个人级 harness 的 WorkBuddy / Hermes 仍为 `~/.workbuddy` / `~/.hermes`，互不影响（按现状保留）。
+- **C**：`generate_quiz` 的题型描述（`server.py` 校验 + 生成的 `tools.json` / `workflows.json`）补全「文言文释义」，与项目定义的 5 题型一致。
+- **D**：`scripts/generate-aaif-declarations.py` docstring 示例路径 `../scripts/` 修正为 `../../scripts/`。
+- **E**：`scripts/build-release.ps1` / `build-release.sh` 版本默认值改为从真相源 `pyproject.toml` 动态读取，消除硬编码漂移（与 `check_version.py` 同一真相源）。
 
 ## [0.6.2] - 2026-08-16
 
@@ -71,7 +78,7 @@ All notable changes to this project will be documented in this file.
 - `build-release.*` 打包清单新增 `.workbuddy/README.md` 与 `.hermes/README.md`，便于发布包内用户查阅个人级配置说明。
 
 ### Runtime 重命名：WorkBuddy → CodeBuddy
-- 项目面向的是腾讯 **CodeBuddy**（AI 代码编辑器），因此将生成目录由 `.workbuddy/` 改为 `.codebuddy/`，与 CodeBuddy 的配置目录约定一致。
+- 项目面向的是腾讯 **CodeBuddy**（AI 代码编辑器），因此将**项目级**生成目录由 `.workbuddy/` 改为 `.codebuddy/`，与 CodeBuddy 的配置目录约定一致；个人级 harness 的 WorkBuddy / Hermes 仍为 `~/.workbuddy` / `~/.hermes`，互不影响。
 - `.agents/runtime/workbuddy.json` → `codebuddy.json`；`scripts/sync-agent-configs.*`、`generate-platform-configs.py`、`install.*`、`.git/hooks/pre-commit` 的目标运行时由 workbuddy 改为 codebuddy。
 - 修正先前对 OpenCode 的误判：`.opencode/opencode.json` 是 OpenCode 官方支持的（且优先级更高）的项目配置位置，配置本身有效。
 
@@ -83,7 +90,7 @@ All notable changes to this project will be documented in this file.
 - `install.*` 增加 `goose` 运行时选项；`README.md` / `QUICKSTART.md` / `DEPLOY.md` 增加 Goose 配置说明与运行时计数更新。
 
 ### 文档清理：移除遗留 WorkBuddy 引用
-- 清理 `.workbuddy/` / `WorkBuddy` 过时引用（`WorkBuddy` 此前已重命名为 `CodeBuddy`，项目实际仅生成 `.codebuddy/`）：同步修正 `.agents/AGENTS.md`、`AGENTS.md`、`README.md`、`DEPLOY.md`、`scripts/pre-commit`、`install.*` 中的生成目录列表、pre-commit 拦截名单与安装提示文案。
+- 清理混淆「WorkBuddy 个人级 harness」与「项目级 `.codebuddy/` 生成目录」的过时表述：`WorkBuddy` 仍作为个人级 harness 保留（install.* 写入 `~/.workbuddy`），与项目级 CodeBuddy（`.codebuddy/`）互不混淆；同步修正 `.agents/AGENTS.md`、`AGENTS.md`、`README.md`、`DEPLOY.md`、`scripts/pre-commit`、`install.*` 中的安装提示文案。
 
 ### 版本号统一
 - 版本号统一至 0.5.5（pyproject.toml / package.json / install.* / README.md / DEPLOY.md / QUICKSTART.md / CHANGELOG / build-release.*），并通过 `scripts/check_version.py` 校验。

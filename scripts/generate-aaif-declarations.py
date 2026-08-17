@@ -52,7 +52,7 @@ def introspect_tools() -> list[dict]:
         raise SystemExit(
             "无法导入 vocabcraft_mcp。请通过 uv 运行本脚本：\n"
             "  uv run --no-sync --directory vocabcraft.plugin/vocabcraft-mcp "
-            "python ../scripts/generate-aaif-declarations.py"
+            "python ../../scripts/generate-aaif-declarations.py"
         ) from exc
     tools = asyncio.run(server.mcp.list_tools())
     return [

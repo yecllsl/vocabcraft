@@ -8,7 +8,7 @@
 #   dist\VocabCraft-v0.6.2.zip
 
 param(
-    [string]$Version = "0.6.2"
+    [string]$Version
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,6 +17,15 @@ $ErrorActionPreference = "Stop"
 # 路径定义
 # ──────────────────────────────────────────
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+
+# 版本默认从真相源 pyproject.toml 读取，避免硬编码漂移（check_version.py 的同一真相源）
+if (-not $Version) {
+    $pyProject = Join-Path $projectRoot "vocabcraft.plugin/vocabcraft-mcp/pyproject.toml"
+    $m = Get-Content $pyProject -Raw | Select-String -Pattern '^version\s*=\s*"([^"]+)"'
+    if ($m) { $Version = $m.Matches.Groups[1].Value }
+    else { Write-Error "无法从 pyproject.toml 读取版本号"; exit 1 }
+}
+
 $distDir = Join-Path $projectRoot "dist"
 $packageName = "VocabCraft-v$Version"
 $tempDir = Join-Path $distDir $packageName

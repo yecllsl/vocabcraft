@@ -63,7 +63,7 @@ def schedule_review(vocab_id: str = "", language: str = "") -> dict:
 
 @mcp.tool()
 def generate_quiz(vocab_id: str, quiz_type: str = "") -> dict:
-    """为指定词汇生成考题（选择/填空/拼写/释义）"""
+    """为指定词汇生成考题（选择/填空/拼写/释义/文言文释义）"""
     return quiz.generate_quiz(vocab_id, quiz_type)
 
 

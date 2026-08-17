@@ -12,13 +12,22 @@
 
 set -euo pipefail
 
-VERSION="${1:-0.6.2}"
+VERSION="${1:-}"
 
 # ──────────────────────────────────────────
 # 路径定义
 # ──────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# 版本默认从真相源 pyproject.toml 读取，避免硬编码漂移（check_version.py 的同一真相源）
+if [ -z "$VERSION" ]; then
+    VERSION="$(grep -m1 '^version = ' "$PROJECT_ROOT/vocabcraft.plugin/vocabcraft-mcp/pyproject.toml" | sed 's/^version = "\(.*\)"$/\1/')"
+    if [ -z "$VERSION" ]; then
+        echo "错误: 无法从 pyproject.toml 读取版本号" >&2
+        exit 1
+    fi
+fi
 DIST_DIR="$PROJECT_ROOT/dist"
 PACKAGE_NAME="VocabCraft-v$VERSION"
 STAGING_DIR="$DIST_DIR/$PACKAGE_NAME"
