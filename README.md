@@ -2,7 +2,7 @@
 
 词汇学习与制作一体化解决方案，同时支持 **Trae IDE CN / Trae Work CN**、**CodeBuddy**、**OpenCode** 和 **Goose** 五个项目级 Agent Runtime，以及 **WorkBuddy** / **Hermes** 两个个人级 harness。核心流程：拍照 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。
 
-项目以 **Agent Plugins 1.0**（AAIF / Linux 基金会）规范打包：`vocabcraft.plugin/` 即为插件根，含 `plugin.json`（manifest）、`mcp.json`（MCP 启动配置）与 `skills/`（5 个 Skill），可作为标准 Agent Plugin 分发到任意兼容客户端；各 harness 原生目录（`.trae/` 等）仍由 `scripts/sync-agent-configs` 单向生成，互不冲突。
+项目以 **Agent Plugins 1.0**（Vercel 等厂商中立打包规范，与 AAIF 无隶属关系）规范打包：`vocabcraft.plugin/` 即为插件根，含 `plugin.json`（manifest）、`mcp.json`（MCP 启动配置）与 `skills/`（5 个 Skill），可作为标准 Agent Plugin 分发到任意兼容客户端；各 harness 原生目录（`.trae/` 等）仍由 `scripts/sync-agent-configs` 单向生成，互不冲突。
 
 ## 核心功能
 
@@ -197,7 +197,7 @@ WorkBuddy 与 Hermes **仅支持个人级配置**，无法读取项目目录中�
 
 ```
 vocabcraft/
-├── vocabcraft.plugin/                         # Agent Plugin 根目录（AAIF 唯一真相源，单一目录、可整体分发）
+├── vocabcraft.plugin/                         # Agent Plugin 根目录（单一配置与打包真相源，单一目录、可整体分发）
 │   ├── plugin.json                            # Agent Plugins 1.0 manifest
 │   ├── mcp.json                              # MCP 启动配置（标准 mcpServers stdio）
 │   ├── AGENTS.md                             # 统一规则源（五个运行时共用，只改这里）

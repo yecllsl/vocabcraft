@@ -31,7 +31,7 @@ All notable changes to this project will be documented in this file.
 - 修复 config-drift 脚本 bash 特有语法致 dash 下 CI 失败；pre-commit 钩子改为内容一致性校验，并在 CI 新增配置漂移检查兜底。
 
 ### 打包规范（Agent Plugins 1.0）
-- 将 `.agents/` 对齐为 **Agent Plugins 1.0**（AAIF / Linux 基金会）规范：新增 `plugin.json`（manifest）与 `mcp.json`（标准 `mcpServers` stdio 配置），`skills/` 保持 5 个 Skill；插件可作为标准 Agent Plugin 分发，各 harness 原生目录仍由 `scripts/sync-agent-configs` 单向生成、互不冲突。
+- 将 `.agents/` 对齐为 **Agent Plugins 1.0**（Vercel 等厂商中立打包规范，与 AAIF 无隶属关系）规范：新增 `plugin.json`（manifest）与 `mcp.json`（标准 `mcpServers` stdio 配置），`skills/` 保持 5 个 Skill；插件可作为标准 Agent Plugin 分发，各 harness 原生目录仍由 `scripts/sync-agent-configs` 单向生成、互不冲突。
 - 版本号统一为 0.6.2（`plugin.json` 与 `package.json` / `tools.json` 一致）。
 
 ### 不变
