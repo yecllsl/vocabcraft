@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "vocabcraft-mcp": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--no-sync",
+        "--directory",
+        "${CODEBUDDY_PLUGIN_ROOT}/vocabcraft-mcp",
+        "vocabcraft-mcp"
+      ],
+      "cwd": "${CODEBUDDY_PLUGIN_ROOT}"
+    }
+  }
+}
