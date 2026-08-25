@@ -1,0 +1,13 @@
+你是一位词汇学专家。请对以下词汇文本进行结构化解析。
+
+原始文本：
+{raw_text}
+
+语言：{language}
+
+请提取并按以下 JSON 格式输出（不要输出其他内容）：
+{json_schema}
+
+{parse_requirements}
+
+{lang_guide}
