@@ -1,6 +1,6 @@
 # VocabCraft - 词汇学习与制作一体 Agent Plugin（skills + MCP 一体）
 
-基于 Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose 的词汇学习与制作一体化解决方案。核心流程：拍照 → 多模态 LLM 解析图片（对话上传 > 本地路径 > 文本） → 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期出考题 → 作答评分更新记忆状态。配置统一维护在 `vocabcraft.plugin/`（AAIF 真相源），通过 `scripts/sync-agent-configs` 单向同步到 `.trae/` / `.opencode/` / `.codebuddy/` / `.goose/`。
+基于 Trae / CodeBuddy / OpenCode / Goose 的词汇学习与制作一体化解决方案。核心流程：拍照 → 多模态 LLM 解析图片（对话上传 > 本地路径 > 文本） → 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期出考题 → 作答评分更新记忆状态。配置统一维护在 `vocabcraft.plugin/`（AAIF 真相源），通过 `scripts/sync-agent-configs` 单向同步到 `.trae/` / `.opencode/` / `.codebuddy/` / `.goose/`。
 
 > **打包形态**：`vocabcraft.plugin/` 同时是符合 **Agent Plugins 1.0**（Vercel 等厂商中立打包规范，与 AAIF 无隶属关系）规范的 Agent Plugin —— 根目录含 `plugin.json`（manifest）、`mcp.json`（MCP 启动配置）、`skills/`（5 个 Skill），可直接作为标准插件分发到任意兼容客户端。各 harness 原生目录（`.trae/` 等）仍由 `scripts/sync-agent-configs` 单向生成，互不冲突。
 
@@ -15,7 +15,7 @@
 ```
 用户交互层
 ├── 对话式交互 (命令 / 自然语言)
-├── 五运行时: Trae IDE CN + Trae Work CN + CodeBuddy + OpenCode + Goose
+├── 四运行时: Trae + CodeBuddy + OpenCode + Goose
 ├── Web 可视化 (vocabcraft_mcp/web — 同包内 FastAPI 子模块，非独立组件)
     ↓
 Skills 编排层 (配置定义，由 vocabcraft.plugin/skills/ 同步五平台)

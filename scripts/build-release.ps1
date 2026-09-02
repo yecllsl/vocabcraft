@@ -32,7 +32,7 @@ $tempDir = Join-Path $distDir $packageName
 $zipPath = Join-Path $distDir "$packageName.zip"
 $gzPath = Join-Path $distDir "$packageName.tar.gz"
 
-# 基线运行时平台（AAIF 4 运行时：Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）
+# 基线运行时平台（AAIF 4 运行时：Trae / CodeBuddy / OpenCode / Goose）
 # vocabcraft.plugin/ 为 AAIF 真相源：Skills 与 AGENTS.md 同步自 vocabcraft.plugin/，平台配置生成自 vocabcraft.plugin/runtime/*.json
 $agentsDir = Join-Path $projectRoot "vocabcraft.plugin"
 $agentsRuntime = Join-Path $agentsDir "runtime"
@@ -90,7 +90,7 @@ Write-Step "[2/6] Create directory structure..."
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 # AAIF 真相源子目录（opencode 的 instructions 引用 vocabcraft.plugin/AGENTS.md）
 New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin") -Force | Out-Null
-# 四个运行时平台目录（Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）
+# 四个运行时平台目录（Trae / CodeBuddy / OpenCode / Goose）
 # 基线约定：每个平台目录都有 skills/ 与 AGENTS.md（Trae 例外：AGENTS.md 放根目录）
 foreach ($p in $platforms) {
     New-Item -ItemType Directory -Path (Join-Path $tempDir $p.Dir "skills") -Force | Out-Null
@@ -217,7 +217,7 @@ Write-Ok "source copied"
 # [5/6] 复制顶层文档和安装脚本
 # ──────────────────────────────────────────
 Write-Step "[5/6] Copy docs and install scripts..."
-$topFiles = @("install.ps1", "install.sh", "README.md", "DEPLOY.md", "QUICKSTART.md", "LICENSE", "AGENTS.md", ".workbuddy/README.md", ".hermes/README.md")
+$topFiles = @("install.ps1", "install.sh", "README.md", "DEPLOY.md", "QUICKSTART.md", "LICENSE", "AGENTS.md")
 # AGENTS.md 的真相源是 vocabcraft.plugin/AGENTS.md（同步生成根目录 AGENTS.md，供 Trae 使用）
 foreach ($f in $topFiles) {
     $srcName = if ($f -eq "AGENTS.md") { "vocabcraft.plugin\AGENTS.md" } else { $f }
@@ -325,7 +325,7 @@ Write-Host "    $zipPath ($zipSizeMB MB)" -ForegroundColor Cyan
 if (Test-Path $gzPath) { Write-Host "    $gzPath" -ForegroundColor Cyan }
 Write-Host "  Files:    $fileCount" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  User steps (支持的运行时: Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose):" -ForegroundColor White
+Write-Host "  User steps (支持的运行时: Trae / CodeBuddy / OpenCode / Goose):" -ForegroundColor White
 Write-Host "  1. Extract VocabCraft-v$Version.zip" -ForegroundColor DarkGray
 Write-Host "  2. Run install.ps1 (或 Linux/macOS 下 install.sh)" -ForegroundColor DarkGray
 Write-Host "  3. 在所用 IDE 中打开该文件夹，启用项目级 MCP 即可" -ForegroundColor DarkGray

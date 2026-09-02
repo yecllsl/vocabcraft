@@ -30,9 +30,9 @@ chmod +x install.sh && ./install.sh
 
 VocabCraft 支持多个 Agent 运行时，选择你使用的环境进行配置：
 
-#### Trae IDE CN / Trae Work CN
+#### Trae
 
-1. 用 **Trae IDE CN** 或 **Trae Work CN** 打开项目文件夹
+1. 用 **Trae** 打开项目文件夹
 2. 进入 **设置 → MCP**
 3. 打开 **"启用项目级 MCP"** 开关
 4. 重启 Trae
@@ -58,21 +58,6 @@ VocabCraft 支持多个 Agent 运行时，选择你使用的环境进行配置�
    ```
 
 2. 用 Goose 打开项目文件夹，会自动读取 `.goose/config.yaml` 加载 vocabcraft-mcp
-
-#### WorkBuddy / Hermes（个人级配置）
-
-WorkBuddy 与 Hermes **仅支持个人级配置**，无法读取项目目录中的 MCP 配置，改用个人目录加载同一套配置：
-
-```powershell
-.\install.ps1 -AgentRuntime workbuddy  # Windows：写入 ~/.workbuddy
-.\install.ps1 -AgentRuntime hermes     # Windows：写入 ~/.hermes
-```
-```bash
-bash install.sh --agent-runtime workbuddy  # Linux/macOS：写入 ~/.workbuddy
-bash install.sh --agent-runtime hermes     # Linux/macOS：写入 ~/.hermes
-```
-
-安装脚本会检测可执行文件、写入 `mcp.json`（绝对路径），并将 `AGENTS.md` 与 `skills/` 以符号链接接入项目（失败降级复制）。启动对应客户端即可使用。详见 `.workbuddy/README.md` 与 `.hermes/README.md`。
 
 ### 第 4 步：开始使用
 

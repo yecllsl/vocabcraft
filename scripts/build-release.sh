@@ -35,7 +35,7 @@ ZIP_PATH="$DIST_DIR/$PACKAGE_NAME.zip"
 ZST_PATH="$DIST_DIR/$PACKAGE_NAME.tar.zst"
 GZ_PATH="$DIST_DIR/$PACKAGE_NAME.tar.gz"
 
-# 基线运行时平台（AAIF 4 运行时：Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）
+# 基线运行时平台（AAIF 4 运行时：Trae / CodeBuddy / OpenCode / Goose）
 # vocabcraft.plugin/ 为 AAIF 真相源：Skills 与 AGENTS.md 同步自 vocabcraft.plugin/，平台配置生成自 vocabcraft.plugin/runtime/*.json
 PYTHON_BIN="$(command -v python3 || command -v python || echo python3)"
 AGENTS_DIR="$PROJECT_ROOT/vocabcraft.plugin"
@@ -211,7 +211,7 @@ log_ok "source copied"
 # [5/6] 复制顶层文档和安装脚本
 # ──────────────────────────────────────────
 log_step "[5/6] Copy docs and install scripts..."
-for f in install.ps1 install.sh README.md DEPLOY.md QUICKSTART.md LICENSE AGENTS.md .workbuddy/README.md .hermes/README.md; do
+for f in install.ps1 install.sh README.md DEPLOY.md QUICKSTART.md LICENSE AGENTS.md; do
     # AGENTS.md 的真相源是 vocabcraft.plugin/AGENTS.md（同步生成根目录 AGENTS.md）
     src_f="$PROJECT_ROOT/$f"
     [ "$f" = "AGENTS.md" ] && src_f="$PROJECT_ROOT/vocabcraft.plugin/AGENTS.md"
@@ -313,7 +313,7 @@ echo ""
 echo -e "  Package: ${CYAN}$PACKAGE_NAME${NC}"
 echo -e "  Files:   ${CYAN}$file_count${NC}"
 echo ""
-echo "  User steps (支持的运行时: Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose):"
+echo "  User steps (支持的运行时: Trae / CodeBuddy / OpenCode / Goose):"
 echo "  1. Extract VocabCraft-v$VERSION.{zip|tar.zst|tar.gz}"
 echo "  2. Run install.ps1 (或 Linux/macOS 下 install.sh)"
 echo "  3. 在所用 IDE 中打开该文件夹，启用项目级 MCP 即可"

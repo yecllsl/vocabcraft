@@ -1,6 +1,6 @@
 # VocabCraft - 词汇学习与制作一体 Agent Plugin（skills + MCP 一体）
 
-词汇学习与制作一体化解决方案，同时支持 **Trae IDE CN / Trae Work CN**、**CodeBuddy**、**OpenCode** 和 **Goose** 五个项目级 Agent Runtime，以及 **WorkBuddy** / **Hermes** 两个个人级 harness。核心流程：拍照 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。
+词汇学习与制作一体化解决方案，同时支持 **Trae**、**CodeBuddy**、**OpenCode** 和 **Goose** 四个项目级 Agent Runtime。核心流程：拍照 → AI 结构化解析 → 本地保存 → 基于遗忘曲线（SM-2 算法）的复习排程 → 到期自动出考题 → 作答评分更新记忆状态。
 
 项目以 **Agent Plugins 1.0**（Vercel 等厂商中立打包规范，与 AAIF 无隶属关系）规范打包：`vocabcraft.plugin/` 即为插件根，含 `plugin.json`（manifest）、`mcp.json`（MCP 启动配置）与 `skills/`（5 个 Skill），可作为标准 Agent Plugin 分发到任意兼容客户端；各 harness 原生目录（`.trae/` 等）仍由 `scripts/sync-agent-configs` 单向生成，互不冲突。
 
@@ -19,15 +19,14 @@
 ```
 用户交互层
 ├── 对话式交互 (命令 / 自然语言)
-├── 五运行时: Trae + CodeBuddy + OpenCode + Goose (共用 vocabcraft.plugin/AGENTS.md，项目级配置)
-├── 个人级 harness: WorkBuddy + Hermes (仅支持个人级配置，通过个人目录 ~/.workbuddy / ~/.hermes 加载同一份 vocabcraft.plugin/AGENTS.md 与 skills/，详见 .workbuddy/README.md 与 .hermes/README.md)
+├── 四运行时: Trae + CodeBuddy + OpenCode + Goose (共用 vocabcraft.plugin/AGENTS.md，项目级配置)
     ↓
 Skills 编排层 (vocabcraft.plugin/skills/vocabcraft-*: capture / review / quiz / stats / export)
     ↓
 MCP Tools 层 (vocabcraft.plugin/vocabcraft-mcp)
 ├── 结构化解析 → 存储 → SM-2 排程 → 考题生成 → 评分 → 统计 → 导出
     ↓
-Rules 约束层 (vocabcraft.plugin/AGENTS.md — 统一规则源，五个运行时共用)
+Rules 约束层 (vocabcraft.plugin/AGENTS.md — 统一规则源，四个运行时共用)
     ↓
 数据存储层 (本地 JSON 文件，原子写入)
 ```
@@ -47,7 +46,7 @@ Rules 约束层 (vocabcraft.plugin/AGENTS.md — 统一规则源，五个运行�
 
 - Python 3.12+
 - [uv 包管理器](https://docs.astral.sh/uv/)（Windows: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`）
-- Trae IDE CN / Trae Work CN、CodeBuddy、OpenCode 或 Goose（任选其一或全部）
+- Trae、CodeBuddy、OpenCode 或 Goose（任选其一或全部）
 
 ### 安装步骤
 
@@ -76,7 +75,7 @@ chmod +x install.sh
 
 ##### Trae
 
-1. 用 Trae IDE CN 或 Trae Work CN 打开项目文件夹
+1. 用 Trae 打开项目文件夹
 2. 进入 **设置 → MCP**，打开 **"启用项目级 MCP"** 开关
 3. 进入 **设置 → 规则**，开启 **"将 AGENTS.md 包含在上下文中"**
 4. 重启 Trae
@@ -100,16 +99,6 @@ chmod +x install.sh
 2. 用 Goose 打开项目文件夹，会自动读取 `.goose/config.yaml` 加载 vocabcraft-mcp
 
 > 💡 Goose 配置已内置于 `.goose/config.yaml`（由 `vocabcraft.plugin/runtime/goose.json` 经 `scripts/sync-agent-configs` 同步生成），使用绝对路径适配，无需手动配置。
-
-##### WorkBuddy / Hermes（个人级配置）
-
-WorkBuddy 与 Hermes **仅支持个人级配置**，无法读取项目目录中的 MCP 配置，因此不纳入 `vocabcraft.plugin/` 同步体系。改用个人目录加载同一套配置：
-
-1. 运行安装脚本：`.\install.ps1 -AgentRuntime workbuddy`（或 `bash install.sh --agent-runtime workbuddy`）、`...\hermes` 同理
-2. 安装脚本写入个人目录 `~/.workbuddy/mcp.json`（Windows 为 `%USERPROFILE%\.workbuddy`）/ `~/.hermes`（Windows 为 `%USERPROFILE%\.hermes`），并将 `AGENTS.md` 与 `skills/` 以符号链接形式接入项目（失败降级复制）
-3. 启动 WorkBuddy / Hermes 即可加载 vocabcraft-mcp
-
-> 💡 详细说明（配置文件路径、MCP stdio 格式、符号链接加载机制、与现有配置体系兼容性）见 [`.workbuddy/README.md`](.workbuddy/README.md) 与 [`.hermes/README.md`](.hermes/README.md)。
 
 #### 4. 开始使用
 
@@ -200,7 +189,7 @@ vocabcraft/
 ├── vocabcraft.plugin/                         # Agent Plugin 根目录（单一配置与打包真相源，单一目录、可整体分发）
 │   ├── plugin.json                            # Agent Plugins 1.0 manifest
 │   ├── mcp.json                              # MCP 启动配置（标准 mcpServers stdio）
-│   ├── AGENTS.md                             # 统一规则源（五个运行时共用，只改这里）
+│   ├── AGENTS.md                             # 统一规则源（四个运行时共用，只改这里）
 │   ├── tools.json / triggers.json / workflows.json  # AAIF 声明（脚本生成，勿手改）
 │   ├── runtime/                              # 各平台 MCP 运行时配置源
 │   │   ├── trae.json / opencode.json / goose.json / codebuddy.json
@@ -215,7 +204,6 @@ vocabcraft/
 │       └── uv.lock                           # 依赖锁定文件
 │
 ├── .trae/ .opencode/ .codebuddy/ .goose/      # 各平台配置（scripts/sync-agent-configs 生成）
-├── .workbuddy/ .hermes/                       # 个人级 harness（仅 README.md，配置由安装脚本写入个人目录）
 ├── .github/workflows/                         # test.yml / release.yml
 ├── scripts/                                  # 开发者工具（sync / generate / build-release / install）
 ├── install.ps1 / install.sh
@@ -235,20 +223,20 @@ vocabcraft/
 
 ### AGENTS.md 统一规则源
 
-`vocabcraft.plugin/AGENTS.md` 是五个运行时共用的统一规则源，包含：
+`vocabcraft.plugin/AGENTS.md` 是四个运行时共用的统一规则源，包含：
 
 - **业务规则** — 采集规则、复习规则、交互规则、数据安全规则
 - **开发规范** — 代码规范、安全规则、合规规则、质量规则、流程规则
 - **架构定义** — 系统架构、MCP Tools 参考
 - **命令参考** — /capture、/review、/quiz、/stats、/export 的触发条件与约束
 
-五个运行时（Trae IDE CN / Trae Work CN / CodeBuddy / OpenCode / Goose）都读取 `vocabcraft.plugin/AGENTS.md`，保证行为一致；WorkBuddy 与 Hermes 两个个人级 harness 通过安装脚本建立的符号链接同样读取同一份 `vocabcraft.plugin/AGENTS.md` 与 `vocabcraft.plugin/skills/`，行为无任何差异。
+四个运行时（Trae / CodeBuddy / OpenCode / Goose）都读取 `vocabcraft.plugin/AGENTS.md`，保证行为一致。
 
 ### 多运行时适配
 
-项目同时支持 **Trae IDE CN / Trae Work CN**、**CodeBuddy**、**OpenCode** 和 **Goose** 五个 Agent Runtime，核心机制：
+项目同时支持 **Trae**、**CodeBuddy**、**OpenCode** 和 **Goose** 四个 Agent Runtime，核心机制：
 
-1. **统一规则源** — `vocabcraft.plugin/AGENTS.md` 是唯一的规则与行为定义文件，五个运行时共用
+1. **统一规则源** — `vocabcraft.plugin/AGENTS.md` 是唯一的规则与行为定义文件，四个运行时共用
 2. **开发时源文件** — `vocabcraft.plugin/` 是 Skills 和 MCP 配置的开发时源文件（编辑在这里进行）
 3. **同步生成** — 运行 `.\scripts\sync-agent-configs.ps1`（或 `.\scripts\sync-agent-configs.sh`）将 `vocabcraft.plugin/skills/` 与 `vocabcraft.plugin/runtime/` 同步到 `.trae/`、`.opencode/`、`.codebuddy/` 和 `.goose/` 对应目录
 4. **各运行时独立配置目录** — `.trae/`（Trae）、`.opencode/`（OpenCode）、`.codebuddy/`（CodeBuddy）、`.goose/`（Goose）各自独立，互不干扰
@@ -259,7 +247,7 @@ vocabcraft/
 2. **可复用**: `vocabcraft.plugin/vocabcraft-mcp/` 可单独在任何 MCP 客户端中使用
 3. **单一真相源**: `vocabcraft.plugin/AGENTS.md` 是唯一的规则与行为定义，Skills 配置在 `vocabcraft.plugin/` 下编辑，同步到其他运行时
 4. **Git 友好**: 项目结构一目了然，`.trae/` 即 Trae 配置根目录
-5. **多运行时友好**: 一份 AGENTS.md，五个运行时共用，同步脚本自动生成各运行时配置
+5. **多运行时友好**: 一份 AGENTS.md，四个运行时共用，同步脚本自动生成各运行时配置
 
 ## 数据安全
 
@@ -288,7 +276,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ### Q: 多个 Agent Runtime 能否同时使用？
 
-可以。五个运行时（Trae IDE CN / Trae Work CN、CodeBuddy、OpenCode、Goose）共用同一份 `vocabcraft.plugin/AGENTS.md` 规则源，各自有独立的配置目录。首次运行或修改 Skills 后，执行同步脚本确保各运行时配置一致：
+可以。四个运行时（Trae、CodeBuddy、OpenCode、Goose）共用同一份 `vocabcraft.plugin/AGENTS.md` 规则源，各自有独立的配置目录。首次运行或修改 Skills 后，执行同步脚本确保各运行时配置一致：
 
 ```powershell
 .\scripts\sync-agent-configs.ps1          # Windows
