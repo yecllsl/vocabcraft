@@ -10,7 +10,7 @@
     "publish": "agents publish vocabcraft.plugin"
   },
   "keywords": [
-    "aaif",
+    "agent-plugins-1.0",
     "agent",
     "vocabulary",
     "learning",

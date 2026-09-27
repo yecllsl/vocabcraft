@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Harness 支持策略：明确两层
+- 明确 Harness 只支持两层：**Tier 1 — Agent Plugins 1.0 插件标准**（代表 VS Code / Copilot，以 `vocabcraft.plugin/` 插件形态分发，不为单个客户端新增同步目标）；**Tier 2 — 免费额度 / 开箱即用**（Trae / CodeBuddy / OpenCode，原生目录 + `install.*`，CodeBuddy 另有本地市场一键安装）。
+- 明确**不支持**用户级 harness（配置只能写 `~/`），代表 **WorkBuddy、Hermes**；新增 harness 前必须先归入上述两层之一。写入 `vocabcraft.plugin/AGENTS.md` 与 README / DEPLOY / QUICKSTART。
+- 术语更正：AAIF（Agentic AI Foundation）是托管 MCP / AGENTS.md 标准的基金会，不是打包格式；打包标准统一表述为 Agent Plugins 1.0。
+
+### 彻底移除 Goose 支持
+- Goose 未采纳 Agent Plugins 1.0，原「Tier 1 代表」名不副实：删除 `.goose/` 同步目标、`runtime/goose.json`、`generate-goose-config.py`、`install.*` 的 goose 分支、发布包 `.goose` 项及全部文档提及。
+
+### Tier 1 交付通道补齐
+- 发布包新增 `vocabcraft.plugin/plugin.json` 与 `vocabcraft.plugin/mcp.json`，并**首次携带 `vocabcraft.plugin/skills/`**（此前发布包不含插件清单与 skills，无法作为 Agent Plugins 1.0 插件安装），构建脚本 `required` 校验兜底。
+
+### CodeBuddy 插件市场通道
+- `vocabcraft.plugin/.mcp.json` 改用 `${CODEBUDDY_PLUGIN_ROOT}` 占位符，移除本机绝对路径（`D:/yecll/.../python.exe`），换机可复现。
+- `vocabcraft.plugin/.codebuddy-plugin/plugin.json` 增加 `"mcpServers": "./.mcp.json"` 声明。
+- 仓库根新增 `.codebuddy-plugin/marketplace.json` 本地市场清单（CodeBuddy 自有格式），CodeBuddy 可「添加本地市场 → 安装 vocabcraft」。
+
+### 机械防线加固
+- `scripts/check_version.py` 扩展校验 `package.json`、`vocabcraft.plugin/plugin.json`、`vocabcraft.plugin/.codebuddy-plugin/plugin.json`、`.codebuddy-plugin/marketplace.json` 的版本与真相源一致；并在 `.github/workflows/test.yml` 的 `config-drift` job 中实际调用（此前该脚本从未接入 CI）。
+- `scripts/check-config-drift.sh` 与 `scripts/pre-commit` 增加根 `AGENTS.md` 校验 —— 根 `AGENTS.md` 是 Trae 实际读取的规则文件，此前不在任何防线覆盖范围内。
+- 插件清单可移植性校验覆盖正/反斜杠形态的本机绝对路径与 `../` 跨目录引用。
+
+### 文档措辞修正
+- 修正「同步五平台」「五个运行时」等与实际三平台不符的表述；README 新增「支持的 Harness」小节。
+
 ## [0.7.0] - 2026-08-17
 
 ### 目录重构：单目录自包含 Agent Plugin

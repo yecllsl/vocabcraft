@@ -8,12 +8,11 @@ AGENTS_DIR="$PROJECT_ROOT/vocabcraft.plugin"
 AGENTS_RUNTIME="$AGENTS_DIR/runtime"
 AGENTS_SKILLS="$AGENTS_DIR/skills"
 AGENTS_MD="$AGENTS_DIR/AGENTS.md"
-PYTHON_BIN="$(command -v python3 || command -v python || echo python3)"
 
 export PROJECT_ROOT AGENTS_RUNTIME
 
-[ -d "$AGENTS_RUNTIME" ] || { echo "错误: AAIF 运行时配置目录不存在: $AGENTS_RUNTIME"; exit 1; }
-[ -d "$AGENTS_SKILLS" ] || { echo "错误: AAIF 技能目录不存在: $AGENTS_SKILLS"; exit 1; }
+[ -d "$AGENTS_RUNTIME" ] || { echo "错误: 运行时配置目录不存在: $AGENTS_RUNTIME"; exit 1; }
+[ -d "$AGENTS_SKILLS" ] || { echo "错误: 技能目录不存在: $AGENTS_SKILLS"; exit 1; }
 [ -f "$AGENTS_MD" ] || { echo "错误: AGENTS.md 不存在: $AGENTS_MD"; exit 1; }
 
 # ──────────────────────────────────────────
@@ -25,20 +24,18 @@ else
     GREEN=''; YELLOW=''; CYAN=''; NC=''
 fi
 
-echo -e "${CYAN}=== VocabCraft AAIF Config Sync ===${NC}"
+echo -e "${CYAN}=== VocabCraft Config Sync ===${NC}"
 echo "项目根目录: $PROJECT_ROOT"
-echo "配置源: vocabcraft.plugin/ (AAIF 标准)"
+echo "配置源: vocabcraft.plugin/"
 
 SKIP_TRAE=false
 SKIP_OPENCODE=false
 SKIP_CODEBUDDY=false
-SKIP_GOOSE=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --skip-trae) SKIP_TRAE=true; shift ;;
         --skip-opencode) SKIP_OPENCODE=true; shift ;;
         --skip-codebuddy) SKIP_CODEBUDDY=true; shift ;;
-        --skip-goose) SKIP_GOOSE=true; shift ;;
         *) echo "未知参数: $1"; exit 1 ;;
     esac
 done
@@ -96,23 +93,6 @@ generate_codebuddy_config() {
     fi
 }
 
-generate_goose_config() {
-    local goose_dir="$PROJECT_ROOT/.goose"
-    mkdir -p "$goose_dir"
-    local source_config="$AGENTS_RUNTIME/goose.json"
-    if [ -f "$source_config" ]; then
-        echo -e "${YELLOW}生成 Goose 配置 → $goose_dir/config.yaml${NC}"
-        local gen_script="$SCRIPT_DIR/generate-goose-config.py"
-        # 同 generate_aaif_declarations：Windows 上 $SCRIPT_DIR 是 MSYS 路径，
-        # 原生 python3.exe 无法解析，需转为原生 Windows 路径。
-        if command -v cygpath >/dev/null 2>&1; then
-            gen_script="$(cygpath -w "$gen_script")"
-        fi
-        "$PYTHON_BIN" "$gen_script"
-        echo -e "${GREEN}  已生成 Goose 配置${NC}"
-    fi
-}
-
 generate_aaif_declarations() {
     if ! command -v uv >/dev/null 2>&1; then
         echo -e "${RED}未找到 uv，无法生成 AAIF 声明文件（tools.json/triggers.json/workflows.json）${NC}" >&2
@@ -152,11 +132,5 @@ if [ "$SKIP_CODEBUDDY" = false ]; then
     sync_skills "$PROJECT_ROOT/.codebuddy"
     sync_agents_md "$PROJECT_ROOT/.codebuddy"
     generate_codebuddy_config
-fi
-if [ "$SKIP_GOOSE" = false ]; then
-    echo -e "\n${CYAN}--- Goose ---${NC}"
-    sync_skills "$PROJECT_ROOT/.goose"
-    sync_agents_md "$PROJECT_ROOT/.goose"
-    generate_goose_config
 fi
 echo -e "\n${CYAN}=== 同步完成 ===${NC}"

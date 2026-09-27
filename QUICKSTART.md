@@ -28,7 +28,7 @@ chmod +x install.sh && ./install.sh
 
 ### 第 3 步：配置 Agent 运行时
 
-VocabCraft 支持多个 Agent 运行时，选择你使用的环境进行配置：
+VocabCraft 的受支持 Harness 分两层：**Tier 1（Agent Plugins 1.0 插件标准，代表 VS Code / Copilot）** 与 **Tier 2（免费额度、开箱即用：Trae / CodeBuddy / OpenCode）**。选择你使用的环境进行配置：
 
 #### Trae
 
@@ -37,7 +37,18 @@ VocabCraft 支持多个 Agent 运行时，选择你使用的环境进行配置�
 3. 打开 **"启用项目级 MCP"** 开关
 4. 重启 Trae
 
-> 💡 两个环境读取同一份由 `vocabcraft.plugin/runtime/trae.json` 同步生成的 `.trae/mcp.json`，无需单独配置。
+> 💡 Trae 读取由 `vocabcraft.plugin/runtime/trae.json` 同步生成的 `.trae/mcp.json`，无需单独配置。
+
+#### CodeBuddy
+
+1. 运行安装脚本：
+   ```powershell
+   .\install.ps1 -AgentRuntime codebuddy  # Windows
+   bash install.sh --agent-runtime codebuddy  # Linux/macOS
+   ```
+2. 用 CodeBuddy 打开项目文件夹，在 MCP 配置中信任 vocabcraft-mcp
+
+> 💡 也可走 CodeBuddy 本地插件市场：把解压后的文件夹作为本地市场添加，安装 `vocabcraft` 插件（清单见 `.codebuddy-plugin/marketplace.json`）。
 
 #### OpenCode
 
@@ -48,16 +59,6 @@ VocabCraft 支持多个 Agent 运行时，选择你使用的环境进行配置�
    ```
 
 2. 在项目目录运行 `opencode`
-
-#### Goose
-
-1. 运行安装脚本：
-   ```powershell
-   .\install.ps1 -AgentRuntime goose  # Windows
-   bash install.sh --agent-runtime goose  # Linux/macOS
-   ```
-
-2. 用 Goose 打开项目文件夹，会自动读取 `.goose/config.yaml` 加载 vocabcraft-mcp
 
 ### 第 4 步：开始使用
 

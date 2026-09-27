@@ -6,12 +6,13 @@
     "name": "yecll"
   },
   "license": "MIT",
+  "mcpServers": "./.mcp.json",
   "keywords": [
     "vocabulary",
     "learning",
     "mcp",
     "agent-plugin",
-    "aaif",
+    "agent-plugins-1.0",
     "sm-2"
   ]
 }

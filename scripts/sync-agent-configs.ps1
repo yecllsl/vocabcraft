@@ -2,22 +2,19 @@
 .SYNOPSIS
     同步 vocabcraft.plugin/ 配置到各平台目录。
 .DESCRIPTION
-    从 vocabcraft.plugin/runtime/ 目录读取配置，生成 .trae/、.opencode/、.codebuddy/、.goose/ 配置。
-    vocabcraft.plugin/ 是 AAIF 标准的唯一配置源。
+    从 vocabcraft.plugin/runtime/ 目录读取配置，生成 .trae/、.opencode/、.codebuddy/ 配置。
+    vocabcraft.plugin/ 是配置的唯一真相源。
 .PARAMETER SkipTrae
     跳过 Trae 配置生成。
 .PARAMETER SkipOpencode
     跳过 opencode 配置生成。
 .PARAMETER SkipCodebuddy
     跳过 CodeBuddy 配置生成。
-.PARAMETER SkipGoose
-    跳过 Goose 配置生成。
 #>
 param(
     [switch]$SkipTrae,
     [switch]$SkipOpencode,
-    [switch]$SkipCodebuddy,
-    [switch]$SkipGoose
+    [switch]$SkipCodebuddy
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,13 +25,13 @@ $AgentsRuntime = Join-Path $AgentsDir "runtime"
 $AgentsSkills = Join-Path $AgentsDir "skills"
 $AgentsMd = Join-Path $AgentsDir "AGENTS.md"
 
-if (-not (Test-Path $AgentsRuntime)) { Write-Error "AAIF 运行时配置目录不存在: $AgentsRuntime"; exit 1 }
-if (-not (Test-Path $AgentsSkills)) { Write-Error "AAIF 技能目录不存在: $AgentsSkills"; exit 1 }
+if (-not (Test-Path $AgentsRuntime)) { Write-Error "运行时配置目录不存在: $AgentsRuntime"; exit 1 }
+if (-not (Test-Path $AgentsSkills)) { Write-Error "技能目录不存在: $AgentsSkills"; exit 1 }
 if (-not (Test-Path $AgentsMd)) { Write-Error "AGENTS.md 不存在: $AgentsMd"; exit 1 }
 
-Write-Host "=== VocabCraft AAIF Config Sync ===" -ForegroundColor Cyan
+Write-Host "=== VocabCraft Config Sync ===" -ForegroundColor Cyan
 Write-Host "项目根目录: $ProjectRoot"
-Write-Host "配置源: vocabcraft.plugin/ (AAIF 标准)"
+Write-Host "配置源: vocabcraft.plugin/"
 
 function Sync-Skills {
     param([string]$TargetDir)
@@ -88,17 +85,6 @@ function New-CodebuddyConfig {
     }
 }
 
-function New-GooseConfig {
-    $GooseDir = Join-Path $ProjectRoot ".goose"
-    if (-not (Test-Path $GooseDir)) { New-Item -ItemType Directory -Path $GooseDir -Force | Out-Null }
-    $SourceConfig = Join-Path $AgentsRuntime "goose.json"
-    if (Test-Path $SourceConfig) {
-        Write-Host "生成 Goose 配置 -> $GooseDir/config.yaml" -ForegroundColor Yellow
-        python (Join-Path $PSScriptRoot "generate-goose-config.py")
-        Write-Host "  已生成 Goose 配置 (.goose/config.yaml)" -ForegroundColor Green
-    }
-}
-
 function New-AaifDeclarations {
     $Uv = Get-Command uv -ErrorAction SilentlyContinue
     if (-not $Uv) { Write-Error "未找到 uv，无法生成 AAIF 声明文件（tools.json/triggers.json/workflows.json）"; exit 1 }
@@ -129,11 +115,5 @@ if (-not $SkipCodebuddy) {
     Sync-Skills -TargetDir (Join-Path $ProjectRoot ".codebuddy")
     Sync-AgentsMd -TargetDir (Join-Path $ProjectRoot ".codebuddy")
     New-CodebuddyConfig
-}
-if (-not $SkipGoose) {
-    Write-Host "`n--- Goose ---" -ForegroundColor Cyan
-    Sync-Skills -TargetDir (Join-Path $ProjectRoot ".goose")
-    Sync-AgentsMd -TargetDir (Join-Path $ProjectRoot ".goose")
-    New-GooseConfig
 }
 Write-Host "`n=== 同步完成 ===" -ForegroundColor Cyan

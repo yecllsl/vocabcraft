@@ -1,13 +1,14 @@
 {
   "mcpServers": {
     "vocabcraft-mcp": {
-      "type": "stdio",
-      "command": "D:/yecll/Documents/LocalCode/vocabcraft/vocabcraft.plugin/vocabcraft-mcp/.venv/Scripts/python.exe",
+      "command": "uv",
       "args": [
-        "-m",
-        "vocabcraft_mcp.server"
-      ],
-      "cwd": "D:/yecll/Documents/LocalCode/vocabcraft/vocabcraft.plugin/vocabcraft-mcp"
+        "run",
+        "--no-sync",
+        "--directory",
+        "${CODEBUDDY_PLUGIN_ROOT}/vocabcraft-mcp",
+        "vocabcraft-mcp"
+      ]
     }
   }
 }

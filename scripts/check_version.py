@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 import tomllib
@@ -39,6 +40,44 @@ PATTERNS: list[tuple[str, str]] = [
 ]
 
 DOCS = ["README.md", "DEPLOY.md", "QUICKSTART.md"]
+
+# 清单类文件的版本路径（键为相对路径，值为从 JSON 根到版本的键序列；int 表示数组下标）
+MANIFEST_VERSIONS: list[tuple[str, tuple[str | int, ...]]] = [
+    ("package.json", ("version",)),
+    ("vocabcraft.plugin/plugin.json", ("version",)),
+    ("vocabcraft.plugin/.codebuddy-plugin/plugin.json", ("version",)),
+    (".codebuddy-plugin/marketplace.json", ("plugins", 0, "version")),
+]
+
+
+def scan_manifests(expected: str) -> list[str]:
+    """校验插件/市场清单的版本号，返回不一致项描述"""
+    problems: list[str] = []
+    for rel, keys in MANIFEST_VERSIONS:
+        path = ROOT / rel
+        if not path.exists():
+            problems.append(f"{rel}: 文件不存在")
+            continue
+        try:
+            node: object = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            problems.append(f"{rel}: JSON 解析失败（{exc}）")
+            continue
+        found: object = None
+        for key in keys:
+            if isinstance(node, dict) and isinstance(key, str) and key in node:
+                node = node[key]
+            elif isinstance(node, list) and isinstance(key, int) and key < len(node):
+                node = node[key]
+            else:
+                node = None
+                break
+            found = node
+        if not isinstance(found, str):
+            problems.append(f"{rel}: 未找到版本字段 {'/'.join(map(str, keys))}")
+        elif found != expected:
+            problems.append(f"{rel}: 版本为 {found}，应为 {expected}")
+    return problems
 
 
 def source_version() -> str:
@@ -78,6 +117,7 @@ def main() -> int:
 
     expected = source_version()
     problems = scan_docs(expected)
+    problems += scan_manifests(expected)
 
     changelog = changelog_version()
     if changelog is None:

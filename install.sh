@@ -8,7 +8,7 @@
 #
 # 可选参数：
 #   --fix-path       将 vocabcraft.plugin/runtime 中 ${workspaceFolder} 替换为绝对路径（并重新同步各平台目录）
-#   --agent-runtime  配置 Agent 运行时 (trae/codebuddy/opencode/goose/all)
+#   --agent-runtime  配置 Agent 运行时 (trae/codebuddy/opencode/all)
 #
 # 前置要求：
 #   - Python 3.12+
@@ -25,7 +25,7 @@ while [[ $# -gt 0 ]]; do
         --agent-runtime) AGENT_RUNTIME="$2"; shift 2 ;;
         *)
             echo "未知参数: $1"
-            echo "可用参数：--fix-path, --agent-runtime <trae|codebuddy|opencode|goose|all>"
+            echo "可用参数：--fix-path, --agent-runtime <trae|codebuddy|opencode|all>"
             exit 1
             ;;
     esac
@@ -34,7 +34,7 @@ done
 echo ""
 echo "========================================"
 echo "  VocabCraft v0.6.2 安装向导"
-echo "  (Trae + CodeBuddy + opencode + Goose)"
+echo "  (Trae + CodeBuddy + opencode)"
 echo "========================================"
 echo ""
 
@@ -145,26 +145,13 @@ if [ -n "$AGENT_RUNTIME" ]; then
                 echo "  Trae: 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
                 echo "  CodeBuddy: 在 MCP 配置中信任 vocabcraft-mcp"
                 echo "  opencode: 在项目目录运行 opencode"
-                echo "  Goose: 打开项目文件夹，自动读取 .goose/config.yaml"
-            else
-                echo "  同步脚本不存在: $SYNC_SCRIPT"
-            fi
-            ;;
-        goose)
-            echo "正在同步 Goose 配置..."
-            if [ -f "$SYNC_SCRIPT" ]; then
-                bash "$SYNC_SCRIPT"
-                echo ""
-                echo "下一步:"
-                echo "  1. 用 Goose 打开项目文件夹"
-                echo "  2. Goose 会自动读取 .goose/config.yaml 加载 vocabcraft-mcp"
             else
                 echo "  同步脚本不存在: $SYNC_SCRIPT"
             fi
             ;;
         *)
             echo "未知 Agent Runtime: $AGENT_RUNTIME"
-            echo "支持的值: trae, codebuddy, opencode, goose, all"
+            echo "支持的值: trae, codebuddy, opencode, all"
             exit 1
             ;;
     esac
@@ -182,7 +169,7 @@ else
 fi
 
 # ──────────────────────────────────────────
-# mcp.json 路径回退方案（多运行时共用，AAIF 真相源 vocabcraft.plugin/runtime）
+# mcp.json 路径回退方案（多运行时共用，配置真相源 vocabcraft.plugin/runtime）
 # ──────────────────────────────────────────
 RUNTIME_DIR="$PROJECT_ROOT/vocabcraft.plugin/runtime"
 TRAE_JSON="$RUNTIME_DIR/trae.json"

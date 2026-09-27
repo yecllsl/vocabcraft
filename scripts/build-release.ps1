@@ -32,8 +32,8 @@ $tempDir = Join-Path $distDir $packageName
 $zipPath = Join-Path $distDir "$packageName.zip"
 $gzPath = Join-Path $distDir "$packageName.tar.gz"
 
-# 基线运行时平台（AAIF 4 运行时：Trae / CodeBuddy / OpenCode / Goose）
-# vocabcraft.plugin/ 为 AAIF 真相源：Skills 与 AGENTS.md 同步自 vocabcraft.plugin/，平台配置生成自 vocabcraft.plugin/runtime/*.json
+# 基线运行时平台（Trae / CodeBuddy / OpenCode）
+# vocabcraft.plugin/ 为配置真相源：Skills 与 AGENTS.md 同步自 vocabcraft.plugin/，平台配置生成自 vocabcraft.plugin/runtime/*.json
 $agentsDir = Join-Path $projectRoot "vocabcraft.plugin"
 $agentsRuntime = Join-Path $agentsDir "runtime"
 $agentsSkills = Join-Path $agentsDir "skills"
@@ -42,8 +42,7 @@ $agentsMd = Join-Path $agentsDir "AGENTS.md"
 $platforms = @(
     [PSCustomObject]@{ Dir = ".trae";      ConfigSrc = "trae.json";      ConfigDst = "mcp.json";      AgentsMdInPlatform = $false },
     [PSCustomObject]@{ Dir = ".opencode";  ConfigSrc = "opencode.json";  ConfigDst = "opencode.json"; AgentsMdInPlatform = $true },
-    [PSCustomObject]@{ Dir = ".codebuddy"; ConfigSrc = "codebuddy.json"; ConfigDst = "mcp.json";      AgentsMdInPlatform = $true },
-    [PSCustomObject]@{ Dir = ".goose";     ConfigSrc = "goose.json";     ConfigDst = "config.yaml";   AgentsMdInPlatform = $true }
+    [PSCustomObject]@{ Dir = ".codebuddy"; ConfigSrc = "codebuddy.json"; ConfigDst = "mcp.json";      AgentsMdInPlatform = $true }
 )
 
 
@@ -88,9 +87,12 @@ Write-Ok "cleaned"
 Write-Step "[2/6] Create directory structure..."
 # 顶层目录
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
-# AAIF 真相源子目录（opencode 的 instructions 引用 vocabcraft.plugin/AGENTS.md）
+# 插件根子目录（opencode 的 instructions 引用 vocabcraft.plugin/AGENTS.md）
 New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin") -Force | Out-Null
-# 四个运行时平台目录（Trae / CodeBuddy / OpenCode / Goose）
+# Agent Plugins 1.0（Tier 1）/ CodeBuddy 插件清单目录（Tier 2 市场通道）
+New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin\.codebuddy-plugin") -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $tempDir ".codebuddy-plugin") -Force | Out-Null
+# 三个运行时平台目录（Trae / CodeBuddy / OpenCode）
 # 基线约定：每个平台目录都有 skills/ 与 AGENTS.md（Trae 例外：AGENTS.md 放根目录）
 foreach ($p in $platforms) {
     New-Item -ItemType Directory -Path (Join-Path $tempDir $p.Dir "skills") -Force | Out-Null
@@ -105,25 +107,26 @@ New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin/vocabc
 Write-Ok "directories created"
 
 # ──────────────────────────────────────────
-# [3/6] 复制 AAIF 多平台配置（.trae / .opencode / .codebuddy / .goose）
+# [3/6] 复制多平台配置（.trae / .opencode / .codebuddy）
 # ──────────────────────────────────────────
-Write-Step "[3/6] Copy AAIF platform configs (.trae/.opencode/.codebuddy/.goose)..."
+Write-Step "[3/6] Copy platform configs (.trae/.opencode/.codebuddy)..."
 
 # opencode 的 instructions 引用 vocabcraft.plugin/AGENTS.md，发布包需包含该文件
 Copy-Item -Force $agentsMd (Join-Path $tempDir "vocabcraft.plugin\AGENTS.md")
 
-function New-GooseReleaseConfig {
-    param(
-        [string]$SrcJson,
-        [string]$DstDir
-    )
-    # 发布包使用相对 --directory（解压到任意位置均可工作），故 --no-resolve-dir
-    & python (Join-Path $PSScriptRoot "generate-goose-config.py") --runtime-json $SrcJson --out-dir $DstDir --no-resolve-dir
-    if ($LASTEXITCODE -ne 0) {
-        Write-Err "goose config generation failed (exit $LASTEXITCODE)"
-        exit 1
-    }
+# Tier 1 交付物：Agent Plugins 1.0 插件清单 + skills（规范靠插件根 skills/ 自动发现）
+Copy-Item -Force (Join-Path $agentsDir "plugin.json") (Join-Path $tempDir "vocabcraft.plugin\plugin.json")
+Copy-Item -Force (Join-Path $agentsDir "mcp.json")    (Join-Path $tempDir "vocabcraft.plugin\mcp.json")
+# skills 用 robocopy（镜像语义，目标已存在也不会嵌套；与 [3/6] 平台 skills 拷贝一致）
+$rc = robocopy (Join-Path $agentsDir "skills") (Join-Path $tempDir "vocabcraft.plugin\skills") /E /XD __pycache__ .pytest_cache /XF *.pyc /NFL /NDL /NJH /NJS /NP
+if ($LASTEXITCODE -ge 8) {
+    Write-Err "robocopy plugin skills failed (exit $LASTEXITCODE)"
+    exit 1
 }
+# Tier 2（CodeBuddy，自有格式）：插件清单 + 本地市场清单
+Copy-Item -Force (Join-Path $agentsDir ".mcp.json") (Join-Path $tempDir "vocabcraft.plugin\.mcp.json")
+Copy-Item -Force (Join-Path $agentsDir ".codebuddy-plugin\plugin.json") (Join-Path $tempDir "vocabcraft.plugin\.codebuddy-plugin\plugin.json")
+Copy-Item -Force (Join-Path $projectRoot ".codebuddy-plugin\marketplace.json") (Join-Path $tempDir ".codebuddy-plugin\marketplace.json")
 
 foreach ($p in $platforms) {
     $platDir = Join-Path $tempDir $p.Dir
@@ -140,17 +143,13 @@ foreach ($p in $platforms) {
         Copy-Item -Force $agentsMd (Join-Path $platDir "AGENTS.md")
     }
 
-    # 平台配置：来自 AAIF 运行时真相源 vocabcraft.plugin/runtime/<ConfigSrc>
+    # 平台配置：来自运行时真相源 vocabcraft.plugin/runtime/<ConfigSrc>
     $cfgSrc = Join-Path $agentsRuntime $p.ConfigSrc
     $cfgDst = Join-Path $platDir $p.ConfigDst
-    if ($p.ConfigDst -eq "config.yaml") {
-        New-GooseReleaseConfig -SrcJson $cfgSrc -DstDir $platDir
-    } else {
-        Copy-Item -Force $cfgSrc $cfgDst
-    }
+    Copy-Item -Force $cfgSrc $cfgDst
 }
 
-Write-Ok "AAIF platform configs copied (.trae/.opencode/.codebuddy/.goose)"
+Write-Ok "platform configs copied (.trae/.opencode/.codebuddy)"
 
 # ──────────────────────────────────────────
 # [4/6] 复制 vocabcraft.plugin/vocabcraft-mcp 源码（白名单）
@@ -236,18 +235,22 @@ Write-Ok "docs copied"
 # ──────────────────────────────────────────
 Write-Step "[6/6] Verify and pack..."
 
-# 验证关键文件存在（四个平台配置均来自 AAIF 真相源，需全部齐备）
+# 验证关键文件存在（三个平台配置均来自配置真相源，需全部齐备）
 $requiredFiles = @(
     "AGENTS.md",
     "vocabcraft.plugin\AGENTS.md",
+    "vocabcraft.plugin\plugin.json",
+    "vocabcraft.plugin\mcp.json",
+    "vocabcraft.plugin\skills\vocabcraft-capture\SKILL.md",
+    "vocabcraft.plugin\.mcp.json",
+    "vocabcraft.plugin\.codebuddy-plugin\plugin.json",
+    ".codebuddy-plugin\marketplace.json",
     ".trae\mcp.json",
     ".opencode\opencode.json",
     ".codebuddy\mcp.json",
-    ".goose\config.yaml",
     ".trae\skills",
     ".opencode\skills",
     ".codebuddy\skills",
-    ".goose\skills",
     "vocabcraft.plugin/vocabcraft-mcp\pyproject.toml",
     "vocabcraft.plugin/vocabcraft-mcp\src\vocabcraft_mcp\server.py",
     "install.ps1",
@@ -325,7 +328,7 @@ Write-Host "    $zipPath ($zipSizeMB MB)" -ForegroundColor Cyan
 if (Test-Path $gzPath) { Write-Host "    $gzPath" -ForegroundColor Cyan }
 Write-Host "  Files:    $fileCount" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  User steps (支持的运行时: Trae / CodeBuddy / OpenCode / Goose):" -ForegroundColor White
+Write-Host "  User steps (支持的运行时: Trae / CodeBuddy / OpenCode):" -ForegroundColor White
 Write-Host "  1. Extract VocabCraft-v$Version.zip" -ForegroundColor DarkGray
 Write-Host "  2. Run install.ps1 (或 Linux/macOS 下 install.sh)" -ForegroundColor DarkGray
 Write-Host "  3. 在所用 IDE 中打开该文件夹，启用项目级 MCP 即可" -ForegroundColor DarkGray

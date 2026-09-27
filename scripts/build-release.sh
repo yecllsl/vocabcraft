@@ -35,20 +35,19 @@ ZIP_PATH="$DIST_DIR/$PACKAGE_NAME.zip"
 ZST_PATH="$DIST_DIR/$PACKAGE_NAME.tar.zst"
 GZ_PATH="$DIST_DIR/$PACKAGE_NAME.tar.gz"
 
-# 基线运行时平台（AAIF 4 运行时：Trae / CodeBuddy / OpenCode / Goose）
-# vocabcraft.plugin/ 为 AAIF 真相源：Skills 与 AGENTS.md 同步自 vocabcraft.plugin/，平台配置生成自 vocabcraft.plugin/runtime/*.json
-PYTHON_BIN="$(command -v python3 || command -v python || echo python3)"
+# 基线运行时平台（Trae / CodeBuddy / OpenCode）
+# vocabcraft.plugin/ 为配置真相源：Skills 与 AGENTS.md 同步自 vocabcraft.plugin/，平台配置生成自 vocabcraft.plugin/runtime/*.json
 AGENTS_DIR="$PROJECT_ROOT/vocabcraft.plugin"
 AGENTS_RUNTIME="$AGENTS_DIR/runtime"
 AGENTS_SKILLS="$AGENTS_DIR/skills"
 AGENTS_MD="$AGENTS_DIR/AGENTS.md"
-declare -A CFG_SRC=( [trae]=trae.json [opencode]=opencode.json [codebuddy]=codebuddy.json [goose]=goose.json )
-declare -A CFG_DST=( [trae]=mcp.json [opencode]=opencode.json [codebuddy]=mcp.json [goose]=config.yaml )
-declare -A AGENTS_IN_PLATFORM=( [trae]=0 [opencode]=1 [codebuddy]=1 [goose]=1 )
-# 平台在发布包中的目录名必须为带点前缀（.trae/.opencode/.codebuddy/.goose），
+declare -A CFG_SRC=( [trae]=trae.json [opencode]=opencode.json [codebuddy]=codebuddy.json )
+declare -A CFG_DST=( [trae]=mcp.json [opencode]=opencode.json [codebuddy]=mcp.json )
+declare -A AGENTS_IN_PLATFORM=( [trae]=0 [opencode]=1 [codebuddy]=1 )
+# 平台在发布包中的目录名必须为带点前缀（.trae/.opencode/.codebuddy），
 # 否则 IDE 无法识别。PowerShell 版已使用带点目录名，此处保持对齐。
-declare -A CFG_DOT=( [trae]=".trae" [opencode]=".opencode" [codebuddy]=".codebuddy" [goose]=".goose" )
-PLATFORMS=( trae opencode codebuddy goose )
+declare -A CFG_DOT=( [trae]=".trae" [opencode]=".opencode" [codebuddy]=".codebuddy" )
+PLATFORMS=( trae opencode codebuddy )
 
 # ──────────────────────────────────────────
 # 颜色输出（与 PowerShell 版风格一致）
@@ -81,6 +80,9 @@ log_ok "cleaned"
 # ──────────────────────────────────────────
 log_step "[2/6] Create directory structure..."
 mkdir -p "$STAGING_DIR/vocabcraft.plugin"
+# Agent Plugins 1.0（Tier 1）/ CodeBuddy 插件清单目录（Tier 2 市场通道）
+mkdir -p "$STAGING_DIR/vocabcraft.plugin/.codebuddy-plugin"
+mkdir -p "$STAGING_DIR/.codebuddy-plugin"
 for p in "${PLATFORMS[@]}"; do
     mkdir -p "$STAGING_DIR/${CFG_DOT[$p]}/skills"
 done
@@ -94,9 +96,9 @@ mkdir -p "$STAGING_DIR/vocabcraft.plugin/vocabcraft-mcp/data/images"
 log_ok "directories created"
 
 # ──────────────────────────────────────────
-# [3/6] 复制 AAIF 多平台配置（.trae / .opencode / .codebuddy / .goose）
+# [3/6] 复制多平台配置（.trae / .opencode / .codebuddy）
 # ──────────────────────────────────────────
-log_step "[3/6] Copy AAIF platform configs (.trae/.opencode/.codebuddy/.goose)..."
+log_step "[3/6] Copy platform configs (.trae/.opencode/.codebuddy)..."
 
 # opencode 的 instructions 引用 vocabcraft.plugin/AGENTS.md，发布包需包含该文件
 cp "$AGENTS_MD" "$STAGING_DIR/vocabcraft.plugin/AGENTS.md"
@@ -125,6 +127,15 @@ copy_dir_filtered() {
     fi
 }
 
+# Tier 1 交付物：Agent Plugins 1.0 插件清单 + skills（复用既有 copy_dir_filtered，排除 __pycache__）
+cp "$AGENTS_DIR/plugin.json" "$STAGING_DIR/vocabcraft.plugin/plugin.json"
+cp "$AGENTS_DIR/mcp.json"    "$STAGING_DIR/vocabcraft.plugin/mcp.json"
+copy_dir_filtered "$AGENTS_DIR/skills" "$STAGING_DIR/vocabcraft.plugin/skills"
+# Tier 2（CodeBuddy，自有格式）：插件清单 + 本地市场清单
+cp "$AGENTS_DIR/.mcp.json" "$STAGING_DIR/vocabcraft.plugin/.mcp.json"
+cp "$AGENTS_DIR/.codebuddy-plugin/plugin.json" "$STAGING_DIR/vocabcraft.plugin/.codebuddy-plugin/plugin.json"
+cp "$PROJECT_ROOT/.codebuddy-plugin/marketplace.json" "$STAGING_DIR/.codebuddy-plugin/marketplace.json"
+
 for p in "${PLATFORMS[@]}"; do
     pd="$STAGING_DIR/${CFG_DOT[$p]}"
     mkdir -p "$pd/skills"
@@ -134,17 +145,11 @@ for p in "${PLATFORMS[@]}"; do
     if [ "${AGENTS_IN_PLATFORM[$p]}" = "1" ]; then
         cp "$AGENTS_MD" "$pd/AGENTS.md"
     fi
-    # 平台配置：来自 AAIF 运行时真相源 vocabcraft.plugin/runtime/<ConfigSrc>
-    if [ "${CFG_DST[$p]}" = "config.yaml" ]; then
-        "$PYTHON_BIN" "$SCRIPT_DIR/generate-goose-config.py" \
-            --runtime-json "$AGENTS_RUNTIME/${CFG_SRC[$p]}" \
-            --out-dir "$pd" --no-resolve-dir
-    else
-        cp "$AGENTS_RUNTIME/${CFG_SRC[$p]}" "$pd/${CFG_DST[$p]}"
-    fi
+    # 平台配置：来自运行时真相源 vocabcraft.plugin/runtime/<ConfigSrc>
+    cp "$AGENTS_RUNTIME/${CFG_SRC[$p]}" "$pd/${CFG_DST[$p]}"
 done
 
-log_ok "AAIF platform configs copied (.trae/.opencode/.codebuddy/.goose)"
+log_ok "platform configs copied (.trae/.opencode/.codebuddy)"
 
 # ──────────────────────────────────────────
 # [4/6] 复制 vocabcraft.plugin/vocabcraft-mcp 源码（白名单）
@@ -227,18 +232,22 @@ log_ok "docs copied"
 # ──────────────────────────────────────────
 log_step "[6/6] Verify and pack..."
 
-# 验证关键文件存在（四个平台配置均来自 AAIF 真相源，需全部齐备）
+# 验证关键文件存在（三个平台配置均来自配置真相源，需全部齐备）
 required=(
     "AGENTS.md"
     "vocabcraft.plugin/AGENTS.md"
+    "vocabcraft.plugin/plugin.json"
+    "vocabcraft.plugin/mcp.json"
+    "vocabcraft.plugin/skills/vocabcraft-capture/SKILL.md"
+    "vocabcraft.plugin/.mcp.json"
+    "vocabcraft.plugin/.codebuddy-plugin/plugin.json"
+    ".codebuddy-plugin/marketplace.json"
     ".trae/mcp.json"
     ".opencode/opencode.json"
     ".codebuddy/mcp.json"
-    ".goose/config.yaml"
     ".trae/skills"
     ".opencode/skills"
     ".codebuddy/skills"
-    ".goose/skills"
     "vocabcraft.plugin/vocabcraft-mcp/pyproject.toml"
     "vocabcraft.plugin/vocabcraft-mcp/src/vocabcraft_mcp/server.py"
     "install.ps1"
@@ -313,7 +322,7 @@ echo ""
 echo -e "  Package: ${CYAN}$PACKAGE_NAME${NC}"
 echo -e "  Files:   ${CYAN}$file_count${NC}"
 echo ""
-echo "  User steps (支持的运行时: Trae / CodeBuddy / OpenCode / Goose):"
+echo "  User steps (支持的运行时: Trae / CodeBuddy / OpenCode):"
 echo "  1. Extract VocabCraft-v$VERSION.{zip|tar.zst|tar.gz}"
 echo "  2. Run install.ps1 (或 Linux/macOS 下 install.sh)"
 echo "  3. 在所用 IDE 中打开该文件夹，启用项目级 MCP 即可"
