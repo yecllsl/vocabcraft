@@ -50,6 +50,8 @@ Harness 支持只分两层，判定标准是「是否采纳 Agent Plugins 1.0 �
 | **Tier 1 — Agent Plugins 1.0 插件标准** | VS Code / Copilot | `vocabcraft.plugin/` 插件目录（`plugin.json` + `mcp.json` + `skills/`） | 任何采纳 Agent Plugins 1.0 的客户端可直接指向该目录，不为单个客户端新增同步目标。该规范不携带 AGENTS.md，规则文件走 Tier 2 与仓库根 |
 | **Tier 2 — 免费额度 / 开箱即用** | Trae、CodeBuddy、OpenCode | `.trae/` / `.codebuddy/` / `.opencode/` 原生目录 + `install.*`；CodeBuddy 另有本地市场一键安装（CodeBuddy 自有格式） | 有免费额度，用户解压即用，零额外付费门槛 |
 
+> ✅ **已实测交付验证**：Tier 1 用 VS Code **Agents Window → 插件 → Install from Source** 指向 `vocabcraft.plugin/`（识别为 **5 skills + 1 MCP server**）；Tier 2 的 CodeBuddy 用 **插件管理 → 插件市场 → 添加本地市场**（市场 `vocabcraft-local-market`）安装 `vocabcraft`。Trae / OpenCode 走同一套原生目录交付，未单独实测。
+
 **明确不支持**：**WorkBuddy、Hermes**（用户级 harness，配置只能写 `~/`，无法项目级统一）与 **Goose**（未采纳 Agent Plugins 1.0，支持已移除）；其余 harness 一律不尝试。新增 harness 前必须先归入上表两层之一。
 
 ## 快速安装

@@ -64,6 +64,8 @@ VocabCraft 的受支持 Harness 分两层：**Tier 1（Agent Plugins 1.0 插件�
 
 输入 `/capture`、`/review`、`/quiz`、`/stats` 或 `/export` 即可！
 
+> ✅ **验证安装**：Tier 1（VS Code / Copilot）—— **Agents Window → 插件 → Install from Source**，选**插件根** `vocabcraft.plugin/`，Installed 区应显示 `vocabcraft`（5 skills + 1 MCP server）；Tier 2（CodeBuddy）—— **插件管理 → 插件市场 → 添加插件市场**（市场 `vocabcraft-local-market`）→ 安装 `vocabcraft` → 重启。本地自检：`cd vocabcraft.plugin/vocabcraft-mcp && uv run vocabcraft-mcp`。详见 [DEPLOY.md](DEPLOY.md)「手动 E2E 验收」。
+
 ---
 
 ## 5 分钟快速体验
