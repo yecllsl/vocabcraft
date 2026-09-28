@@ -64,7 +64,7 @@ Harness 支持只分两层，判定标准是「是否采纳 Agent Plugins 1.0 �
 
 #### 1. 下载并解压
 
-下载 `VocabCraft-v0.7.0.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
+下载 `VocabCraft-v0.8.0.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
 
 #### 2. 运行安装脚本
 
@@ -314,15 +314,15 @@ uv run pytest tests/ -m "not e2e"
 
 ```powershell
 # Windows
-pwsh .\scripts\build-release.ps1 -Version 0.7.0
+pwsh .\scripts\build-release.ps1 -Version 0.8.0
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.7.0
+bash scripts/build-release.sh 0.8.0
 ```
 
-产物：`dist/VocabCraft-v0.7.0.{zip,tar.zst,tar.gz}`。
+产物：`dist/VocabCraft-v0.8.0.{zip,tar.zst,tar.gz}`。
 
 ### CI/CD
 

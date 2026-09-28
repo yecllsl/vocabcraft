@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.8.0] - 2026-09-28
 
 ### Harness 支持策略：明确两层
 - 明确 Harness 只支持两层：**Tier 1 — Agent Plugins 1.0 插件标准**（代表 VS Code / Copilot，以 `vocabcraft.plugin/` 插件形态分发，不为单个客户端新增同步目标）；**Tier 2 — 免费额度 / 开箱即用**（Trae / CodeBuddy / OpenCode，原生目录 + `install.*`，CodeBuddy 另有本地市场一键安装）。
