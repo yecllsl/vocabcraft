@@ -162,6 +162,50 @@ Skills 位于 `vocabcraft.plugin/skills/`（配置真相源），经 `scripts/sy
 
 业务规则与开发规范统一存放于 **`vocabcraft.plugin/AGENTS.md`**（三个运行时共用，单一真相源，同步到根目录与各平台），不再拆分到 `.trae/rules/`。各 skill 的「约束规则」内联在其 `SKILL.md` 中。
 
+## 手动 E2E 验收（Tier 1 / Tier 2）
+
+发布后建议手动验证两条交付通道。
+
+**共同准备**
+
+1. 从 GitHub Releases 解压发布包（`VocabCraft-vX.Y.Z.zip`，或 `.tar.zst` / `.tar.gz`）到任意目录。
+2. 安装依赖（插件 `mcp.json` 使用 `uv run --no-sync`，需先建好虚拟环境，发布包不含 `.venv`）：
+   ```powershell
+   cd <解压目录>; .\install.ps1
+   ```
+   ```bash
+   cd <解压目录> && chmod +x install.sh && ./install.sh
+   ```
+   最小等价：`cd <解压目录>/vocabcraft.plugin/vocabcraft-mcp && uv sync`
+3. 记下**插件根绝对路径**：`<解压目录>/vocabcraft.plugin`。
+
+### Tier 1 — VS Code / Copilot（Agent Plugins 1.0 插件形态）
+
+> ✅ 已实测通过：客户端识别为 **5 skills + 1 MCP server**。
+
+1. 打开 **Agents Window**（智能体窗口），进入左侧 **插件** 面板。
+2. 点击 **Install from Source**，填入**插件根绝对路径**：`<解压目录>/vocabcraft.plugin`。
+3. 在 **Installed** 区确认 `vocabcraft`（[local]）已启用，标注为 **5 skills + 1 MCP server**。
+4. 功能验证：触发 skill（如 `/stats`）应调用 MCP 工具 `get_statistics`。
+
+> ⚠️ Agent Plugins 1.0 规范不携带 AGENTS.md / rules 文件；业务规则需在客户端侧另行纳入（用仓库根 / 解压包的 `AGENTS.md`）。
+
+### Tier 2 — CodeBuddy 本地插件市场
+
+1. CodeBuddy → **插件市场** → **添加本地市场**，指向**市场根目录**：`<解压目录>`（其中含 `.codebuddy-plugin/marketplace.json`）。
+2. 在市场内安装 **`vocabcraft`** 插件。
+3. 重启 CodeBuddy。
+4. 验证：MCP 配置中出现 `vocabcraft-mcp`（信任它），输入 `/stats` 触发。
+
+> 若市场不识别，退回安装脚本方式：`.\install.ps1 -AgentRuntime codebuddy`。
+
+### 本地自检（不经客户端）
+
+```powershell
+cd <解压目录>/vocabcraft.plugin/vocabcraft-mcp
+uv run vocabcraft-mcp        # 能启动即 MCP 侧正常（stdio，Ctrl+C 退出）
+```
+
 ## 常见问题
 
 ### Q1: 安装脚本报错 "uv 未安装"
