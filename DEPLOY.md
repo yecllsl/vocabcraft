@@ -192,8 +192,10 @@ Skills 位于 `vocabcraft.plugin/skills/`（配置真相源），经 `scripts/sy
 
 ### Tier 2 — CodeBuddy 本地插件市场
 
-1. CodeBuddy → **插件市场** → **添加本地市场**，指向**市场根目录**：`<解压目录>`（其中含 `.codebuddy-plugin/marketplace.json`）。
-2. 在市场内安装 **`vocabcraft`** 插件。
+> ✅ 已实测通过：市场 `vocabcraft-local-market` 添加成功，插件 `vocabcraft` 可浏览并安装。
+
+1. CodeBuddy → **插件管理** → **插件市场** → **添加插件市场**，指向**市场根目录**（含 `.codebuddy-plugin/marketplace.json`）：发布包用 `<解压目录>`，仓库开发场景用仓库根。
+2. 在市场列表中选择 **`vocabcraft-local-market`**，在插件列表里找到 **`vocabcraft`** 并安装。
 3. 重启 CodeBuddy。
 4. 验证：MCP 配置中出现 `vocabcraft-mcp`（信任它），输入 `/stats` 触发。
 
