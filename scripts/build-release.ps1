@@ -21,7 +21,7 @@ $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 # 版本默认从真相源 pyproject.toml 读取，避免硬编码漂移（check_version.py 的同一真相源）
 if (-not $Version) {
     $pyProject = Join-Path $projectRoot "vocabcraft.plugin/vocabcraft-mcp/pyproject.toml"
-    $m = Get-Content $pyProject -Raw | Select-String -Pattern '^version\s*=\s*"([^"]+)"'
+    $m = Get-Content $pyProject -Raw | Select-String -Pattern '(?m)^version\s*=\s*"([^"]+)"'
     if ($m) { $Version = $m.Matches.Groups[1].Value }
     else { Write-Error "无法从 pyproject.toml 读取版本号"; exit 1 }
 }
@@ -94,7 +94,7 @@ New-Item -ItemType Directory -Path (Join-Path $tempDir ".codebuddy-plugin") -For
 # 平台目录（Trae / OpenCode；CodeBuddy 走 Tier 1 市场通道，不生成 .codebuddy/）
 # 基线约定：每个平台目录都有 skills/ 与 AGENTS.md（Trae 例外：AGENTS.md 放根目录）
 foreach ($p in $platforms) {
-    New-Item -ItemType Directory -Path (Join-Path $tempDir $p.Dir "skills") -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $tempDir "$($p.Dir)/skills") -Force | Out-Null
 }
 # vocabcraft.plugin/vocabcraft-mcp 子目录
 New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin/vocabcraft-mcp\src") -Force | Out-Null
@@ -126,6 +126,8 @@ if ($LASTEXITCODE -ge 8) {
 Copy-Item -Force (Join-Path $agentsDir ".mcp.json") (Join-Path $tempDir "vocabcraft.plugin\.mcp.json")
 Copy-Item -Force (Join-Path $agentsDir ".codebuddy-plugin\plugin.json") (Join-Path $tempDir "vocabcraft.plugin\.codebuddy-plugin\plugin.json")
 Copy-Item -Force (Join-Path $projectRoot ".codebuddy-plugin\marketplace.json") (Join-Path $tempDir ".codebuddy-plugin\marketplace.json")
+# 根 marketplace.json（VS Code 远程市场清单，Agent Plugins 1.0 同源格式）
+Copy-Item -Force (Join-Path $projectRoot "marketplace.json") (Join-Path $tempDir "marketplace.json")
 
 foreach ($p in $platforms) {
     $platDir = Join-Path $tempDir $p.Dir
@@ -252,7 +254,8 @@ $requiredFiles = @(
     "vocabcraft.plugin/vocabcraft-mcp\src\vocabcraft_mcp\server.py",
     "install.ps1",
     "install.sh",
-    "README.md"
+    "README.md",
+    "marketplace.json"
 )
 
 $missing = @()

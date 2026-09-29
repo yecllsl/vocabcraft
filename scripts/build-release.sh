@@ -135,6 +135,8 @@ copy_dir_filtered "$AGENTS_DIR/skills" "$STAGING_DIR/vocabcraft.plugin/skills"
 cp "$AGENTS_DIR/.mcp.json" "$STAGING_DIR/vocabcraft.plugin/.mcp.json"
 cp "$AGENTS_DIR/.codebuddy-plugin/plugin.json" "$STAGING_DIR/vocabcraft.plugin/.codebuddy-plugin/plugin.json"
 cp "$PROJECT_ROOT/.codebuddy-plugin/marketplace.json" "$STAGING_DIR/.codebuddy-plugin/marketplace.json"
+# 根 marketplace.json（VS Code 远程市场清单，Agent Plugins 1.0 同源格式）
+cp "$PROJECT_ROOT/marketplace.json" "$STAGING_DIR/marketplace.json"
 
 for p in "${PLATFORMS[@]}"; do
     pd="$STAGING_DIR/${CFG_DOT[$p]}"
@@ -251,6 +253,7 @@ required=(
     "install.ps1"
     "install.sh"
     "README.md"
+    "marketplace.json"
 )
 missing=()
 for rf in "${required[@]}"; do

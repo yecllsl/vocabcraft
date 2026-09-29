@@ -47,16 +47,16 @@ Harness 支持只分两层，判定标准是「是否采纳 Agent Plugins 1.0 �
 
 | 层 | 代表 | 交付形态 | 说明 |
 |----|------|---------|------|
-| **Tier 1 — Agent Plugins 1.0 插件标准** | VS Code / Copilot | `vocabcraft.plugin/` 插件目录（`plugin.json` + `mcp.json` + `skills/`） | 任何采纳 Agent Plugins 1.0 的客户端可直接指向该目录，不为单个客户端新增同步目标。该规范不携带 AGENTS.md，规则文件走 Tier 2 与仓库根 |
+| **Tier 1 — Agent Plugins 1.0 插件标准** | VS Code / Copilot、CodeBuddy | `vocabcraft.plugin/` 插件目录（`plugin.json` + `mcp.json` + `skills/`） | 任何采纳 Agent Plugins 1.0 的客户端可直接指向该目录，不为单个客户端新增同步目标。CodeBuddy 另经本地/Git URL 插件市场通道（`.codebuddy-plugin/marketplace.json`，自有格式）。**VS Code / Copilot 经 Agent Plugins 1.0 远程市场安装：仓库根 `marketplace.json`（Claude Code / Copilot CLI 同源市场格式，其 `source` 指向 `./vocabcraft.plugin`）加入 `chat.plugins.marketplaces` 后 Browse Marketplace 安装**——这是 VS Code 走 GitHub 的正确路径（Install from Source 要求 `plugin.json` 在仓库根，本仓库插件在子目录，故不能用仓库根/子目录 URL 直装）。该规范不携带 AGENTS.md，规则文件走 Tier 2 与仓库根 |
 | **Tier 2 — 免费额度 / 开箱即用** | Trae、OpenCode | `.trae/` / `.opencode/` 原生目录 + `install.*` | 有免费额度，用户解压即用，零额外付费门槛 |
 
-> ✅ **已实测交付验证**：Tier 1 用 VS Code **Agents Window → 插件 → Install from Source** 指向 `vocabcraft.plugin/`（识别为 **5 skills + 1 MCP server**）；Tier 1 的 CodeBuddy 用 **插件管理 → 插件市场 → 添加本地市场**（市场 `vocabcraft-local-market`）安装 `vocabcraft`。Trae / OpenCode 走同一套原生目录交付，未单独实测。
+> ✅ **已实测交付验证**：Tier 1 用 VS Code **Agents Window → 插件 → Install from Source** 指向 `vocabcraft.plugin/`（识别为 **5 skills + 1 MCP server**）；VS Code / Copilot 经 `chat.plugins.marketplaces` 远程市场安装 `vocabcraft` 亦已实测 ✅（2026-09-29，经仓库根 `marketplace.json` 解析 `./vocabcraft.plugin`）；Tier 1 的 CodeBuddy 用 **插件管理 → 插件市场 → 添加本地市场**（市场 `vocabcraft-local-market`）安装 `vocabcraft`。Trae / OpenCode 走同一套原生目录交付，未单独实测。
 
 ### 各客户端安装方式对照
 
 | 客户端 | 安装 MCP + skills 的方式 | 用 Agent Plugins 1.0 插件包？ | 层 | 实测 |
 |--------|--------------------------|------------------------------|----|------|
-| VS Code / Copilot | Agents Window → 插件 → **Install from Source** 指向 `vocabcraft.plugin/` | ✅ 是 | Tier 1 | ✅ |
+| VS Code / Copilot | 本地：Agents Window → **Install from Source** 指向 `vocabcraft.plugin/`<br>远程：settings.json `chat.plugins.marketplaces` 加 `yecllsl/vocabcraft` → Browse Marketplace 安装 `vocabcraft` | ✅ 是 | Tier 1 | ✅ 是（远程市场） |
 | CodeBuddy | **插件管理 → 插件市场 → 添加本地市场**（`.codebuddy-plugin/marketplace.json`）；或 Git URL 远程市场（见下）；或 `install.ps1 -AgentRuntime codebuddy` | ❌ 自有市场格式 | Tier 1 | ✅ |
 | OpenCode | `opencode.json` 的 `mcp` 字段 + `.opencode/skills/`（`install.ps1 -AgentRuntime opencode`） | ❌ | Tier 2 | 未单独实测 |
 | Trae | 内置 MCP 市场 / `.trae/mcp.json` + `.trae/skills/`（`install.ps1 -AgentRuntime trae`） | ❌ | Tier 2 | 未单独实测 |
@@ -77,9 +77,9 @@ Harness 支持只分两层，判定标准是「是否采纳 Agent Plugins 1.0 �
 
 #### 1. 下载并解压
 
-下载 `VocabCraft-v0.8.1.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
+下载 `VocabCraft-v0.8.2.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
 
-> **方式 B — Git URL / 仓库安装（仅 VS Code / CodeBuddy，无需下载）**：把 GitHub 仓库（`https://github.com/yecllsl/vocabcraft.git`）作为插件市场来源加载，客户端自动克隆插件包，无需下载 Release 压缩包；Tier 1 的 `mcp.json` / `.mcp.json` 首次启动自动 `uv sync` 构建虚拟环境。
+> **VS Code / CodeBuddy 还支持「方式 B」Git URL 远程安装**：CodeBuddy 用 `/plugin marketplace add https://github.com/yecllsl/vocabcraft.git`（或 `yecll/vocabcraft`）；VS Code 在 settings.json 的 `chat.plugins.marketplaces` 加入 `yecllsl/vocabcraft`，二者均经仓库根 `marketplace.json` 解析到 `./vocabcraft.plugin`，无需下载 Release 压缩包（详见 [QUICKSTART.md](QUICKSTART.md)）。
 
 #### 2. 运行安装脚本
 
@@ -329,15 +329,15 @@ uv run pytest tests/ -m "not e2e"
 
 ```powershell
 # Windows
-pwsh .\scripts\build-release.ps1 -Version 0.8.1
+pwsh .\scripts\build-release.ps1 -Version 0.8.2
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.8.1
+bash scripts/build-release.sh 0.8.2
 ```
 
-产物：`dist/VocabCraft-v0.8.1.{zip,tar.zst,tar.gz}`。
+产物：`dist/VocabCraft-v0.8.2.{zip,tar.zst,tar.gz}`。
 
 ### CI/CD
 

@@ -1,6 +1,6 @@
 {
   "name": "vocabcraft-local-market",
-  "description": "VocabCraft 本地插件市场（单插件）",
+  "description": "VocabCraft 插件市场（单插件，供 VS Code / Copilot CLI 经 Agent Plugins 1.0 远程市场安装；source 指向 ./vocabcraft.plugin）",
   "owner": {
     "name": "yecll"
   },

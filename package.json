@@ -1,6 +1,6 @@
 {
   "name": "vocabcraft",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "VocabCraft - 词汇学习与制作智能体",
   "main": "vocabcraft.plugin/tools.json",
   "scripts": {

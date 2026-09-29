@@ -5,7 +5,7 @@
 ### Windows 用户
 
 ```powershell
-# 1. 从 GitHub Releases 下载 VocabCraft-v0.8.1.zip，解压到任意目录（如 D:\vocabcraft\）
+# 1. 从 GitHub Releases 下载 VocabCraft-v0.8.2.zip，解压到任意目录（如 D:\vocabcraft\）
 #    或用 7-Zip 解压 .tar.zst / .tar.gz
 
 # 2. 运行安装脚本
@@ -20,8 +20,8 @@
 
 ```bash
 # 1. 从 GitHub Releases 下载并解压
-#    tar.zst (推荐):  tar --zstd -xf VocabCraft-v0.8.1.tar.zst
-#    tar.gz:          tar -xzf VocabCraft-v0.8.1.tar.gz
+#    tar.zst (推荐):  tar --zstd -xf VocabCraft-v0.8.2.tar.zst
+#    tar.gz:          tar -xzf VocabCraft-v0.8.2.tar.gz
 
 # 2. 运行安装脚本
 chmod +x install.sh
@@ -180,7 +180,12 @@ Skills 位于 `vocabcraft.plugin/skills/`（配置真相源），经 `scripts/sy
 
 ### Tier 1 — VS Code / Copilot（Agent Plugins 1.0 插件形态）
 
-> ✅ 已实测通过：客户端识别为 **5 skills + 1 MCP server**。
+> ✅ 已实测通过（本地 Install from Source 与远程市场均验证）：客户端识别为 **5 skills + 1 MCP server**。
+
+**远程安装（GitHub，无需下载）**：在 VS Code `settings.json` 的 `chat.plugins.marketplaces` 加入 `"yecllsl/vocabcraft"`（仓库根 `marketplace.json` 的 `source` 指向 `./vocabcraft.plugin`）→ 重新加载 → **Browse Marketplace / 浏览插件市场** → 安装 `vocabcraft`。
+- 注：VS Code 的 **Install from Source** 要求 `plugin.json` 在仓库根；本仓库插件位于 `vocabcraft.plugin/` 子目录，故不能填仓库根 URL 或子目录 URL 直装，必须经远程市场间接层。
+
+**本地安装（下载解压）**：
 
 1. 打开 **Agents Window**（智能体窗口），进入左侧 **插件** 面板。
 2. 点击 **Install from Source**，填入**插件根绝对路径**：`<解压目录>/vocabcraft.plugin`。
@@ -299,15 +304,15 @@ vocabcraft/
 
 ```powershell
 # Windows (PowerShell 5.1+)
-.\scripts\build-release.ps1 -Version 0.8.1
+.\scripts\build-release.ps1 -Version 0.8.2
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.8.1
+bash scripts/build-release.sh 0.8.2
 ```
 
-产物：`dist/VocabCraft-v0.8.1.{zip,tar.zst,tar.gz}`，结构与 GitHub Release 资产一致。
+产物：`dist/VocabCraft-v0.8.2.{zip,tar.zst,tar.gz}`，结构与 GitHub Release 资产一致。
 
 构建脚本采用**白名单复制策略**，只打包必要文件：
 

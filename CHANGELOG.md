@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.2] - 2026-09-29
+
+### 借鉴 DeepReview 0.6.2 的发布改进
+
+- **VS Code 远程市场安装**：新增仓库根 `marketplace.json`（Agent Plugins 1.0 同源市场格式，`source` 指向 `./vocabcraft.plugin`），VS Code / Copilot 经 `chat.plugins.marketplaces` 加入 `yecllsl/vocabcraft` 后 Browse Marketplace 安装，无需下载 Release 压缩包；`scripts/build-release.*` 与 `scripts/check_version.py` 同步纳入根 `marketplace.json`（顶层复制 + 必含校验 + 版本校验）。
+- **修复 `uv.lock` 版本漂移**：`vocabcraft-mcp` 在 `uv.lock` 中停在 `0.8.0`（pyproject 已是 `0.8.1`），升至 `0.8.2` 与真相源对齐。
+- **修复 Web 可视化版本硬编码**：`web/app.py` 的 FastAPI `version` 此前硬编码 `0.6.2`（DeepReview 版本串残留），改为动态读取 `vocabcraft_mcp.__version__`，根治跨项目版本漂移。
+- **版本号统一 `0.8.1` → `0.8.2`**：`pyproject.toml` / `package.json` / `plugin.json` / `tools.json` / `.codebuddy-plugin/marketplace.json` / 根 `marketplace.json` / 文档与 CHANGELOG 保持一致。
+
 ## [0.8.1] - 2026-09-29
 
 ### 采纳 DeepReview 的通用基础设施改进

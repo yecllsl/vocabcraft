@@ -18,6 +18,7 @@ from fastapi.templating import Jinja2Templates
 from markupsafe import Markup, escape
 
 from vocabcraft_mcp.tools.quiz import en_to_zh_pos
+from vocabcraft_mcp import __version__
 
 # web 模块根目录，用于定位 templates 和 static
 _WEB_DIR = Path(__file__).parent
@@ -54,7 +55,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="VocabCraft 可视化",
         description="词汇学习数据本地可视化应用",
-        version="0.6.2",
+        version=__version__,
     )
 
     # 挂载静态文件（JS库、CSS）

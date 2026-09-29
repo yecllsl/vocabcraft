@@ -4,7 +4,7 @@
 
 **支持的 Harness 只有两层**（判定标准：是否采纳 Agent Plugins 1.0 插件标准 / 是否免费额度可开箱即用）：
 
-- **Tier 1 — Agent Plugins 1.0 插件标准（插件形态分发）**：代表 **VS Code / Copilot**。交付物是 `vocabcraft.plugin/` 这个自包含插件目录（`plugin.json` + `mcp.json` + `skills/`），任何采纳 Agent Plugins 1.0 的客户端可直接指向它，**不为单个客户端新增同步目标**。注意：该规范不携带 AGENTS.md / rules 文件，规则文件的交付走 Tier 2 原生目录与仓库根 `AGENTS.md`。
+- **Tier 1 — Agent Plugins 1.0 插件标准（插件形态分发）**：代表 **VS Code / Copilot 与 CodeBuddy**。交付物是 `vocabcraft.plugin/` 这个自包含插件目录（`plugin.json` + `mcp.json` + `skills/`），任何采纳 Agent Plugins 1.0 的客户端可直接指向它；CodeBuddy 另经本地插件市场通道（仓库根 `.codebuddy-plugin/marketplace.json`，CodeBuddy 自有格式，非 Agent Plugins 1.0，其 `source` 即指向 `./vocabcraft.plugin`）一键安装；**VS Code / Copilot 经 Agent Plugins 1.0 远程市场安装：仓库根 `marketplace.json`（Claude Code / Copilot CLI 同源市场格式，其 `source` 亦指向 `./vocabcraft.plugin`）加入 `chat.plugins.marketplaces` 后 Browse Marketplace 安装——插件刻意收纳于 `vocabcraft.plugin/` 子目录（而非仓库根），故 VS Code 不能用仓库根/子目录 URL 直装，须走市场间接层，请勿为此把插件移到仓库根（会破坏 SSOT 与单向同步）**。该规范不携带 AGENTS.md / rules 文件，规则文件走 Tier 2 原生目录与仓库根 `AGENTS.md`。**不为单个客户端新增同步目标**。
 - **Tier 2 — 免费额度 / 开箱即用（原生目录 + 安装脚本）**：**Trae、OpenCode**。交付物是 `.trae/` / `.opencode/` 原生配置目录 + `install.*`。CodeBuddy 已归入 Tier 1（见上），不再生成 `.codebuddy/` 原生目录。
 - **明确不支持**：**WorkBuddy、Hermes**（用户级 harness，配置只能写 `~/`，无法项目级统一）与 **Goose**（未采纳 Agent Plugins 1.0，已彻底移除支持）；其余未采纳两层标准之一的 harness 一律不尝试。新增任何 harness 前必须先归入上述两层之一，否则不加。
 
