@@ -17,8 +17,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup, escape
 
-from vocabcraft_mcp.tools.quiz import en_to_zh_pos
 from vocabcraft_mcp import __version__
+from vocabcraft_mcp.tools.quiz import en_to_zh_pos
 
 # web 模块根目录，用于定位 templates 和 static
 _WEB_DIR = Path(__file__).parent
