@@ -12,6 +12,8 @@
 
 解压到任意目录（如 `D:\vocabcraft\` 或 `~/vocabcraft/`）。
 
+> **方式 B — Git URL / 仓库安装（仅 VS Code / CodeBuddy，无需下载）**：把 GitHub 仓库（`https://github.com/yecllsl/vocabcraft.git`）作为插件市场来源加载，客户端自动克隆插件包，无需下载 Release 压缩包；Tier 1 的 `mcp.json` / `.mcp.json` 首次启动自动 `uv sync` 构建虚拟环境。
+
 ### 第 2 步：安装依赖
 
 ```powershell
@@ -28,7 +30,7 @@ chmod +x install.sh && ./install.sh
 
 ### 第 3 步：配置 Agent 运行时
 
-VocabCraft 的受支持 Harness 分两层：**Tier 1（Agent Plugins 1.0 插件标准，代表 VS Code / Copilot）** 与 **Tier 2（免费额度、开箱即用：Trae / CodeBuddy / OpenCode）**。选择你使用的环境进行配置：
+VocabCraft 的受支持 Harness 分两层：**Tier 1（Agent Plugins 1.0 插件标准，代表 VS Code / Copilot / CodeBuddy）** 与 **Tier 2（免费额度、开箱即用：Trae / OpenCode）**。VS Code / CodeBuddy 还可把 GitHub 仓库 / Git URL 作为市场来源远程安装（无需下载）。选择你使用的环境进行配置：
 
 #### Trae
 
@@ -39,16 +41,12 @@ VocabCraft 的受支持 Harness 分两层：**Tier 1（Agent Plugins 1.0 插件�
 
 > 💡 Trae 读取由 `vocabcraft.plugin/runtime/trae.json` 同步生成的 `.trae/mcp.json`，无需单独配置。
 
-#### CodeBuddy
+#### CodeBuddy（Tier 1 · 插件市场）
 
-1. 运行安装脚本：
-   ```powershell
-   .\install.ps1 -AgentRuntime codebuddy  # Windows
-   bash install.sh --agent-runtime codebuddy  # Linux/macOS
-   ```
-2. 用 CodeBuddy 打开项目文件夹，在 MCP 配置中信任 vocabcraft-mcp
+- **Git URL 远程市场（无需下载）**：对话中执行 `/plugin marketplace add https://github.com/yecllsl/vocabcraft.git`（或 `yecll/vocabcraft`）添加远程市场 → `/plugin marketplace list` 确认市场名 → `/plugin install vocabcraft@<市场名>` → `/reload-plugins`。
+- **本地市场（下载解压）**：`.\install.ps1 -AgentRuntime codebuddy` → 用 CodeBuddy 打开项目文件夹 → `/plugin marketplace add <项目根目录绝对路径>` → `/plugin install vocabcraft@vocabcraft-local-market` → `/reload-plugins`。
 
-> 💡 也可走 CodeBuddy 本地插件市场：把解压后的文件夹作为本地市场添加，安装 `vocabcraft` 插件（清单见 `.codebuddy-plugin/marketplace.json`）。
+> 💡 插件内容来自 `vocabcraft.plugin/`，不生成 `.codebuddy/` 原生目录；MCP 首次启动自动 `uv sync` 构建虚拟环境。
 
 #### OpenCode
 
@@ -64,7 +62,7 @@ VocabCraft 的受支持 Harness 分两层：**Tier 1（Agent Plugins 1.0 插件�
 
 输入 `/capture`、`/review`、`/quiz`、`/stats` 或 `/export` 即可！
 
-> ✅ **验证安装**：Tier 1（VS Code / Copilot）—— **Agents Window → 插件 → Install from Source**，选**插件根** `vocabcraft.plugin/`，Installed 区应显示 `vocabcraft`（5 skills + 1 MCP server）；Tier 2（CodeBuddy）—— **插件管理 → 插件市场 → 添加插件市场**（市场 `vocabcraft-local-market`）→ 安装 `vocabcraft` → 重启。本地自检：`cd vocabcraft.plugin/vocabcraft-mcp && uv run vocabcraft-mcp`。详见 [DEPLOY.md](DEPLOY.md)「手动 E2E 验收」。
+> ✅ **验证安装**：Tier 1（VS Code / Copilot / CodeBuddy）—— VS Code：**Agents Window → 插件 → Install from Source** 选**插件根** `vocabcraft.plugin/`（显示 5 skills + 1 MCP server）；CodeBuddy：**插件管理 → 插件市场 → 添加插件市场**（市场 `vocabcraft-local-market`）→ 安装 `vocabcraft` → `/reload-plugins`。本地自检：`cd vocabcraft.plugin/vocabcraft-mcp && uv run vocabcraft-mcp`。详见 [DEPLOY.md](DEPLOY.md)「手动 E2E 验收」。
 
 ---
 

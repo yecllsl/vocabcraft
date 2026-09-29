@@ -39,7 +39,7 @@ func main() {
 
 	srv := kit.New(kit.Config{
 		Name:         "vocabcraft-mcp",
-		Version:      "0.8.0",
+		Version:      "0.8.1",
 		Instructions: "词汇学习与制作MCP Server",
 	})
 

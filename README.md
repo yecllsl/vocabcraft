@@ -48,16 +48,16 @@ Harness 支持只分两层，判定标准是「是否采纳 Agent Plugins 1.0 �
 | 层 | 代表 | 交付形态 | 说明 |
 |----|------|---------|------|
 | **Tier 1 — Agent Plugins 1.0 插件标准** | VS Code / Copilot | `vocabcraft.plugin/` 插件目录（`plugin.json` + `mcp.json` + `skills/`） | 任何采纳 Agent Plugins 1.0 的客户端可直接指向该目录，不为单个客户端新增同步目标。该规范不携带 AGENTS.md，规则文件走 Tier 2 与仓库根 |
-| **Tier 2 — 免费额度 / 开箱即用** | Trae、CodeBuddy、OpenCode | `.trae/` / `.codebuddy/` / `.opencode/` 原生目录 + `install.*`；CodeBuddy 另有本地市场一键安装（CodeBuddy 自有格式） | 有免费额度，用户解压即用，零额外付费门槛 |
+| **Tier 2 — 免费额度 / 开箱即用** | Trae、OpenCode | `.trae/` / `.opencode/` 原生目录 + `install.*` | 有免费额度，用户解压即用，零额外付费门槛 |
 
-> ✅ **已实测交付验证**：Tier 1 用 VS Code **Agents Window → 插件 → Install from Source** 指向 `vocabcraft.plugin/`（识别为 **5 skills + 1 MCP server**）；Tier 2 的 CodeBuddy 用 **插件管理 → 插件市场 → 添加本地市场**（市场 `vocabcraft-local-market`）安装 `vocabcraft`。Trae / OpenCode 走同一套原生目录交付，未单独实测。
+> ✅ **已实测交付验证**：Tier 1 用 VS Code **Agents Window → 插件 → Install from Source** 指向 `vocabcraft.plugin/`（识别为 **5 skills + 1 MCP server**）；Tier 1 的 CodeBuddy 用 **插件管理 → 插件市场 → 添加本地市场**（市场 `vocabcraft-local-market`）安装 `vocabcraft`。Trae / OpenCode 走同一套原生目录交付，未单独实测。
 
 ### 各客户端安装方式对照
 
 | 客户端 | 安装 MCP + skills 的方式 | 用 Agent Plugins 1.0 插件包？ | 层 | 实测 |
 |--------|--------------------------|------------------------------|----|------|
 | VS Code / Copilot | Agents Window → 插件 → **Install from Source** 指向 `vocabcraft.plugin/` | ✅ 是 | Tier 1 | ✅ |
-| CodeBuddy | **插件管理 → 插件市场 → 添加本地市场**（`.codebuddy-plugin/marketplace.json`）；或 `install.ps1 -AgentRuntime codebuddy` | ❌ 自有市场格式 | Tier 2 | ✅ |
+| CodeBuddy | **插件管理 → 插件市场 → 添加本地市场**（`.codebuddy-plugin/marketplace.json`）；或 Git URL 远程市场（见下）；或 `install.ps1 -AgentRuntime codebuddy` | ❌ 自有市场格式 | Tier 1 | ✅ |
 | OpenCode | `opencode.json` 的 `mcp` 字段 + `.opencode/skills/`（`install.ps1 -AgentRuntime opencode`） | ❌ | Tier 2 | 未单独实测 |
 | Trae | 内置 MCP 市场 / `.trae/mcp.json` + `.trae/skills/`（`install.ps1 -AgentRuntime trae`） | ❌ | Tier 2 | 未单独实测 |
 
@@ -71,13 +71,15 @@ Harness 支持只分两层，判定标准是「是否采纳 Agent Plugins 1.0 �
 
 - Python 3.12+
 - [uv 包管理器](https://docs.astral.sh/uv/)（Windows: `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`）
-- Trae、CodeBuddy、OpenCode（任选其一或全部）
+- Trae、OpenCode（任选其一或全部）；VS Code / CodeBuddy 走 Tier 1 插件通道（无需安装脚本，支持 Git URL 远程安装）
 
 ### 安装步骤
 
 #### 1. 下载并解压
 
-下载 `VocabCraft-v0.8.0.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
+下载 `VocabCraft-v0.8.1.zip`，解压到任意目录（如 `D:\vocabcraft\`）。
+
+> **方式 B — Git URL / 仓库安装（仅 VS Code / CodeBuddy，无需下载）**：把 GitHub 仓库（`https://github.com/yecllsl/vocabcraft.git`）作为插件市场来源加载，客户端自动克隆插件包，无需下载 Release 压缩包；Tier 1 的 `mcp.json` / `.mcp.json` 首次启动自动 `uv sync` 构建虚拟环境。
 
 #### 2. 运行安装脚本
 
@@ -221,7 +223,7 @@ vocabcraft/
 │       ├── pyproject.toml                    # 入口 vocabcraft-mcp
 │       └── uv.lock                           # 依赖锁定文件
 │
-├── .trae/ .opencode/ .codebuddy/             # 各平台配置（scripts/sync-agent-configs 生成）
+├── .trae/ .opencode/                         # 各平台配置（scripts/sync-agent-configs 生成）
 ├── .github/workflows/                         # test.yml / release.yml
 ├── scripts/                                  # 开发者工具（sync / generate / build-release / install）
 ├── install.ps1 / install.sh
@@ -256,8 +258,8 @@ vocabcraft/
 
 1. **统一规则源** — `vocabcraft.plugin/AGENTS.md` 是唯一的规则与行为定义文件，三个运行时共用
 2. **开发时源文件** — `vocabcraft.plugin/` 是 Skills 和 MCP 配置的开发时源文件（编辑在这里进行）
-3. **同步生成** — 运行 `.\scripts\sync-agent-configs.ps1`（或 `.\scripts\sync-agent-configs.sh`）将 `vocabcraft.plugin/skills/` 与 `vocabcraft.plugin/runtime/` 同步到 `.trae/`、`.opencode/`、`.codebuddy/` 对应目录
-4. **各运行时独立配置目录** — `.trae/`（Trae）、`.opencode/`（OpenCode）、`.codebuddy/`（CodeBuddy）各自独立，互不干扰
+3. **同步生成** — 运行 `.\scripts\sync-agent-configs.ps1`（或 `.\scripts\sync-agent-configs.sh`）将 `vocabcraft.plugin/skills/` 与 `vocabcraft.plugin/runtime/` 同步到 `.trae/`、`.opencode/` 对应目录
+4. **各运行时独立配置目录** — `.trae/`（Trae）、`.opencode/`（OpenCode）各自独立，互不干扰
 
 ### 为什么要分离？
 
@@ -327,15 +329,15 @@ uv run pytest tests/ -m "not e2e"
 
 ```powershell
 # Windows
-pwsh .\scripts\build-release.ps1 -Version 0.8.0
+pwsh .\scripts\build-release.ps1 -Version 0.8.1
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.8.0
+bash scripts/build-release.sh 0.8.1
 ```
 
-产物：`dist/VocabCraft-v0.8.0.{zip,tar.zst,tar.gz}`。
+产物：`dist/VocabCraft-v0.8.1.{zip,tar.zst,tar.gz}`。
 
 ### CI/CD
 

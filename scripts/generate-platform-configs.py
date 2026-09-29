@@ -4,7 +4,8 @@
 Mirrors the previous Node script (scripts/generate-platform-configs.js) but uses
 the project's Python stack. The generated files are consumed by
     scripts/sync-agent-configs(.ps1/.sh), which distributes them to the
-    .trae / .opencode / .codebuddy platform directories.
+    .trae / .opencode platform directories.
+    (CodeBuddy 走 Tier 1 插件市场通道，不生成 codebuddy.json)
 
 Usage:
     python scripts/generate-platform-configs.py
@@ -50,23 +51,6 @@ def generate_opencode() -> dict:
     }
 
 
-def generate_codebuddy() -> dict:
-    return {
-        "mcpServers": {
-            "vocabcraft-mcp": {
-                "command": "uv",
-                "args": [
-                    "run",
-                    "--no-sync",
-                    "--directory",
-                    "${workspaceFolder}/vocabcraft.plugin/vocabcraft-mcp",
-                    "vocabcraft-mcp",
-                ],
-            }
-        }
-    }
-
-
 def main() -> None:
     (RUNTIME_DIR / "trae.json").write_text(
         json.dumps(generate_trae(), indent=2) + "\n", encoding="utf-8"
@@ -74,10 +58,7 @@ def main() -> None:
     (RUNTIME_DIR / "opencode.json").write_text(
         json.dumps(generate_opencode(), indent=2) + "\n", encoding="utf-8"
     )
-    (RUNTIME_DIR / "codebuddy.json").write_text(
-        json.dumps(generate_codebuddy(), indent=2) + "\n", encoding="utf-8"
-    )
-    print("已生成所有平台配置 (vocabcraft.plugin/runtime/)")
+    print("已生成平台配置 (vocabcraft.plugin/runtime/: trae.json, opencode.json)")
 
 
 if __name__ == "__main__":

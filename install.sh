@@ -8,7 +8,7 @@
 #
 # 可选参数：
 #   --fix-path       将 vocabcraft.plugin/runtime 中 ${workspaceFolder} 替换为绝对路径（并重新同步各平台目录）
-#   --agent-runtime  配置 Agent 运行时 (trae/codebuddy/opencode/all)
+#   --agent-runtime  配置 Agent 运行时 (vscode/trae/codebuddy/opencode/all)
 #
 # 前置要求：
 #   - Python 3.12+
@@ -25,7 +25,7 @@ while [[ $# -gt 0 ]]; do
         --agent-runtime) AGENT_RUNTIME="$2"; shift 2 ;;
         *)
             echo "未知参数: $1"
-            echo "可用参数：--fix-path, --agent-runtime <trae|codebuddy|opencode|all>"
+            echo "可用参数：--fix-path, --agent-runtime <vscode|trae|codebuddy|opencode|all>"
             exit 1
             ;;
     esac
@@ -33,8 +33,8 @@ done
 
 echo ""
 echo "========================================"
-echo "  VocabCraft v0.6.2 安装向导"
-echo "  (Trae + CodeBuddy + opencode)"
+echo "  VocabCraft v0.8.1 安装向导"
+echo "  (VS Code / Trae / CodeBuddy / OpenCode)"
 echo "========================================"
 echo ""
 
@@ -112,22 +112,24 @@ if [ -n "$AGENT_RUNTIME" ]; then
             echo "  2. 设置 > MCP > 启用「项目级 MCP」"
             echo "  3. 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
             ;;
+        vscode)
+            echo "VS Code（Tier 1 · Agent Plugins 1.0 插件通道）:"
+            echo "  1. 打开 VS Code → Agents 面板 → 添加本地 Agent Plugin"
+            echo "  2. 目录指向 vocabcraft.plugin/（含 plugin.json + mcp.json + skills/）"
+            echo "  3. 调用 /capture 等 Skill 即可使用"
+            ;;
         codebuddy)
-            echo "正在同步 CodeBuddy 配置..."
-            if [ -f "$SYNC_SCRIPT" ]; then
-                bash "$SYNC_SCRIPT" --skip-opencode
-                echo ""
-                echo "下一步:"
-                echo "  1. 用 CodeBuddy 打开项目文件夹"
-                echo "  2. 在 MCP 配置中信任 vocabcraft-mcp"
-            else
-                echo "  同步脚本不存在: $SYNC_SCRIPT"
-            fi
+            echo "CodeBuddy（Tier 1 · 插件市场通道）:"
+            echo "  1. 用 CodeBuddy 打开项目文件夹"
+            echo "  2. 对话中执行: /plugin marketplace add <项目根目录绝对路径>"
+            echo "  3. 执行: /plugin install vocabcraft@vocabcraft-local-market"
+            echo "  4. 必要时执行 /reload-plugins"
+            echo "  （插件内容来自 vocabcraft.plugin/，不生成 .codebuddy/ 原生目录）"
             ;;
         opencode)
             echo "正在同步 opencode 配置..."
             if [ -f "$SYNC_SCRIPT" ]; then
-                bash "$SYNC_SCRIPT" --skip-codebuddy
+                bash "$SYNC_SCRIPT"
                 echo ""
                 echo "下一步:"
                 echo "  1. 在项目目录运行 opencode"
@@ -137,21 +139,21 @@ if [ -n "$AGENT_RUNTIME" ]; then
             fi
             ;;
         all)
-            echo "正在同步所有 Agent Runtime 配置..."
+            echo "正在同步 Tier 2 原生目录配置（Trae + opencode）..."
             if [ -f "$SYNC_SCRIPT" ]; then
                 bash "$SYNC_SCRIPT"
                 echo ""
-                echo "所有配置已同步。各运行时下一步:"
+                echo "Tier 2 配置已同步。各运行时下一步:"
                 echo "  Trae: 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
-                echo "  CodeBuddy: 在 MCP 配置中信任 vocabcraft-mcp"
                 echo "  opencode: 在项目目录运行 opencode"
+                echo "  VS Code / CodeBuddy（Tier 1）: 见上方各自说明，无需同步"
             else
                 echo "  同步脚本不存在: $SYNC_SCRIPT"
             fi
             ;;
         *)
             echo "未知 Agent Runtime: $AGENT_RUNTIME"
-            echo "支持的值: trae, codebuddy, opencode, all"
+            echo "支持的值: vscode, trae, codebuddy, opencode, all"
             exit 1
             ;;
     esac
@@ -187,7 +189,7 @@ if [ "$FIX_PATH" -eq 1 ]; then
     echo ""
     echo "  正在修复 runtime 配置路径（vocabcraft.plugin/runtime）..."
     FIXED_ANY=0
-    for t in "$RUNTIME_DIR/trae.json" "$RUNTIME_DIR/codebuddy.json"; do
+    for t in "$RUNTIME_DIR/trae.json"; do
         if [ -f "$t" ]; then
             if grep -q '${workspaceFolder}' "$t" 2>/dev/null; then
                 ESCAPED_ROOT="${PROJECT_ROOT//\//\\/}"
@@ -219,7 +221,7 @@ HOOK_DST="$PROJECT_ROOT/.git/hooks/pre-commit"
 if [ -f "$HOOK_SRC" ]; then
     cp "$HOOK_SRC" "$HOOK_DST"
     chmod +x "$HOOK_DST"
-    echo "  ✓ 已安装 pre-commit 钩子（拦截直接修改生成目录 .trae/.opencode/.codebuddy 的违规提交）"
+    echo "  ✓ 已安装 pre-commit 钩子（拦截直接修改生成目录 .trae/.opencode 的违规提交）"
     echo "    若需手动安装：cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit"
 else
     echo "  ⚠ 未找到 $HOOK_SRC，跳过钩子安装"
@@ -233,12 +235,12 @@ echo "========================================"
 echo "  ✓ 安装完成！"
 echo "========================================"
 echo ""
-echo "下一步操作（Trae / CodeBuddy / opencode 操作一致）："
+echo "下一步操作："
 echo ""
 echo "  1. 用对应运行时打开此文件夹"
 echo "     文件 → 打开文件夹 → 选择: $PROJECT_ROOT"
 echo ""
-echo "  2. 启用项目级 MCP（Trae: 设置 → MCP；CodeBuddy: 信任 vocabcraft-mcp）"
+echo "  2. 启用项目级 MCP（Trae: 设置 → MCP；VS Code/CodeBuddy: 走插件通道）"
 echo ""
 echo "  3. 重启运行时"
 echo ""

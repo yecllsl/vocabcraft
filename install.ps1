@@ -16,7 +16,7 @@
 param(
     [switch]$FixPath,
     [Parameter(Mandatory=$false)]
-    [ValidateSet("trae", "codebuddy", "opencode", "all")]
+    [ValidateSet("vscode", "trae", "codebuddy", "opencode", "all")]
     [string]$AgentRuntime
 )
 
@@ -24,8 +24,8 @@ $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host " VocabCraft v0.6.2 安装向导" -ForegroundColor Cyan
-Write-Host "  (Trae + CodeBuddy + opencode)" -ForegroundColor Cyan
+Write-Host " VocabCraft v0.8.1 安装向导" -ForegroundColor Cyan
+Write-Host "  (VS Code / Trae / CodeBuddy / OpenCode)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -116,22 +116,24 @@ if ($AgentRuntime) {
             Write-Host "  2. 设置 > MCP > 启用「项目级 MCP」"
             Write-Host "  3. 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
         }
+        "vscode" {
+            Write-Host "VS Code（Tier 1 · Agent Plugins 1.0 插件通道）:" -ForegroundColor Yellow
+            Write-Host "  1. 打开 VS Code → Agents 面板 → 添加本地 Agent Plugin"
+            Write-Host "  2. 目录指向 vocabcraft.plugin/（含 plugin.json + mcp.json + skills/）"
+            Write-Host "  3. 调用 /capture 等 Skill 即可使用"
+        }
         "codebuddy" {
-            Write-Host "正在同步 CodeBuddy 配置..." -ForegroundColor Yellow
-            if (Test-Path $SyncScript) {
-                & $SyncScript -SkipOpencode
-                Write-Host ""
-                Write-Host "下一步:" -ForegroundColor Yellow
-                Write-Host "  1. 用 CodeBuddy 打开项目文件夹"
-                Write-Host "  2. 在 MCP 配置中信任 vocabcraft-mcp"
-            } else {
-                Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
-            }
+            Write-Host "CodeBuddy（Tier 1 · 插件市场通道）:" -ForegroundColor Yellow
+            Write-Host "  1. 用 CodeBuddy 打开项目文件夹"
+            Write-Host "  2. 对话中执行: /plugin marketplace add <项目根目录绝对路径>"
+            Write-Host "  3. 执行: /plugin install vocabcraft@vocabcraft-local-market"
+            Write-Host "  4. 必要时执行 /reload-plugins"
+            Write-Host "  （插件内容来自 vocabcraft.plugin/，不生成 .codebuddy/ 原生目录）"
         }
         "opencode" {
             Write-Host "正在同步 opencode 配置..." -ForegroundColor Yellow
             if (Test-Path $SyncScript) {
-                & $SyncScript -SkipCodebuddy
+                & $SyncScript
                 Write-Host ""
                 Write-Host "下一步:" -ForegroundColor Yellow
                 Write-Host "  1. 在项目目录运行 opencode"
@@ -141,14 +143,14 @@ if ($AgentRuntime) {
             }
         }
         "all" {
-            Write-Host "正在同步所有 Agent Runtime 配置..." -ForegroundColor Yellow
+            Write-Host "正在同步 Tier 2 原生目录配置（Trae + opencode）..." -ForegroundColor Yellow
             if (Test-Path $SyncScript) {
                 & $SyncScript
                 Write-Host ""
-                Write-Host "所有配置已同步。各运行时下一步:" -ForegroundColor Green
+                Write-Host "Tier 2 配置已同步。各运行时下一步:" -ForegroundColor Green
                 Write-Host "  Trae: 设置 > 规则 > 开启「将 AGENTS.md 包含在上下文中」"
-                Write-Host "  CodeBuddy: 在 MCP 配置中信任 vocabcraft-mcp"
                 Write-Host "  opencode: 在项目目录运行 opencode"
+                Write-Host "  VS Code / CodeBuddy（Tier 1）: 见上方各自说明，无需同步"
             } else {
                 Write-Host "  同步脚本不存在: $SyncScript" -ForegroundColor Red
             }
@@ -187,7 +189,7 @@ if (Test-Path $traeJson) {
     if ($mcpContent -match '\$\{workspaceFolder\}') {
         Write-Host ""
         Write-Host "  ℹ 检测到 runtime 配置使用了 \${workspaceFolder} 变量" -ForegroundColor Cyan
-        Write-Host "    Trae / CodeBuddy / opencode 会自动替换此变量，无需手动配置" -ForegroundColor Cyan
+        Write-Host "    Trae / opencode 会自动替换此变量，无需手动配置" -ForegroundColor Cyan
         Write-Host "    如果你的环境不支持变量替换，请运行：" -ForegroundColor Cyan
         Write-Host "    .\install.ps1 -FixPath" -ForegroundColor White
     }
@@ -198,8 +200,7 @@ if ($FixPath) {
     Write-Host "  正在修复 runtime 配置路径（vocabcraft.plugin/runtime）..." -ForegroundColor Yellow
     $fixedAny = $false
     $fixTargets = @(
-        (Join-Path $runtimeDir "trae.json"),
-        (Join-Path $runtimeDir "codebuddy.json")
+        (Join-Path $runtimeDir "trae.json")
     )
     $ws = $projectRoot -replace '\\', '/'
     foreach ($t in $fixTargets) {
@@ -233,7 +234,7 @@ $HookSrc = Join-Path $projectRoot "scripts/pre-commit"
 $HookDst = Join-Path $projectRoot ".git/hooks/pre-commit"
 if (Test-Path $HookSrc) {
     Copy-Item -Path $HookSrc -Destination $HookDst -Force
-    Write-Host "  ✓ 已安装 pre-commit 钩子（拦截直接修改生成目录 .trae/.opencode/.codebuddy 的违规提交）" -ForegroundColor Green
+    Write-Host "  ✓ 已安装 pre-commit 钩子（拦截直接修改生成目录 .trae/.opencode 的违规提交）" -ForegroundColor Green
     Write-Host "    若需手动安装：Copy-Item scripts/pre-commit .git/hooks/pre-commit" -ForegroundColor DarkGray
 } else {
     Write-Host "  ⚠ 未找到 $HookSrc，跳过钩子安装" -ForegroundColor Yellow
@@ -247,12 +248,12 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host "  ✓ 安装完成！" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "下一步操作（Trae / CodeBuddy / opencode 操作一致）：" -ForegroundColor White
+Write-Host "下一步操作：" -ForegroundColor White
 Write-Host ""
 Write-Host "  1. 用对应运行时打开此文件夹" -ForegroundColor White
 Write-Host "     文件 → 打开文件夹 → 选择: $projectRoot" -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "  2. 启用项目级 MCP（Trae: 设置 → MCP；CodeBuddy: 信任 vocabcraft-mcp）" -ForegroundColor White
+Write-Host "  2. 启用项目级 MCP（Trae: 设置 → MCP；VS Code/CodeBuddy: 走插件通道）" -ForegroundColor White
 Write-Host ""
 Write-Host "  3. 重启运行时" -ForegroundColor White
 Write-Host ""

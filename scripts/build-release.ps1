@@ -32,7 +32,7 @@ $tempDir = Join-Path $distDir $packageName
 $zipPath = Join-Path $distDir "$packageName.zip"
 $gzPath = Join-Path $distDir "$packageName.tar.gz"
 
-# 基线运行时平台（Trae / CodeBuddy / OpenCode）
+# 基线运行时平台（Tier 2 原生目录：Trae / OpenCode；CodeBuddy 走 Tier 1 市场通道）
 # vocabcraft.plugin/ 为配置真相源：Skills 与 AGENTS.md 同步自 vocabcraft.plugin/，平台配置生成自 vocabcraft.plugin/runtime/*.json
 $agentsDir = Join-Path $projectRoot "vocabcraft.plugin"
 $agentsRuntime = Join-Path $agentsDir "runtime"
@@ -41,8 +41,7 @@ $agentsMd = Join-Path $agentsDir "AGENTS.md"
 # 每个平台：目录名 / 运行时配置源(json) / 配置输出文件名 / AGENTS.md 是否放进平台目录（Trae 放根目录）
 $platforms = @(
     [PSCustomObject]@{ Dir = ".trae";      ConfigSrc = "trae.json";      ConfigDst = "mcp.json";      AgentsMdInPlatform = $false },
-    [PSCustomObject]@{ Dir = ".opencode";  ConfigSrc = "opencode.json";  ConfigDst = "opencode.json"; AgentsMdInPlatform = $true },
-    [PSCustomObject]@{ Dir = ".codebuddy"; ConfigSrc = "codebuddy.json"; ConfigDst = "mcp.json";      AgentsMdInPlatform = $true }
+    [PSCustomObject]@{ Dir = ".opencode";  ConfigSrc = "opencode.json";  ConfigDst = "opencode.json"; AgentsMdInPlatform = $true }
 )
 
 
@@ -92,7 +91,7 @@ New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin") -For
 # Agent Plugins 1.0（Tier 1）/ CodeBuddy 插件清单目录（Tier 2 市场通道）
 New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin\.codebuddy-plugin") -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $tempDir ".codebuddy-plugin") -Force | Out-Null
-# 三个运行时平台目录（Trae / CodeBuddy / OpenCode）
+# 平台目录（Trae / OpenCode；CodeBuddy 走 Tier 1 市场通道，不生成 .codebuddy/）
 # 基线约定：每个平台目录都有 skills/ 与 AGENTS.md（Trae 例外：AGENTS.md 放根目录）
 foreach ($p in $platforms) {
     New-Item -ItemType Directory -Path (Join-Path $tempDir $p.Dir "skills") -Force | Out-Null
@@ -107,9 +106,9 @@ New-Item -ItemType Directory -Path (Join-Path $tempDir "vocabcraft.plugin/vocabc
 Write-Ok "directories created"
 
 # ──────────────────────────────────────────
-# [3/6] 复制多平台配置（.trae / .opencode / .codebuddy）
+# [3/6] 复制多平台配置（.trae / .opencode）
 # ──────────────────────────────────────────
-Write-Step "[3/6] Copy platform configs (.trae/.opencode/.codebuddy)..."
+Write-Step "[3/6] Copy platform configs (.trae/.opencode)..."
 
 # opencode 的 instructions 引用 vocabcraft.plugin/AGENTS.md，发布包需包含该文件
 Copy-Item -Force $agentsMd (Join-Path $tempDir "vocabcraft.plugin\AGENTS.md")
@@ -123,7 +122,7 @@ if ($LASTEXITCODE -ge 8) {
     Write-Err "robocopy plugin skills failed (exit $LASTEXITCODE)"
     exit 1
 }
-# Tier 2（CodeBuddy，自有格式）：插件清单 + 本地市场清单
+# CodeBuddy 插件市场通道（Tier 1，自有格式）：插件清单 + 本地市场清单
 Copy-Item -Force (Join-Path $agentsDir ".mcp.json") (Join-Path $tempDir "vocabcraft.plugin\.mcp.json")
 Copy-Item -Force (Join-Path $agentsDir ".codebuddy-plugin\plugin.json") (Join-Path $tempDir "vocabcraft.plugin\.codebuddy-plugin\plugin.json")
 Copy-Item -Force (Join-Path $projectRoot ".codebuddy-plugin\marketplace.json") (Join-Path $tempDir ".codebuddy-plugin\marketplace.json")
@@ -149,7 +148,7 @@ foreach ($p in $platforms) {
     Copy-Item -Force $cfgSrc $cfgDst
 }
 
-Write-Ok "platform configs copied (.trae/.opencode/.codebuddy)"
+Write-Ok "platform configs copied (.trae/.opencode)"
 
 # ──────────────────────────────────────────
 # [4/6] 复制 vocabcraft.plugin/vocabcraft-mcp 源码（白名单）
@@ -247,10 +246,8 @@ $requiredFiles = @(
     ".codebuddy-plugin\marketplace.json",
     ".trae\mcp.json",
     ".opencode\opencode.json",
-    ".codebuddy\mcp.json",
     ".trae\skills",
     ".opencode\skills",
-    ".codebuddy\skills",
     "vocabcraft.plugin/vocabcraft-mcp\pyproject.toml",
     "vocabcraft.plugin/vocabcraft-mcp\src\vocabcraft_mcp\server.py",
     "install.ps1",
@@ -328,7 +325,7 @@ Write-Host "    $zipPath ($zipSizeMB MB)" -ForegroundColor Cyan
 if (Test-Path $gzPath) { Write-Host "    $gzPath" -ForegroundColor Cyan }
 Write-Host "  Files:    $fileCount" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  User steps (支持的运行时: Trae / CodeBuddy / OpenCode):" -ForegroundColor White
+Write-Host "  User steps (支持的运行时: Trae / OpenCode（原生）/ CodeBuddy（市场）):" -ForegroundColor White
 Write-Host "  1. Extract VocabCraft-v$Version.zip" -ForegroundColor DarkGray
 Write-Host "  2. Run install.ps1 (或 Linux/macOS 下 install.sh)" -ForegroundColor DarkGray
 Write-Host "  3. 在所用 IDE 中打开该文件夹，启用项目级 MCP 即可" -ForegroundColor DarkGray

@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1] - 2026-09-29
+
+### 采纳 DeepReview 的通用基础设施改进
+
+- **CodeBuddy 改走 Tier 1 插件市场通道**：CodeBuddy 不再生成 `.codebuddy/` 原生目录，改经仓库根 `.codebuddy-plugin/marketplace.json` 本地市场一键安装（与 VS Code 同为 Tier 1 插件形态）。`scripts/sync-agent-configs` 不再生成 `.codebuddy/`；`scripts/generate-platform-configs.py` 不再生成 `runtime/codebuddy.json`；`scripts/build-release.*` 不再打包 `.codebuddy/` 仅保留市场清单；`scripts/pre-commit` 与 `scripts/check-config-drift.sh` 不再将 `.codebuddy/` 视为生成目录。
+- **安装脚本按通道分流**：`install.ps1` / `install.sh` 新增 `vscode` 运行时；`vscode` / `codebuddy` 走 Tier 1（手动插件安装，无需同步），`trae` / `opencode` 走 Tier 2（同步原生目录）；`all` 仅同步 Tier 2。FixPath 目标移除 `codebuddy.json`。
+- **Git URL / 仓库远程安装**：Tier 1 的 `mcp.json` / `.mcp.json` 启动参数移除 `--no-sync`，首次启动自动 `uv sync` 构建虚拟环境；VS Code / CodeBuddy 可直接把 GitHub 仓库 / Git URL 作为插件市场来源加载，无需下载 Release 压缩包。
+- **文档**：QUICKSTART / README / DEPLOY 补充「方式 B：Git URL / 仓库安装」与 Tier 1 / Tier 2 通道说明，修正 venv 前置依赖描述。
+
 ## [0.8.0] - 2026-09-28
 
 ### Harness 支持策略：明确两层

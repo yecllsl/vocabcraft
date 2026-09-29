@@ -2,19 +2,17 @@
 .SYNOPSIS
     同步 vocabcraft.plugin/ 配置到各平台目录。
 .DESCRIPTION
-    从 vocabcraft.plugin/runtime/ 目录读取配置，生成 .trae/、.opencode/、.codebuddy/ 配置。
+    从 vocabcraft.plugin/runtime/ 目录读取配置，生成 .trae/、.opencode/ 配置。
     vocabcraft.plugin/ 是配置的唯一真相源。
+    CodeBuddy 走 Tier 1 插件市场通道（.codebuddy-plugin/marketplace.json），不生成 .codebuddy/ 原生目录。
 .PARAMETER SkipTrae
     跳过 Trae 配置生成。
 .PARAMETER SkipOpencode
     跳过 opencode 配置生成。
-.PARAMETER SkipCodebuddy
-    跳过 CodeBuddy 配置生成。
 #>
 param(
     [switch]$SkipTrae,
-    [switch]$SkipOpencode,
-    [switch]$SkipCodebuddy
+    [switch]$SkipOpencode
 )
 
 $ErrorActionPreference = "Stop"
@@ -74,17 +72,6 @@ function New-OpencodeConfig {
     }
 }
 
-function New-CodebuddyConfig {
-    $CodebuddyDir = Join-Path $ProjectRoot ".codebuddy"
-    if (-not (Test-Path $CodebuddyDir)) { New-Item -ItemType Directory -Path $CodebuddyDir -Force | Out-Null }
-    $SourceConfig = Join-Path $AgentsRuntime "codebuddy.json"
-    if (Test-Path $SourceConfig) {
-        Write-Host "复制 CodeBuddy 配置 → $CodebuddyDir" -ForegroundColor Yellow
-        Copy-Item -Force $SourceConfig (Join-Path $CodebuddyDir "mcp.json")
-        Write-Host "  已生成 CodeBuddy 配置" -ForegroundColor Green
-    }
-}
-
 function New-AaifDeclarations {
     $Uv = Get-Command uv -ErrorAction SilentlyContinue
     if (-not $Uv) { Write-Error "未找到 uv，无法生成 AAIF 声明文件（tools.json/triggers.json/workflows.json）"; exit 1 }
@@ -109,11 +96,5 @@ if (-not $SkipOpencode) {
     Sync-Skills -TargetDir (Join-Path $ProjectRoot ".opencode")
     Sync-AgentsMd -TargetDir (Join-Path $ProjectRoot ".opencode")
     New-OpencodeConfig
-}
-if (-not $SkipCodebuddy) {
-    Write-Host "`n--- CodeBuddy ---" -ForegroundColor Cyan
-    Sync-Skills -TargetDir (Join-Path $ProjectRoot ".codebuddy")
-    Sync-AgentsMd -TargetDir (Join-Path $ProjectRoot ".codebuddy")
-    New-CodebuddyConfig
 }
 Write-Host "`n=== 同步完成 ===" -ForegroundColor Cyan

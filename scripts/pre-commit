@@ -2,7 +2,7 @@
 # scripts/pre-commit — 配置同步强约束的机械防线
 #
 # 原则（见 vocabcraft.plugin/AGENTS.md「流程规则 > 配置同步」）：
-#   vocabcraft.plugin/ 是配置层唯一真相源；.trae/、.opencode/、.codebuddy/
+#   vocabcraft.plugin/ 是配置层唯一真相源；.trae/、.opencode/
 #   由 scripts/sync-agent-configs(.ps1/.sh) 单向生成，禁止直接编辑。
 #
 # 本钩子采用「内容一致性」校验，而非旧的『本次提交是否同时含 vocabcraft.plugin 改动』：
@@ -33,8 +33,7 @@ gen_to_src() {
     case "$1" in
         .trae/skills/*)      printf 'vocabcraft.plugin/skills/%s\n' "${1#.trae/skills/}" ;;
         .opencode/skills/*)  printf 'vocabcraft.plugin/skills/%s\n' "${1#.opencode/skills/}" ;;
-        .codebuddy/skills/*) printf 'vocabcraft.plugin/skills/%s\n' "${1#.codebuddy/skills/}" ;;
-        AGENTS.md|.trae/AGENTS.md|.opencode/AGENTS.md|.codebuddy/AGENTS.md)
+        AGENTS.md|.trae/AGENTS.md|.opencode/AGENTS.md)
             printf 'vocabcraft.plugin/AGENTS.md\n' ;;
     esac
 }
@@ -42,7 +41,7 @@ gen_to_src() {
 # 判断生成文件是否属于纯复制产物（需强校验）
 is_generated_copy() {
     case "$1" in
-        AGENTS.md|.trae/skills/*|.opencode/skills/*|.codebuddy/skills/*|.trae/AGENTS.md|.opencode/AGENTS.md|.codebuddy/AGENTS.md) return 0 ;;
+        AGENTS.md|.trae/skills/*|.opencode/skills/*|.trae/AGENTS.md|.opencode/AGENTS.md) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -60,7 +59,7 @@ while IFS= read -r f || [ -n "$f" ]; do
     case "$f" in
         vocabcraft.plugin/skills/*|vocabcraft.plugin/AGENTS.md)
             # p="." 覆盖根目录 AGENTS.md（Trae 读取的那份）
-            for p in . .trae .opencode .codebuddy; do
+            for p in . .trae .opencode; do
                 copy="$p${f#vocabcraft.plugin}"    # vocabcraft.plugin/skills/x → $p/skills/x（POSIX 前缀剔除，兼容 dash）
                 if [ ! -f "$copy" ]; then
                     continue    # 该平台无此文件则跳过（不强制全平台同步）
@@ -76,10 +75,7 @@ while IFS= read -r f || [ -n "$f" ]; do
 
     # ── 正向：生成目录的纯复制产物在暂存区 → 必须与源一致 ──
     case "$f" in
-        AGENTS.md|.trae/*|.opencode/*|.codebuddy/*)
-            case "$f" in
-                .codebuddy/memory/*) continue ;;   # 运行时自有目录，豁免
-            esac
+        AGENTS.md|.trae/*|.opencode/*)
             if is_generated_copy "$f"; then
                 src=$(gen_to_src "$f")
                 if [ "$(staged_rel "$f")" != "$(staged_rel "$src")" ]; then

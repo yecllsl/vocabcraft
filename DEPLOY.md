@@ -5,7 +5,7 @@
 ### Windows 用户
 
 ```powershell
-# 1. 从 GitHub Releases 下载 VocabCraft-v0.8.0.zip，解压到任意目录（如 D:\vocabcraft\）
+# 1. 从 GitHub Releases 下载 VocabCraft-v0.8.1.zip，解压到任意目录（如 D:\vocabcraft\）
 #    或用 7-Zip 解压 .tar.zst / .tar.gz
 
 # 2. 运行安装脚本
@@ -20,8 +20,8 @@
 
 ```bash
 # 1. 从 GitHub Releases 下载并解压
-#    tar.zst (推荐):  tar --zstd -xf VocabCraft-v0.8.0.tar.zst
-#    tar.gz:          tar -xzf VocabCraft-v0.8.0.tar.gz
+#    tar.zst (推荐):  tar --zstd -xf VocabCraft-v0.8.1.tar.zst
+#    tar.gz:          tar -xzf VocabCraft-v0.8.1.tar.gz
 
 # 2. 运行安装脚本
 chmod +x install.sh
@@ -78,10 +78,9 @@ VocabCraft 的设计是**一份配置同时运行在多个 Agent 运行时**。T
 3. **设置 → 规则**，开启 **"将 AGENTS.md 包含在上下文中"**
 4. 重启 Trae
 
-**CodeBuddy**
-1. 运行 `.\install.ps1 -AgentRuntime codebuddy`（或 `bash install.sh --agent-runtime codebuddy`）
-2. 用 CodeBuddy 打开项目文件夹
-3. 在 MCP 配置中信任 `vocabcraft-mcp`
+**CodeBuddy（Tier 1 · 插件市场）**
+- **方式 B（Git URL 远程市场，无需下载）**：对话中执行 `/plugin marketplace add https://github.com/yecllsl/vocabcraft.git`（或 `yecll/vocabcraft`）添加远程市场 → `/plugin marketplace list` 确认市场名 → `/plugin install vocabcraft@<市场名>` → `/reload-plugins`。
+- **方式 A（下载解压）**：`.\install.ps1 -AgentRuntime codebuddy` → 用 CodeBuddy 打开项目文件夹 → `/plugin marketplace add <项目根目录绝对路径>` → `/plugin install vocabcraft@vocabcraft-local-market` → `/reload-plugins`。
 
 **OpenCode**
 1. 运行 `.\install.ps1 -AgentRuntime opencode`（或 `bash install.sh --agent-runtime opencode`）
@@ -146,7 +145,7 @@ uv run vocabcraft-mcp
 
 ## Skills 与规则配置
 
-Skills 位于 `vocabcraft.plugin/skills/`（配置真相源），经 `scripts/sync-agent-configs` 同步到 `.trae/` / `.opencode/` / `.codebuddy/`。修改后重启运行时即可生效。
+Skills 位于 `vocabcraft.plugin/skills/`（配置真相源），经 `scripts/sync-agent-configs` 同步到 `.trae/` / `.opencode/`。修改后重启运行时即可生效。
 
 ### Skills 说明（vocabcraft-* 业务编排）
 
@@ -169,7 +168,7 @@ Skills 位于 `vocabcraft.plugin/skills/`（配置真相源），经 `scripts/sy
 **共同准备**
 
 1. 从 GitHub Releases 解压发布包（`VocabCraft-vX.Y.Z.zip`，或 `.tar.zst` / `.tar.gz`）到任意目录。
-2. 安装依赖（插件 `mcp.json` 使用 `uv run --no-sync`，需先建好虚拟环境，发布包不含 `.venv`）：
+2. 安装依赖（Tier 1 的 `mcp.json` / `.mcp.json` 用 `uv run` 首次启动自动 `uv sync`；Tier 2 需先跑安装脚本建虚拟环境）：
    ```powershell
    cd <解压目录>; .\install.ps1
    ```
@@ -190,16 +189,13 @@ Skills 位于 `vocabcraft.plugin/skills/`（配置真相源），经 `scripts/sy
 
 > ⚠️ Agent Plugins 1.0 规范不携带 AGENTS.md / rules 文件；业务规则需在客户端侧另行纳入（用仓库根 / 解压包的 `AGENTS.md`）。
 
-### Tier 2 — CodeBuddy 本地插件市场
+### Tier 1 — CodeBuddy 插件市场通道
 
-> ✅ 已实测通过：市场 `vocabcraft-local-market` 添加成功，插件 `vocabcraft` 可浏览并安装。
+> ✅ 已实测通过：市场 `vocabcraft-local-market` 添加成功，插件 `vocabcraft` 可浏览并安装。CodeBuddy 不再生成 `.codebuddy/` 原生目录，插件内容全部来自 `vocabcraft.plugin/`。
 
-1. CodeBuddy → **插件管理** → **插件市场** → **添加插件市场**，指向**市场根目录**（含 `.codebuddy-plugin/marketplace.json`）：发布包用 `<解压目录>`，仓库开发场景用仓库根。
-2. 在市场列表中选择 **`vocabcraft-local-market`**，在插件列表里找到 **`vocabcraft`** 并安装。
-3. 重启 CodeBuddy。
-4. 验证：MCP 配置中出现 `vocabcraft-mcp`（信任它），输入 `/stats` 触发。
-
-> 若市场不识别，退回安装脚本方式：`.\install.ps1 -AgentRuntime codebuddy`。
+- **Git URL 远程市场（无需下载）**：对话中执行 `/plugin marketplace add https://github.com/yecllsl/vocabcraft.git`（或 `yecll/vocabcraft`）添加远程市场 → `/plugin marketplace list` 确认市场名（GitHub 仓库通常形如 `yecllsl-vocabcraft`）→ `/plugin install vocabcraft@<市场名>` → `/reload-plugins`。
+- **本地市场（下载解压）**：CodeBuddy → **插件管理** → **插件市场** → **添加插件市场**，指向**市场根目录**（含 `.codebuddy-plugin/marketplace.json`）：发布包用 `<解压目录>`，仓库开发场景用仓库根。→ 在市场列表中选择 **`vocabcraft-local-market`** → 安装 **`vocabcraft`** → 重启 CodeBuddy。
+- 验证：MCP 配置中出现 `vocabcraft-mcp`（信任它），输入 `/stats` 触发。
 
 ### 本地自检（不经客户端）
 
@@ -289,7 +285,7 @@ vocabcraft/
 │   ├── AGENTS.md                          # 统一规则源
 │   └── tools.json / triggers.json / workflows.json           # AAIF 声明（脚本从真实源生成，供 agents publish 消费）
 │
-├── .trae/  .opencode/  .codebuddy/            # 由 scripts/sync-agent-configs 生成
+├── .trae/  .opencode/                        # 由 scripts/sync-agent-configs 生成
 │
 ├── .github/workflows/                     # test.yml / release.yml
 ├── scripts/                               # build-release.* / sync-agent-configs.*
@@ -303,15 +299,15 @@ vocabcraft/
 
 ```powershell
 # Windows (PowerShell 5.1+)
-.\scripts\build-release.ps1 -Version 0.8.0
+.\scripts\build-release.ps1 -Version 0.8.1
 ```
 
 ```bash
 # Linux / macOS
-bash scripts/build-release.sh 0.8.0
+bash scripts/build-release.sh 0.8.1
 ```
 
-产物：`dist/VocabCraft-v0.8.0.{zip,tar.zst,tar.gz}`，结构与 GitHub Release 资产一致。
+产物：`dist/VocabCraft-v0.8.1.{zip,tar.zst,tar.gz}`，结构与 GitHub Release 资产一致。
 
 构建脚本采用**白名单复制策略**，只打包必要文件：
 

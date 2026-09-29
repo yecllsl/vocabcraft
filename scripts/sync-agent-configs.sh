@@ -30,12 +30,10 @@ echo "配置源: vocabcraft.plugin/"
 
 SKIP_TRAE=false
 SKIP_OPENCODE=false
-SKIP_CODEBUDDY=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --skip-trae) SKIP_TRAE=true; shift ;;
         --skip-opencode) SKIP_OPENCODE=true; shift ;;
-        --skip-codebuddy) SKIP_CODEBUDDY=true; shift ;;
         *) echo "未知参数: $1"; exit 1 ;;
     esac
 done
@@ -82,17 +80,6 @@ generate_opencode_config() {
     fi
 }
 
-generate_codebuddy_config() {
-    local codebuddy_dir="$PROJECT_ROOT/.codebuddy"
-    mkdir -p "$codebuddy_dir"
-    local source_config="$AGENTS_RUNTIME/codebuddy.json"
-    if [ -f "$source_config" ]; then
-        echo -e "${YELLOW}复制 CodeBuddy 配置 → $codebuddy_dir${NC}"
-        cp -f "$source_config" "$codebuddy_dir/mcp.json"
-        echo -e "${GREEN}  已生成 CodeBuddy 配置${NC}"
-    fi
-}
-
 generate_aaif_declarations() {
     if ! command -v uv >/dev/null 2>&1; then
         echo -e "${RED}未找到 uv，无法生成 AAIF 声明文件（tools.json/triggers.json/workflows.json）${NC}" >&2
@@ -126,11 +113,5 @@ if [ "$SKIP_OPENCODE" = false ]; then
     sync_skills "$PROJECT_ROOT/.opencode"
     sync_agents_md "$PROJECT_ROOT/.opencode"
     generate_opencode_config
-fi
-if [ "$SKIP_CODEBUDDY" = false ]; then
-    echo -e "\n${CYAN}--- CodeBuddy ---${NC}"
-    sync_skills "$PROJECT_ROOT/.codebuddy"
-    sync_agents_md "$PROJECT_ROOT/.codebuddy"
-    generate_codebuddy_config
 fi
 echo -e "\n${CYAN}=== 同步完成 ===${NC}"

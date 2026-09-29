@@ -31,7 +31,7 @@ check_pair() {  # $1=生成文件, $2=源
 check_pair "AGENTS.md" "vocabcraft.plugin/AGENTS.md"
 
 # 平台内 AGENTS.md：.trae 不放，故「有则必须与源一致」
-for p in .trae .opencode .codebuddy; do
+for p in .trae .opencode; do
     if [ -f "$p/AGENTS.md" ]; then
         check_pair "$p/AGENTS.md" "vocabcraft.plugin/AGENTS.md"
     fi
@@ -43,7 +43,7 @@ while IFS= read -r f || [ -n "$f" ]; do
     if [ -z "$f" ]; then
         continue
     fi
-    for p in .trae .opencode .codebuddy; do
+    for p in .trae .opencode; do
         copy="$p${f#vocabcraft.plugin}"    # .vocabcraft.plugin/skills/x → $p/skills/x（POSIX 前缀剔除，兼容 dash）
         if [ ! -f "$copy" ]; then
             echo "漂移: $p 缺少同步文件 $copy（源 $f 未同步到 $p）" >&2

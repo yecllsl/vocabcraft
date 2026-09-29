@@ -35,19 +35,19 @@ ZIP_PATH="$DIST_DIR/$PACKAGE_NAME.zip"
 ZST_PATH="$DIST_DIR/$PACKAGE_NAME.tar.zst"
 GZ_PATH="$DIST_DIR/$PACKAGE_NAME.tar.gz"
 
-# 基线运行时平台（Trae / CodeBuddy / OpenCode）
+# 基线运行时平台（Tier 2 原生目录：Trae / OpenCode；CodeBuddy 走 Tier 1 市场通道）
 # vocabcraft.plugin/ 为配置真相源：Skills 与 AGENTS.md 同步自 vocabcraft.plugin/，平台配置生成自 vocabcraft.plugin/runtime/*.json
 AGENTS_DIR="$PROJECT_ROOT/vocabcraft.plugin"
 AGENTS_RUNTIME="$AGENTS_DIR/runtime"
 AGENTS_SKILLS="$AGENTS_DIR/skills"
 AGENTS_MD="$AGENTS_DIR/AGENTS.md"
-declare -A CFG_SRC=( [trae]=trae.json [opencode]=opencode.json [codebuddy]=codebuddy.json )
-declare -A CFG_DST=( [trae]=mcp.json [opencode]=opencode.json [codebuddy]=mcp.json )
-declare -A AGENTS_IN_PLATFORM=( [trae]=0 [opencode]=1 [codebuddy]=1 )
-# 平台在发布包中的目录名必须为带点前缀（.trae/.opencode/.codebuddy），
-# 否则 IDE 无法识别。PowerShell 版已使用带点目录名，此处保持对齐。
-declare -A CFG_DOT=( [trae]=".trae" [opencode]=".opencode" [codebuddy]=".codebuddy" )
-PLATFORMS=( trae opencode codebuddy )
+declare -A CFG_SRC=( [trae]=trae.json [opencode]=opencode.json )
+declare -A CFG_DST=( [trae]=mcp.json [opencode]=opencode.json )
+declare -A AGENTS_IN_PLATFORM=( [trae]=0 [opencode]=1 )
+# 平台在发布包中的目录名必须为带点前缀（.trae/.opencode），
+# 否则 IDE 无法识别。CodeBuddy 走 Tier 1 市场通道（.codebuddy-plugin），不生成 .codebuddy/ 原生目录。
+declare -A CFG_DOT=( [trae]=".trae" [opencode]=".opencode" )
+PLATFORMS=( trae opencode )
 
 # ──────────────────────────────────────────
 # 颜色输出（与 PowerShell 版风格一致）
@@ -80,7 +80,7 @@ log_ok "cleaned"
 # ──────────────────────────────────────────
 log_step "[2/6] Create directory structure..."
 mkdir -p "$STAGING_DIR/vocabcraft.plugin"
-# Agent Plugins 1.0（Tier 1）/ CodeBuddy 插件清单目录（Tier 2 市场通道）
+# CodeBuddy 插件市场通道（Tier 1，自有格式）：市场清单 + 插件清单
 mkdir -p "$STAGING_DIR/vocabcraft.plugin/.codebuddy-plugin"
 mkdir -p "$STAGING_DIR/.codebuddy-plugin"
 for p in "${PLATFORMS[@]}"; do
@@ -96,9 +96,9 @@ mkdir -p "$STAGING_DIR/vocabcraft.plugin/vocabcraft-mcp/data/images"
 log_ok "directories created"
 
 # ──────────────────────────────────────────
-# [3/6] 复制多平台配置（.trae / .opencode / .codebuddy）
+# [3/6] 复制多平台配置（.trae / .opencode）
 # ──────────────────────────────────────────
-log_step "[3/6] Copy platform configs (.trae/.opencode/.codebuddy)..."
+log_step "[3/6] Copy platform configs (.trae/.opencode)..."
 
 # opencode 的 instructions 引用 vocabcraft.plugin/AGENTS.md，发布包需包含该文件
 cp "$AGENTS_MD" "$STAGING_DIR/vocabcraft.plugin/AGENTS.md"
@@ -131,7 +131,7 @@ copy_dir_filtered() {
 cp "$AGENTS_DIR/plugin.json" "$STAGING_DIR/vocabcraft.plugin/plugin.json"
 cp "$AGENTS_DIR/mcp.json"    "$STAGING_DIR/vocabcraft.plugin/mcp.json"
 copy_dir_filtered "$AGENTS_DIR/skills" "$STAGING_DIR/vocabcraft.plugin/skills"
-# Tier 2（CodeBuddy，自有格式）：插件清单 + 本地市场清单
+# CodeBuddy 插件市场通道（Tier 1，自有格式）：插件清单 + 本地市场清单
 cp "$AGENTS_DIR/.mcp.json" "$STAGING_DIR/vocabcraft.plugin/.mcp.json"
 cp "$AGENTS_DIR/.codebuddy-plugin/plugin.json" "$STAGING_DIR/vocabcraft.plugin/.codebuddy-plugin/plugin.json"
 cp "$PROJECT_ROOT/.codebuddy-plugin/marketplace.json" "$STAGING_DIR/.codebuddy-plugin/marketplace.json"
@@ -149,7 +149,7 @@ for p in "${PLATFORMS[@]}"; do
     cp "$AGENTS_RUNTIME/${CFG_SRC[$p]}" "$pd/${CFG_DST[$p]}"
 done
 
-log_ok "platform configs copied (.trae/.opencode/.codebuddy)"
+log_ok "platform configs copied (.trae/.opencode)"
 
 # ──────────────────────────────────────────
 # [4/6] 复制 vocabcraft.plugin/vocabcraft-mcp 源码（白名单）
@@ -244,10 +244,8 @@ required=(
     ".codebuddy-plugin/marketplace.json"
     ".trae/mcp.json"
     ".opencode/opencode.json"
-    ".codebuddy/mcp.json"
     ".trae/skills"
     ".opencode/skills"
-    ".codebuddy/skills"
     "vocabcraft.plugin/vocabcraft-mcp/pyproject.toml"
     "vocabcraft.plugin/vocabcraft-mcp/src/vocabcraft_mcp/server.py"
     "install.ps1"
@@ -322,7 +320,7 @@ echo ""
 echo -e "  Package: ${CYAN}$PACKAGE_NAME${NC}"
 echo -e "  Files:   ${CYAN}$file_count${NC}"
 echo ""
-echo "  User steps (支持的运行时: Trae / CodeBuddy / OpenCode):"
+echo "  User steps (支持的运行时: Trae / OpenCode（原生）/ CodeBuddy（市场）):"
 echo "  1. Extract VocabCraft-v$VERSION.{zip|tar.zst|tar.gz}"
 echo "  2. Run install.ps1 (或 Linux/macOS 下 install.sh)"
 echo "  3. 在所用 IDE 中打开该文件夹，启用项目级 MCP 即可"
